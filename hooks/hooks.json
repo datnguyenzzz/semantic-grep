@@ -20,7 +20,7 @@
             "name": "save-session-summary",
             "type": "command",
             "command": "${extensionPath}${/}dist${/}session-end",
-            "timeout": 15000,
+            "timeout": 60000,
             "description": "Summarizes the current session's findings, decisions, and preferences, saving them as memory."
           }
         ]

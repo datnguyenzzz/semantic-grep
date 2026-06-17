@@ -45,8 +45,8 @@ func sha256Hash(data string) string {
 
 func isIndexable(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
-	// ponytail: support Go, Terraform, YAML, and Markdown files
-	return ext == ".go" || ext == ".tf" || ext == ".yaml" || ext == ".yml" || ext == ".md"
+	// ponytail: support Go, Terraform, and YAML files
+	return ext == ".go" || ext == ".tf" || ext == ".yaml" || ext == ".yml"
 }
 
 // BuildMerkleTree scans the filesystem recursively and constructs the Merkle Tree of indexable files

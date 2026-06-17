@@ -24,13 +24,17 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 * **12x Storage Savings:** Automatically quantizes float32 embeddings to a compact **4-bit representation** inside DuckDB `BLOB` columns, reducing vector size from 12KB down to 1.5KB for 3072-dimensional vectors.
 * **High-Fidelity scoring:** Decodes BLOBs and scores them via Go-level cosine similarity in under a millisecond with virtually identical semantic fidelity (Cosine Sim > 0.93 on real embeddings).
 
-> ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, `.yaml` / `.yml`, and `.md` files.
+> ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
 
 ---
 
 ## 🛠 Exposed MCP Tools
 
-* `search_memory`: Searches semantically across past user interactions, session summaries, personal preferences (`personal` category), or chunked codebase files (`project` category). For codebase searches, matching code blocks are loaded dynamically on the fly from the local disk to preserve privacy.
+* `search_memory`: **(CRITICAL WORKFLOW)**
+  1. If an agent is not sure which repository/codebase to search, it MUST call `list_codebases` first to discover all available registered, indexed codebases.
+  2. Once the target codebase is specified, use its absolute path as the `cwd` argument (non-mandatory) combined with the complete, detailed user question or context as the `query` argument (e.g., Query: 'how long is the trace buffered time in otelcol-tail-sampling', CWD: `/path/to/otelcol`).
+  3. **Agents must always use this tool first** before attempting to read local files directly, falling back to manual file reads only if search returns no results.
+  4. For codebase searches, matching code blocks are loaded dynamically on the fly from the local disk to preserve privacy.
 * `list_codebases`: Lists all local codebases currently registered, indexed, and searchable on the system, including their absolute workspace paths, cryptographic Merkle root hashes, and sync timestamps.
 
 ---

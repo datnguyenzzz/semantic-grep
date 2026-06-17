@@ -68,9 +68,9 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 		t.Fatalf("UpdateIndex first run failed: %v", err)
 	}
 
-	// We expect 4 added files (main.go, config.tf, deployment.yaml, README.md)
-	if added != 4 || modified != 0 || deleted != 0 {
-		t.Errorf("expected 4 added files, got: added=%d, modified=%d, deleted=%d", added, modified, deleted)
+	// We expect 3 added files (main.go, config.tf, deployment.yaml)
+	if added != 3 || modified != 0 || deleted != 0 {
+		t.Errorf("expected 3 added files, got: added=%d, modified=%d, deleted=%d", added, modified, deleted)
 	}
 
 	// 4. Verify Database Content after indexing
@@ -171,6 +171,9 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	readmeMdPath := filepath.Join(tmpCodebaseB, "README.md")
 	_ = os.WriteFile(readmeMdPath, []byte("# Readme\n\nProject B description"), 0644)
 
+	configYamlPath := filepath.Join(tmpCodebaseB, "config.yaml")
+	_ = os.WriteFile(configYamlPath, []byte("port: 8080\n"), 0644)
+
 	// 4. Index both codebases
 	_, _, _, err = merkle.UpdateIndex(tmpCodebaseA, tq)
 	if err != nil {
@@ -252,8 +255,8 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	// Modify main.go in Codebase A
 	_ = os.WriteFile(mainGoPath, []byte("package main\n\nfunc Main() {\n\tprintln(\"A modified!\")\n}"), 0644)
 
-	// Modify README.md in Codebase B
-	_ = os.WriteFile(readmeMdPath, []byte("# Readme\n\nProject B description - modified!"), 0644)
+	// Modify config.yaml in Codebase B
+	_ = os.WriteFile(configYamlPath, []byte("port: 9090\n"), 0644)
 
 	// Run incremental sync on Codebase A
 	addedA, modifiedA, deletedA, err := merkle.UpdateIndex(tmpCodebaseA, tq)

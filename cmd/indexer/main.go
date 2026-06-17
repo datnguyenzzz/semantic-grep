@@ -1,6 +1,6 @@
 package main
 
-// ponytail: codebase indexer walks directories, filters Go, Terraform, YAML, and Markdown files, splits them, embeds, and stores in DuckDB using a Merkle Tree
+// ponytail: codebase indexer walks directories, filters Go, Terraform, and YAML files, splits them, embeds, and stores in DuckDB using a Merkle Tree
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ func main() {
 	fmt.Println("         📂  GEMINI PERSISTENT MEMORY INDEXER (Merkle Tree Sync)  📂            ")
 	fmt.Println("================================================================================")
 	fmt.Printf("  • Target Path: %s\n", absPath)
-	fmt.Println("  • Supported File Extensions: .go, .tf, .yaml, .yml, .md")
+	fmt.Println("  • Supported File Extensions: .go, .tf, .yaml, .yml")
 	fmt.Println("--------------------------------------------------------------------------------")
 	fmt.Println("  🔍 Scanning local workspace files...")
 

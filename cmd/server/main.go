@@ -19,8 +19,9 @@ import (
 )
 
 type SearchArgs struct {
-	Query    string  `json:"query" jsonschema:"The semantic search query, question, or code/text pattern you want to locate (e.g., 'database connection configuration' or 'user style preferences')."`
+	Query    string  `json:"query" jsonschema:"The full semantic search query, detailed question, or specific coding pattern you want to locate. CRITICAL: Pass the complete user question, detailed coding concept, or natural language query (e.g. 'how long is the trace buffered time in otelcol' or 'database retry logic') instead of single keywords, symbols, or repository names to ensure high-fidelity semantic match."`
 	Category *string `json:"category,omitempty" jsonschema:"Optional category filter. Use 'personal' to search only user-level guidelines and preferences. Use 'project' to search only relevant code segments from registered/indexed codebases. Omit to search both categories concurrently."`
+	CWD      *string `json:"cwd,omitempty" jsonschema:"Optional absolute codebase path of the repository to search. If omitted, search_memory defaults to searching the current working directory of the workspace."`
 }
 
 func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
@@ -59,7 +60,7 @@ func main() {
 	// 1. Register search_memory tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_memory",
-		Description: "Searches semantically across past user interactions, session summaries, personal preferences ('personal' category), or chunked codebase files ('project' category) in the user's registered codebases. For codebase search, matching code segments are loaded dynamically on demand from local files to preserve privacy. Use this tool when you need to recall user preferences or search for relevant implementation code, functions, patterns, or documentation within the indexed projects.",
+		Description: "CRITICAL WORKFLOW:\n1. If you are not sure which codebase or repository to search, you MUST call 'list_codebases' first to return and discover all registered, indexed codebases on the system.\n2. Once the codebase is specified or chosen, use its absolute path as the 'cwd' argument (which is non-mandatory) combined with the complete, detailed user question or context as the 'query' argument to call 'search_memory' (e.g., Query: 'how long is the trace buffered time in otelcol-tail-sampling', CWD: '/Users/username/...').\n3. DO NOT read local files directly until you have run a semantic search using this tool. Only read local files manually if this tool returns no results, or if you need to perform a precise surgical edit of a specific file found during search.\n4. Searches semantically across past user preferences ('personal' category) and Go, Terraform, and YAML files in registered codebases ('project' category), loading matching code segments dynamically from disk on demand to preserve privacy.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		embedding, err := llm.GetEmbedding(args.Query)
 		if err != nil {
@@ -71,8 +72,13 @@ func main() {
 			category = *args.Category
 		}
 
-		cwd, _ := os.Getwd()
-		results, err := db.SearchMemories(embedding, category, cwd, 5, tq)
+		cwd := ""
+		if args.CWD != nil && *args.CWD != "" {
+			cwd = *args.CWD
+		} else {
+			cwd, _ = os.Getwd()
+		}
+		results, err := db.SearchMemories(embedding, category, cwd, 10, tq)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -101,7 +107,7 @@ func main() {
 	// 4. Register list_codebases tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_codebases",
-		Description: "Lists all local codebases currently registered, indexed, and available for semantic search on the user's system, including their absolute workspace paths, cryptographic Merkle root hashes, and the timestamp of their last indexing/sync. Use this tool to discover which directories have already been indexed and are searchable.",
+		Description: "Lists all local codebases currently registered, indexed, and available for semantic search on the user's system, including their absolute workspace paths, and the timestamp of their last indexing/sync. Use this tool to discover which directories have already been indexed and are searchable.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 		codebases, err := db.ListCodebases()
 		if err != nil {
@@ -119,7 +125,7 @@ func main() {
 		var formatted string
 		for _, c := range codebases {
 			name := filepath.Base(c.CWD)
-			formatted += fmt.Sprintf("- **%s**\n  Path: `%s`\n  Merkle Root: `%s`\n  Last Updated: %s\n\n", name, c.CWD, c.RootHash, c.UpdatedAt.Format("2006-01-02 15:04:05"))
+			formatted += fmt.Sprintf("- **%s**\n  Path: `%s`\n  Last Updated: %s\n\n", name, c.CWD, c.UpdatedAt.Format("2006-01-02 15:04:05"))
 		}
 
 		return &mcp.CallToolResult{

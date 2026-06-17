@@ -118,7 +118,7 @@ Transcript:
 	}
 
 	id := uuid.New().String()
-	if err := db.SaveMemory(id, summary.Content, summary.Category, cwd, embedding, tq); err != nil {
+	if err := db.SaveMemory(id, summary.Content, "personal", cwd, embedding, tq); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to save memory to DuckDB: %v\n", err)
 		fmt.Println("{}")
 		return
