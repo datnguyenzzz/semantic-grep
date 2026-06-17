@@ -30,8 +30,16 @@ install: build
 	gemini extensions link . --consent
 	@echo "Extension 'agent-mem' linked and installed successfully!"
 
-# Run local database self-check
-test: self-check
+# Run tests and self-checks
+test:
+	@echo "Running package unit tests..."
+	CGO_ENABLED=1 go test ./... -v
+
+test-integration:
+	@echo "Running end-to-end integration tests..."
+	CGO_ENABLED=1 go test -tags=integration -v
+
+test-all: test test-integration self-check
 
 self-check:
 	@echo "Running local database self-check..."

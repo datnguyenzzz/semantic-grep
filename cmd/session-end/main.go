@@ -9,6 +9,7 @@ import (
 
 	"agent-mem/internal/db"
 	"agent-mem/internal/llm"
+	"agent-mem/internal/turboquant"
 
 	"github.com/google/uuid"
 )
@@ -108,8 +109,16 @@ Transcript:
 		return
 	}
 
+	// Initialize TurboQuant (3072 dimension, 4-bit, seed 42)
+	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize TurboQuant: %v\n", err)
+		fmt.Println("{}")
+		return
+	}
+
 	id := uuid.New().String()
-	if err := db.SaveMemory(id, summary.Content, summary.Category, cwd, embedding); err != nil {
+	if err := db.SaveMemory(id, summary.Content, summary.Category, cwd, embedding, tq); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to save memory to DuckDB: %v\n", err)
 		fmt.Println("{}")
 		return

@@ -11,10 +11,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"agent-mem/internal/db"
 	"agent-mem/internal/llm"
 	"agent-mem/internal/splitter"
+	"agent-mem/internal/turboquant"
 
 	"github.com/google/uuid"
 )
@@ -214,7 +217,7 @@ func collectFiles(node *MerkleNode) []string {
 }
 
 // UpdateIndex implements the Merkle-tree based incremental indexing
-func UpdateIndex(absPath string) (int, int, int, error) {
+func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, error) {
 	if err := db.InitDatabase(); err != nil {
 		return 0, 0, 0, fmt.Errorf("database init failed: %w", err)
 	}
@@ -275,12 +278,23 @@ func UpdateIndex(absPath string) (int, int, int, error) {
 		}
 	}
 
-	// 6. Index added and modified files
+	// 6. Index added and modified files concurrently
 	filesToProcess := append(added, modified...)
+	type IndexJob struct {
+		relPath          string
+		formattedContent string
+	}
+
+	type IndexResult struct {
+		relPath          string
+		formattedContent string
+		embedding        []float32
+		err              error
+	}
+
+	var jobs []IndexJob
 	for _, relPath := range filesToProcess {
 		fullPath := filepath.Join(absPath, relPath)
-		fmt.Printf("⚙ Parsing AST & generating embeddings for %s...\n", relPath)
-
 		chunks, err := splitter.SplitFile(fullPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to split %s: %v\n", relPath, err)
@@ -289,21 +303,66 @@ func UpdateIndex(absPath string) (int, int, int, error) {
 
 		for _, chunk := range chunks {
 			formattedContent := fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, chunk.StartLine, chunk.EndLine, chunk.Content)
+			jobs = append(jobs, IndexJob{
+				relPath:          relPath,
+				formattedContent: formattedContent,
+			})
+		}
+	}
 
-			// Generate embedding via LiteLLM
-			embedding, err := llm.GetEmbedding(formattedContent)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Failed to generate embedding for %s (lines %d-%d): %v\n", relPath, chunk.StartLine, chunk.EndLine, err)
+	if len(jobs) > 0 {
+		fmt.Printf("⚙ Generating embeddings concurrently for %d AST chunks...\n", len(jobs))
+		
+		results := make([]IndexResult, len(jobs))
+		var wg sync.WaitGroup
+		sem := make(chan struct{}, 16) // Limit to 16 concurrent LiteLLM requests
+
+		var completed int32
+		total := len(jobs)
+
+		for i, job := range jobs {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(idx int, j IndexJob) {
+				defer func() {
+					<-sem
+					wg.Done()
+				}()
+
+				embedding, err := llm.GetEmbedding(j.formattedContent)
+				results[idx] = IndexResult{
+					relPath:          j.relPath,
+					formattedContent: j.formattedContent,
+					embedding:        embedding,
+					err:              err,
+				}
+
+				done := atomic.AddInt32(&completed, 1)
+				// ponytail: print carriage-return progress counter for responsive terminal status updates
+				fmt.Printf("\r⚙ Progress: %d/%d chunks processed... (%s)", done, total, j.relPath)
+			}(i, job)
+		}
+
+		wg.Wait()
+		fmt.Println() // print newline after finishing progress ticker
+
+		// Save results sequentially to DuckDB to avoid lock contention
+		savedCount := 0
+		for _, res := range results {
+			if res.err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to generate embedding for %s: %v\n", res.relPath, res.err)
 				continue
 			}
 
 			id := uuid.New().String()
-			if err := db.SaveMemory(id, formattedContent, "project", absPath, embedding); err != nil {
+			if err := db.SaveMemory(id, res.formattedContent, "project", absPath, res.embedding, tq); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to save chunk to memory store: %v\n", err)
 				continue
 			}
+			savedCount++
 		}
-		fmt.Printf("✓ Successfully indexed %s (%d AST chunks)\n", relPath, len(chunks))
+		
+		fmt.Printf("✓ Successfully indexed %d files (%d AST chunks)\n", len(filesToProcess), savedCount)
 	}
 
 	// 7. Save updated Merkle Tree state
@@ -314,52 +373,6 @@ func UpdateIndex(absPath string) (int, int, int, error) {
 
 	if err := db.SaveMerkleTree(absPath, newTree.Hash, string(newTreeBytes)); err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to save Merkle Tree state: %w", err)
-	}
-
-	// 8. Generate high-level Codebase Profile if any changes occurred or if it is the first index
-	if len(added) > 0 || len(modified) > 0 || len(deleted) > 0 || prevRoot == "" {
-		fmt.Printf("⚙ Generating high-level Codebase Profile for %s...\n", filepath.Base(absPath))
-		
-		allFiles := collectFiles(newTree)
-		maxFilesToPrompt := 50
-		if len(allFiles) > maxFilesToPrompt {
-			allFiles = allFiles[:maxFilesToPrompt]
-		}
-		
-		filesList := strings.Join(allFiles, "\n")
-		prompt := fmt.Sprintf(`
-You are a Software Architect analyzing a local codebase located at "%s".
-Below is a subset of the indexable files in this repository:
-
-"""
-%s
-"""
-
-Generate a highly concise, authoritative "Codebase Profile" summary of this repository.
-It MUST start exactly with:
-[Codebase Profile] Codebase: %s (Path: %s)
-
-Then provide:
-1. A 1-sentence executive summary of the project's likely purpose.
-2. Major languages and tools used.
-3. High-level map of important folders/packages and their roles.
-
-Keep the entire response under 10-12 lines of clean, bulleted text. Do not add markdown blocks outside the list.
-`, absPath, filesList, filepath.Base(absPath), absPath)
-
-		profile, err := llm.GenerateText(prompt)
-		if err == nil && profile != "" {
-			profileEmbedding, err := llm.GetEmbedding(profile)
-			if err == nil {
-				if err := db.SaveCodebaseProfile(absPath, profile, profileEmbedding); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: Failed to save codebase profile: %v\n", err)
-				} else {
-					fmt.Println("✓ Regenerated and saved Codebase Profile!")
-				}
-			}
-		} else {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to generate codebase profile via LLM: %v\n", err)
-		}
 	}
 
 	return len(added), len(modified), len(deleted), nil

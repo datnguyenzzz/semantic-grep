@@ -13,6 +13,7 @@ import (
 	"agent-mem/internal/db"
 	"agent-mem/internal/llm"
 	"agent-mem/internal/merkle"
+	"agent-mem/internal/turboquant"
 
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -28,7 +29,7 @@ type AddArgs struct {
 	Category string `json:"category" jsonschema:"description=Category of the memory: 'personal' for user preferences/learnings, 'project' for codebase architecture/conventions.,enum=personal,enum=project"`
 }
 
-func startPeriodicIndexUpdate() {
+func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
 	// ponytail: periodically run incremental codebase index update in background every 10 minutes
 	ticker := time.NewTicker(10 * time.Minute)
 	go func() {
@@ -37,7 +38,7 @@ func startPeriodicIndexUpdate() {
 			if err != nil {
 				continue
 			}
-			_, _, _, _ = merkle.UpdateIndex(cwd)
+			_, _, _, _ = merkle.UpdateIndex(cwd, tq)
 		}
 	}()
 }
@@ -46,6 +47,12 @@ func main() {
 	// Initialize database schema on startup
 	if err := db.InitDatabase(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
+	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	if err != nil {
+		log.Fatalf("Failed to initialize TurboQuant: %v", err)
 	}
 
 	server := mcp.NewServer(&mcp.Implementation{
@@ -69,7 +76,7 @@ func main() {
 		}
 
 		cwd, _ := os.Getwd()
-		results, err := db.SearchMemories(embedding, category, cwd, 5)
+		results, err := db.SearchMemories(embedding, category, cwd, 5, tq)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -108,7 +115,7 @@ func main() {
 		id := uuid.New().String()
 		cwd, _ := os.Getwd()
 
-		if err := db.SaveMemory(id, args.Content, args.Category, cwd, embedding); err != nil {
+		if err := db.SaveMemory(id, args.Content, args.Category, cwd, embedding, tq); err != nil {
 			return nil, nil, err
 		}
 
@@ -129,7 +136,7 @@ func main() {
 			return nil, nil, fmt.Errorf("failed to get current working directory: %w", err)
 		}
 
-		added, modified, deleted, err := merkle.UpdateIndex(cwd)
+		added, modified, deleted, err := merkle.UpdateIndex(cwd, tq)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -174,7 +181,7 @@ func main() {
 	})
 
 	// Start periodic background updates
-	startPeriodicIndexUpdate()
+	startPeriodicIndexUpdate(tq)
 
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("MCP Server failed to run: %v", err)

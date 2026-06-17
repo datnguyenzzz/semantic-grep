@@ -1,6 +1,6 @@
 package main
 
-// ponytail: keep test extremely simple, run offline with mock embeddings, verify DuckDB logic
+// ponytail: keep test extremely simple, run offline with mock embeddings, verify DuckDB logic with explicit TurboQuant dependencies
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"agent-mem/internal/db"
+	"agent-mem/internal/turboquant"
 )
 
 func main() {
@@ -47,6 +48,13 @@ func main() {
 	}
 	fmt.Println("✓ Database initialized.")
 
+	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
+	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	if err != nil {
+		fmt.Printf("✗ Failed to initialize TurboQuant: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Mock embeddings
 	mockEmbed1 := make([]float32, 768)
 	mockEmbed2 := make([]float32, 768)
@@ -58,14 +66,14 @@ func main() {
 	mockEmbed2[0] = -0.5
 
 	// Save memories
-	err = db.SaveMemory("test-g1", "User prefers TypeScript over JavaScript", "personal", "/Users/thanh.nguyen/test-project", mockEmbed1)
+	err = db.SaveMemory("test-g1", "User prefers TypeScript over JavaScript", "personal", "/Users/thanh.nguyen/test-project", mockEmbed1, tq)
 	if err != nil {
 		fmt.Printf("✗ Failed to save personal memory: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("✓ Saved personal memory.")
 
-	err = db.SaveMemory("test-g2", "Project uses DuckDB Node 'Neo' client", "project", "/Users/thanh.nguyen/test-project", mockEmbed2)
+	err = db.SaveMemory("test-g2", "Project uses DuckDB Node 'Neo' client", "project", "/Users/thanh.nguyen/test-project", mockEmbed2, tq)
 	if err != nil {
 		fmt.Printf("✗ Failed to save project memory: %v\n", err)
 		os.Exit(1)
@@ -73,7 +81,7 @@ func main() {
 	fmt.Println("✓ Saved project memory.")
 
 	// Search memories
-	results, err := db.SearchMemories(mockEmbed1, "personal", "/Users/thanh.nguyen/test-project", 1)
+	results, err := db.SearchMemories(mockEmbed1, "personal", "/Users/thanh.nguyen/test-project", 1, tq)
 	if err != nil {
 		fmt.Printf("✗ Failed to search personal memory: %v\n", err)
 		os.Exit(1)
@@ -91,7 +99,7 @@ func main() {
 	fmt.Printf("✓ Correct personal memory found: %s\n", results[0].Content)
 
 	// Search project memories
-	resultsProject, err := db.SearchMemories(mockEmbed2, "project", "/Users/thanh.nguyen/test-project", 1)
+	resultsProject, err := db.SearchMemories(mockEmbed2, "project", "/Users/thanh.nguyen/test-project", 1, tq)
 	if err != nil {
 		fmt.Printf("✗ Failed to search project memory: %v\n", err)
 		os.Exit(1)

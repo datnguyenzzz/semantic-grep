@@ -1,6 +1,6 @@
 package db
 
-// ponytail: keep db operations simple, open and close on every call, and compress all embeddings dynamically using 4-bit TurboQuant for 12x space savings
+// ponytail: keep db operations simple, open and close on every call, standardize all embeddings to exactly 3072 dimensions, and compress using the explicitly passed 4-bit TurboQuant dependency
 
 import (
 	"database/sql"
@@ -23,6 +23,21 @@ type Memory struct {
 	CWD        string    `json:"cwd"`
 	Similarity float64   `json:"similarity,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
+}
+
+// normalizeVectorTo3072 ensures that every vector is exactly 3072 dimensions by slicing or padding
+func normalizeVectorTo3072(vec []float32) []float32 {
+	const targetDim = 3072
+	if len(vec) == targetDim {
+		return vec
+	}
+	if len(vec) > targetDim {
+		return vec[:targetDim]
+	}
+	// Pad with zeros to exactly 3072
+	padded := make([]float32, targetDim)
+	copy(padded, vec)
+	return padded
 }
 
 func getDBPath() (string, error) {
@@ -92,19 +107,19 @@ func InitDatabase() error {
 	return err
 }
 
-func SaveMemory(id, content, category, cwd string, embedding []float32) error {
+func SaveMemory(id, content, category, cwd string, embedding []float32, tq *turboquant.TurboQuant) error {
 	db, err := Open()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	// ponytail: quantize float32 embedding to 4-bit to compress storage from 6144 bytes to 768 bytes for 1536-dimensional vectors
-	dim := len(embedding)
-	tq, err := turboquant.NewTurboQuant(dim, 4, 42)
-	if err != nil {
-		return fmt.Errorf("failed to init turboquant for saving: %w", err)
+	if tq == nil {
+		return fmt.Errorf("turboquant dependency cannot be nil")
 	}
+
+	// ponytail: normalize embedding vector to exactly 3072 dimensions
+	embedding = normalizeVectorTo3072(embedding)
 
 	qv, err := tq.Quantize(embedding)
 	if err != nil {
@@ -125,12 +140,19 @@ func SaveMemory(id, content, category, cwd string, embedding []float32) error {
 	return err
 }
 
-func SearchMemories(queryEmbedding []float32, category, cwd string, limit int) ([]Memory, error) {
+func SearchMemories(queryEmbedding []float32, category, cwd string, limit int, tq *turboquant.TurboQuant) ([]Memory, error) {
 	db, err := Open()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
+
+	if tq == nil {
+		return nil, fmt.Errorf("turboquant dependency cannot be nil")
+	}
+
+	// ponytail: normalize embedding vector to exactly 3072 dimensions
+	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
 
 	// ponytail: retrieve quantized vector BLOBs, dequantize on the fly, and score using Go-level CosineSimilarity
 	query := `
@@ -160,12 +182,6 @@ func SearchMemories(queryEmbedding []float32, category, cwd string, limit int) (
 		return nil, err
 	}
 	defer rows.Close()
-
-	dim := len(queryEmbedding)
-	tq, err := turboquant.NewTurboQuant(dim, 4, 42)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init turboquant for search: %w", err)
-	}
 
 	var memories []Memory
 	for rows.Next() {
@@ -334,47 +350,4 @@ func ListCodebases() ([]Codebase, error) {
 	return codebases, nil
 }
 
-// SaveCodebaseProfile stores the high-level summary of an indexed codebase as global personal memory
-func SaveCodebaseProfile(cwd, profile string, embedding []float32) error {
-	db, err := Open()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
 
-	// Delete previous profile if any
-	deleteQuery := `
-		DELETE FROM gemini_memories
-		WHERE category = 'personal'
-		  AND cwd = $1
-		  AND content LIKE '[Codebase Profile] Codebase: %'
-	`
-	_, _ = db.Exec(deleteQuery, cwd)
-
-	// Save new profile
-	embeddingSql, err := serializeQuantizedEmbedding(embedding)
-	if err != nil {
-		return err
-	}
-	id := "profile-" + filepath.Base(cwd)
-	insertQuery := `
-		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd, embedding)
-		VALUES ($1, $2, 'personal', $3, $4)
-	`
-
-	_, err = db.Exec(insertQuery, id, profile, cwd, embeddingSql)
-	return err
-}
-
-func serializeQuantizedEmbedding(embedding []float32) ([]byte, error) {
-	dim := len(embedding)
-	tq, err := turboquant.NewTurboQuant(dim, 4, 42)
-	if err != nil {
-		return nil, err
-	}
-	qv, err := tq.Quantize(embedding)
-	if err != nil {
-		return nil, err
-	}
-	return tq.Serialize(qv)
-}

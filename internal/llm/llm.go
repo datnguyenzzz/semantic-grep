@@ -149,23 +149,3 @@ func GenerateJSON(prompt string) (string, error) {
 
 	return chatResp.Choices[0].Message.Content, nil
 }
-
-func GenerateText(prompt string) (string, error) {
-	reqBody := ChatRequest{
-		Model: getChatModel(),
-		Messages: []ChatMessage{
-			{Role: "user", Content: prompt},
-		},
-	}
-
-	var chatResp ChatResponse
-	if err := doRequest("POST", "chat/completions", reqBody, &chatResp); err != nil {
-		return "", err
-	}
-
-	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message.Content == "" {
-		return "", fmt.Errorf("no text content returned by LiteLLM")
-	}
-
-	return chatResp.Choices[0].Message.Content, nil
-}

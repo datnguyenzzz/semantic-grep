@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"agent-mem/internal/merkle"
+	"agent-mem/internal/turboquant"
 )
 
 func main() {
@@ -24,7 +25,13 @@ func main() {
 
 	fmt.Printf("Indexing codebase: %s (Go & Terraform only)\n", absPath)
 
-	added, modified, deleted, err := merkle.UpdateIndex(absPath)
+	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
+	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	if err != nil {
+		log.Fatalf("Failed to initialize TurboQuant: %v", err)
+	}
+
+	added, modified, deleted, err := merkle.UpdateIndex(absPath, tq)
 	if err != nil {
 		log.Fatalf("Failed to index codebase: %v", err)
 	}
