@@ -318,10 +318,10 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 
 	if len(jobs) > 0 {
 		fmt.Printf("⚙ Generating embeddings concurrently for %d AST chunks...\n", len(jobs))
-		
+
 		results := make([]IndexResult, len(jobs))
 		var wg sync.WaitGroup
-		sem := make(chan struct{}, 16) // Limit to 16 concurrent LiteLLM requests
+		sem := make(chan struct{}, 4) // Limit to 4 concurrent LiteLLM requests
 
 		var completed int32
 		total := len(jobs)
@@ -371,7 +371,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 			}
 			savedCount++
 		}
-		
+
 		fmt.Printf("✓ Successfully indexed %d files (%d AST chunks)\n", len(filesToProcess), savedCount)
 	}
 

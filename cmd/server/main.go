@@ -15,18 +15,12 @@ import (
 	"agent-mem/internal/merkle"
 	"agent-mem/internal/turboquant"
 
-	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type SearchArgs struct {
 	Query    string  `json:"query" jsonschema:"description=The search query or phrase describing what you want to recall."`
 	Category *string `json:"category,omitempty" jsonschema:"description=Filter search by 'personal' (user preferences) or 'project' (repository notes).,enum=personal,enum=project"`
-}
-
-type AddArgs struct {
-	Content  string `json:"content" jsonschema:"description=The actual knowledge, preference, decision, or fact to save."`
-	Category string `json:"category" jsonschema:"description=Category of the memory: 'personal' for user preferences/learnings, 'project' for codebase architecture/conventions.,enum=personal,enum=project"`
 }
 
 func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
@@ -100,53 +94,6 @@ func main() {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: formatted},
-			},
-		}, nil, nil
-	})
-
-	// 2. Register add_memory tool
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "add_memory",
-		Description: "Saves a new personal memory (preference, decision, user fact) or project memory (guidelines, conventions) to persistent storage.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args AddArgs) (*mcp.CallToolResult, any, error) {
-		embedding, err := llm.GetEmbedding(args.Content)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		id := uuid.New().String()
-		cwd, _ := os.Getwd()
-
-		if err := db.SaveMemory(id, args.Content, args.Category, cwd, embedding, tq); err != nil {
-			return nil, nil, err
-		}
-
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Successfully saved %s memory: \"%s\"", args.Category, args.Content)},
-			},
-		}, nil, nil
-	})
-
-	// 3. Register update_index tool
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "update_index",
-		Description: "Manually triggers an incremental update of the codebase's Merkle tree index, re-indexing only added/modified files and purging deleted ones.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get current working directory: %w", err)
-		}
-
-		added, modified, deleted, err := merkle.UpdateIndex(cwd, tq)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		msg := fmt.Sprintf("Codebase index updated: %d files added, %d modified, %d deleted.", added, modified, deleted)
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: msg},
 			},
 		}, nil, nil
 	})

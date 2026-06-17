@@ -24,19 +24,13 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 * **12x Storage Savings:** Automatically quantizes float32 embeddings to a compact **4-bit representation** inside DuckDB `BLOB` columns, reducing vector size from 12KB down to 1.5KB for 3072-dimensional vectors.
 * **High-Fidelity scoring:** Decodes BLOBs and scores them via Go-level cosine similarity in under a millisecond with virtually identical semantic fidelity (Cosine Sim > 0.93 on real embeddings).
 
-### 5. Compiler-Grade Semantic Splitters
-* **Go (AST-Based):** Slices package-level declarations (`FuncDecl`, structs/interfaces, variables/constants). **Doc-comment aware**—includes preceding `/* */` and `//` comments.
-* **YAML (Structural):** Slices along multi-document boundary separators (`---`) for cohesive manifests.
-* **Markdown (Heading-Based):** Slices logically at heading lines (`#`, `##`, `###`).
-* **Terraform (Lexical Block-Based):** Groups logical configuration blocks intact.
+> ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, `.yaml` / `.yml`, and `.md` files.
 
 ---
 
 ## 🛠 Exposed MCP Tools
 
 * `search_memory`: Searches past memories or guidelines semantically (dynamically loads matching code from local disk).
-* `add_memory`: Manually saves user preferences, guidelines, or key project facts.
-* `update_index`: Manually triggers an incremental update of the active codebase's index.
 * `list_codebases`: Lists all indexed codebase paths and tree states on the system.
 
 ---
@@ -49,11 +43,7 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
    ```
 
 2. **Run Indexer:**
-   Index the current codebase workspace:
-   ```bash
-   make index
-   ```
-   Or index a custom target repository path:
+   Index a custom target repository path:
    ```bash
    make index DIR=/path/to/your/codebase
    ```
