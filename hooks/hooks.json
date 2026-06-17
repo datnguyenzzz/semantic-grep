@@ -2,7 +2,6 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "name": "load-past-memories",
@@ -16,7 +15,6 @@
     ],
     "SessionEnd": [
       {
-        "matcher": ".*",
         "hooks": [
           {
             "name": "save-session-summary",

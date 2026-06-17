@@ -1,6 +1,6 @@
 package main
 
-// ponytail: session-start hook loads local database memories by cwd, ultra-fast, zero external API queries on startup
+// ponytail: session-start hook loads local database memories, ultra-fast, zero external API queries on startup
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 type StartupPayload struct {
-	CWD string `json:"cwd"`
+	SessionID string `json:"session_id"`
 }
 
 type StartupResponse struct {
@@ -25,16 +25,7 @@ type StartupSpecificOutput struct {
 
 func main() {
 	var payload StartupPayload
-	if err := json.NewDecoder(os.Stdin).Decode(&payload); err != nil {
-		// Fallback gracefully on stdin parse failure
-		fmt.Println("{}")
-		return
-	}
-
-	cwd := payload.CWD
-	if cwd == "" {
-		cwd, _ = os.Getwd()
-	}
+	_ = json.NewDecoder(os.Stdin).Decode(&payload)
 
 	// Ensure table is initialized
 	if err := db.InitDatabase(); err != nil {
@@ -43,10 +34,10 @@ func main() {
 		return
 	}
 
-	// Fetch up to 10 most recent memories for this workspace or general personal memories
-	memories, err := db.GetRecentMemories(cwd, 10)
+	// Fetch up to 20 most recent personal memories
+	memories, err := db.GetRecentPersonalMemories(20)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to retrieve memories: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to retrieve personal memories: %v\n", err)
 		fmt.Println("{}")
 		return
 	}
@@ -58,10 +49,10 @@ func main() {
 
 	var formatted string
 	for i, row := range memories {
-		formatted += fmt.Sprintf("[%d] (%s) Saved on %s:\n%s\n\n", i+1, stringsToUpper(row.Category), row.CreatedAt.Format("2006-01-02 15:04:05"), row.Content)
+		formatted += fmt.Sprintf("[%d] Saved on %s:\n%s\n\n", i+1, row.CreatedAt.Format("2006-01-02 15:04:05"), row.Content)
 	}
 
-	additionalContext := fmt.Sprintf("### RETRIEVED PERSISTENT MEMORIES\nBelow are relevant personal preferences, decisions, and project memories retrieved across past sessions. Adhere to these guidelines, preferences, and facts:\n\n%s", formatted)
+	additionalContext := fmt.Sprintf("### RETRIEVED PERSISTENT MEMORIES\nBelow are relevant personal preferences and guidelines retrieved from past sessions. Adhere to these guidelines, preferences, and facts:\n\n%s", formatted)
 
 	resp := StartupResponse{
 		SystemMessage: fmt.Sprintf("Loaded %d memories for persistent session context.", len(memories)),
@@ -72,15 +63,4 @@ func main() {
 
 	outBytes, _ := json.Marshal(resp)
 	fmt.Println(string(outBytes))
-}
-
-func stringsToUpper(s string) string {
-	switch s {
-	case "personal":
-		return "PERSONAL"
-	case "project":
-		return "PROJECT"
-	default:
-		return "UNKNOWN"
-	}
 }

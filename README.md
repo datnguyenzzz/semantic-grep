@@ -30,8 +30,8 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 
 ## 🛠 Exposed MCP Tools
 
-* `search_memory`: Searches past memories or guidelines semantically (dynamically loads matching code from local disk).
-* `list_codebases`: Lists all indexed codebase paths and tree states on the system.
+* `search_memory`: Searches semantically across past user interactions, session summaries, personal preferences (`personal` category), or chunked codebase files (`project` category). For codebase searches, matching code blocks are loaded dynamically on the fly from the local disk to preserve privacy.
+* `list_codebases`: Lists all local codebases currently registered, indexed, and searchable on the system, including their absolute workspace paths, cryptographic Merkle root hashes, and sync timestamps.
 
 ---
 

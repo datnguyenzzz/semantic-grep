@@ -19,8 +19,8 @@ import (
 )
 
 type SearchArgs struct {
-	Query    string  `json:"query" jsonschema:"description=The search query or phrase describing what you want to recall."`
-	Category *string `json:"category,omitempty" jsonschema:"description=Filter search by 'personal' (user preferences) or 'project' (repository notes).,enum=personal,enum=project"`
+	Query    string  `json:"query" jsonschema:"The semantic search query, question, or code/text pattern you want to locate (e.g., 'database connection configuration' or 'user style preferences')."`
+	Category *string `json:"category,omitempty" jsonschema:"Optional category filter. Use 'personal' to search only user-level guidelines and preferences. Use 'project' to search only relevant code segments from registered/indexed codebases. Omit to search both categories concurrently."`
 }
 
 func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
@@ -59,7 +59,7 @@ func main() {
 	// 1. Register search_memory tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_memory",
-		Description: "Searches through past personal memories, session summaries, or project knowledge using semantic search.",
+		Description: "Searches semantically across past user interactions, session summaries, personal preferences ('personal' category), or chunked codebase files ('project' category) in the user's registered codebases. For codebase search, matching code segments are loaded dynamically on demand from local files to preserve privacy. Use this tool when you need to recall user preferences or search for relevant implementation code, functions, patterns, or documentation within the indexed projects.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		embedding, err := llm.GetEmbedding(args.Query)
 		if err != nil {
@@ -101,7 +101,7 @@ func main() {
 	// 4. Register list_codebases tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_codebases",
-		Description: "Lists all indexed codebases on the user's system, including their paths, Merkle root hashes, and when they were last updated.",
+		Description: "Lists all local codebases currently registered, indexed, and available for semantic search on the user's system, including their absolute workspace paths, cryptographic Merkle root hashes, and the timestamp of their last indexing/sync. Use this tool to discover which directories have already been indexed and are searchable.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 		codebases, err := db.ListCodebases()
 		if err != nil {

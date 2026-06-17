@@ -332,6 +332,41 @@ func GetRecentMemories(cwd string, limit int) ([]Memory, error) {
 	return memories, nil
 }
 
+// GetRecentPersonalMemories fetches the most recent personal memories up to the limit
+func GetRecentPersonalMemories(limit int) ([]Memory, error) {
+	db, err := Open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `
+		SELECT id, content, category, cwd, created_at
+		FROM gemini_memories
+		WHERE category = 'personal'
+		ORDER BY created_at DESC
+		LIMIT $1
+	`
+
+	rows, err := db.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var memories []Memory
+	for rows.Next() {
+		var m Memory
+		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		memories = append(memories, m)
+	}
+
+	return memories, nil
+}
+
 // SaveMerkleTree stores the serialized Merkle Tree state for a codebase
 func SaveMerkleTree(cwd, rootHash, treeJSON string) error {
 	db, err := Open()

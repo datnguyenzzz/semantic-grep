@@ -321,7 +321,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 
 		results := make([]IndexResult, len(jobs))
 		var wg sync.WaitGroup
-		sem := make(chan struct{}, 4) // Limit to 4 concurrent LiteLLM requests
+		sem := make(chan struct{}, 16) // Limit to 16 concurrent LiteLLM requests
 
 		var completed int32
 		total := len(jobs)
