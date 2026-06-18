@@ -64,11 +64,6 @@ func drawBar(ratio float64, width int) string {
 func Test_compression_rate(t *testing.T) {
 	// ─── USER CONFIGURATION (UPDATE THESE PLACEHOLDER PATHS) ───
 	codebases := []string{
-		"/Users/thanh.nguyen/Documents/dhse/otelcol-tail-sampling",
-		"/Users/thanh.nguyen/Documents/dhse/otelcol",
-		"/Users/thanh.nguyen/Documents/dhse/otelcol-otlp",
-		"/Users/thanh.nguyen/Documents/dhse/dp-sre-otelcol-proxy",
-		"/Users/thanh.nguyen/Documents/dhse/dp-sre-grafana-alerting",
 		// You can add more absolute or relative paths here...
 	}
 	// ──────────────────────────────────────────────────────────
