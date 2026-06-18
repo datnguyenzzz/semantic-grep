@@ -98,6 +98,7 @@ flowchart TD
     %% WRITE PATH: Indexing & Ingestion (Thin lines / Dashes)
     %% ──────────────────────────────────────────────────────────
     idx_cli -->|1. Run index| merkle
+    mcp_srv -->|Periodically refresh the indexed codebases| merkle
     code_files -.->|Scan Directory| merkle
     merkle -->|2. Split Files| splitter
     merkle -->|3. Get Embeddings| llm
