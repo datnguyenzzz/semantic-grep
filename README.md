@@ -64,11 +64,26 @@ Configure via environment variables:
 ## 📐 System Architecture
 
 ```mermaid
-graph TD
-    %% Entrypoints
+flowchart TD
+    %% Entrypoints & Client
     subgraph Client ["Client / Agent Entrypoints"]
-        cli[Gemini CLI]
+        cli[Gemini CLI / Agent]
         idx_cli[Indexer CLI]
+    end
+
+    %% Core Components
+    subgraph Core ["agent-mem Core Engine & Server"]
+        merkle[Merkle Sync<br/>internal/merkle]
+        splitter[Splitter<br/>internal/splitter]
+        llm[LLM Client<br/>internal/llm]
+        callgraph[Call Graph<br/>internal/callgraph]
+        mcp_srv[MCP Server<br/>cmd/server]
+    end
+
+    %% Shared Environment & Databases
+    subgraph Storage ["Shared Environment & Storage"]
+        duckdb_file[(agent-mem.db<br/>DuckDB Metadata & Call Graph)]
+        tqv_file[(agent-mem.tqv<br/>Quantized Vectors)]
     end
 
     %% User's Environment
@@ -76,57 +91,51 @@ graph TD
         code_files[User's Source Code<br/>.go, .tf, .yaml]
     end
 
-    %% Extension
-    subgraph Extension ["agent-mem Extension"]
-        subgraph MCP ["Exposed MCP Server"]
-            mcp_srv[MCP Server<br/>cmd/server]
-        end
+    %% External Provider
+    litellm[LiteLLM Embedding Provider]
 
-        subgraph Core ["Core Engine"]
-            merkle[Merkle Sync<br/>internal/merkle]
-            splitter[Splitter<br/>internal/splitter]
-            llm[LLM Client<br/>internal/llm]
-            db[Metadata DB<br/>internal/db]
-            tq[TurboQuant Index<br/>internal/turboquant]
-            callgraph[Call Graph<br/>internal/callgraph]
-        end
-    end
-
-    %% Providers
-    subgraph Provider ["Embedding Provider"]
-        litellm[LiteLLM API]
-    end
-
-    %% Storage
-    subgraph Storage ["Persistent Storage (~/.gemini/)"]
-        duckdb_file[(agent-mem.db<br/>DuckDB Metadata & Call Graph<br/>NO CODE STORED)]
-        tqv_file[(agent-mem.tqv<br/>Quantized Vectors)]
-    end
-
-    %% Indexing Flow
-    idx_cli -.->|Index code| merkle
-    mcp_srv -.->|Periodically refresh the indexed code| merkle
-
+    %% ──────────────────────────────────────────────────────────
+    %% WRITE PATH: Indexing & Ingestion (Thin lines / Dashes)
+    %% ──────────────────────────────────────────────────────────
+    idx_cli -->|1. Run index| merkle
     code_files -.->|Scan Directory| merkle
-    merkle -->|2. Split Code Files| splitter
+    merkle -->|2. Split Files| splitter
     merkle -->|3. Get Embeddings| llm
-    llm -->|4. REST API| litellm
-    merkle -->|5. Save Metadata Only| db
-    merkle -->|6. Store Vectors| tq
-    merkle ==>|7. Incremental Call Graph Parse| callgraph
-    callgraph ==>|8. Save Nodes & Edges| db
+    llm <-->|4. API Call| litellm
+    merkle -->|5. Save Metadata| duckdb_file
+    merkle -->|5. Save Quantized Vectors| tqv_file
+    merkle ==>|6. Parse Call Graph| callgraph
+    callgraph ==>|7. Save Nodes & Edges| duckdb_file
 
-    %% MCP Query Flow
-    cli -->|1. Call search_memory| mcp_srv
-    mcp_srv -->|2. Index.Search| tq
-    mcp_srv -->|3. Fetch Metadata Only| db
-    mcp_srv ==>|4. DYNAMICALLY READ CODE LINES<br/>FOR PRIVACY| code_files
-    mcp_srv -->|5. Return Combined Context| cli
-    cli ==>|Call search_call_graph| mcp_srv
+    %% ──────────────────────────────────────────────────────────
+    %% READ PATH: MCP Search & Retrieval (Thick Double Lines)
+    %% ──────────────────────────────────────────────────────────
+    cli ===>|1. Call search_memory| mcp_srv
+    mcp_srv ===>|2. Get Query Embedding| llm
+    mcp_srv ===>|3. Search Vectors| tqv_file
+    mcp_srv ===>|4. Fetch Metadata and Graph| duckdb_file
+    mcp_srv ===>|5. DYNAMICALLY READ CODE| code_files
+    mcp_srv ===>|6. Return Context| cli
+    
+    cli ===>|7. Call search_call_graph| mcp_srv
 
-    %% Persistence
-    db -->|Read/Write SQL| duckdb_file
-    tq -->|Load/Save Index| tqv_file
+     %% ──────────────────────────────────────────────────────────
+    %% FLOW LEGEND (Self-Explanatory Arrow Styles)
+    %% ──────────────────────────────────────────────────────────
+    subgraph Legend ["Legend / Flow Styles"]
+        direction LR
+        style_w[ ] -->|Thin line / Dashed| desc_w(Write / Ingestion Flow)
+        style_r[ ] ===>|Thick double line| desc_r(Read / Search Query Flow)
+    end
+
+    %% ──────────────────────────────────────────────────────────
+    %% FLOW LEGEND (Self-Explanatory Arrow Styles)
+    %% ──────────────────────────────────────────────────────────
+    subgraph Legend ["Legend / Flow Styles"]
+        direction LR
+        style_w[ ] -->|Thin line / Dashed| desc_w(Write / Ingestion Flow)
+        style_r[ ] ===>|Thick double line| desc_r(Read / Search Query Flow)
+    end
 ```
 
 ---
