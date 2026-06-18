@@ -582,54 +582,6 @@ func DeleteCallGraph(filePath string) error {
 	return tx.Commit()
 }
 
-// LoadCallGraph loads all pre-built nodes and edges from DuckDB to reconstruct CallGraph
-func LoadCallGraph() (*callgraph.CallGraph, error) {
-	db, err := Open()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	// 1. Load Nodes
-	rowsNodes, err := db.Query("SELECT name, file_path, start_line, end_line FROM call_nodes")
-	if err != nil {
-		return nil, err
-	}
-	defer rowsNodes.Close()
-
-	nodes := make(map[string]*callgraph.Node)
-	for rowsNodes.Next() {
-		var n callgraph.Node
-		err := rowsNodes.Scan(&n.Name, &n.FilePath, &n.StartLine, &n.EndLine)
-		if err != nil {
-			return nil, err
-		}
-		nodes[n.Name] = &n
-	}
-
-	// 2. Load Edges
-	rowsEdges, err := db.Query("SELECT caller, callee FROM call_edges")
-	if err != nil {
-		return nil, err
-	}
-	defer rowsEdges.Close()
-
-	var edges []callgraph.Edge
-	for rowsEdges.Next() {
-		var e callgraph.Edge
-		err := rowsEdges.Scan(&e.Caller, &e.Callee)
-		if err != nil {
-			return nil, err
-		}
-		edges = append(edges, e)
-	}
-
-	return &callgraph.CallGraph{
-		Nodes: nodes,
-		Edges: edges,
-	}, nil
-}
-
 // GetCallNode retrieves metadata for a single function node by name or method suffix
 func GetCallNode(funcName string) (*callgraph.Node, error) {
 	db, err := Open()

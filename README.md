@@ -10,12 +10,14 @@ A model-agnostic Gemini CLI extension and MCP server in **Go** providing local c
 *   **Privacy-Preserving Vector Storage:** No code is stored in the database. Only metadata headers are saved; raw code is read directly from local disk on demand during search.
 *   **AST Call & Dependency Graph:** Extracts call nodes and edges incrementally into DuckDB, allowing fast traversal and ASCII call-tree generation.
 
+> ⚠️ **Note:** Currently, the codebase indexer and call graph builder support indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
+
 ---
 
 ## 🛠 Exposed MCP Tools
 
 1.  **`search_memory`**: Semantic search across indexed workspace code blocks.
-2.  **`search_call_graph`**: Explores bidirectional call chains (caller/callee) for functions, Terraform blocks, or YAML tasks.
+2.  **`search_call_graph`**: Explores bidirectional call chains (caller/callee)
 
 ---
 
