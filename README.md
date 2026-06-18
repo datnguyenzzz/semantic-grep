@@ -105,20 +105,19 @@ flowchart TD
     llm <-->|4. API Call| litellm
     merkle -->|5. Save Metadata| duckdb_file
     merkle -->|5. Save Quantized Vectors| tqv_file
-    merkle ==>|6. Parse Call Graph| callgraph
-    callgraph ==>|7. Save Nodes & Edges| duckdb_file
+    merkle -->|6. Parse Call Graph| callgraph
+    callgraph -->|7. Save Nodes & Edges| duckdb_file
 
     %% ──────────────────────────────────────────────────────────
     %% READ PATH: MCP Search & Retrieval (Thick Double Lines)
     %% ──────────────────────────────────────────────────────────
     cli ===>|1. Call search_memory| mcp_srv
+    cli ===>|1. Call search_call_graph| mcp_srv
     mcp_srv ===>|2. Get Query Embedding| llm
     mcp_srv ===>|3. Search Vectors| tqv_file
     mcp_srv ===>|4. Fetch Metadata and Graph| duckdb_file
     mcp_srv ===>|5. DYNAMICALLY READ CODE| code_files
     mcp_srv ===>|6. Return Context| cli
-    
-    cli ===>|7. Call search_call_graph| mcp_srv
 
      %% ──────────────────────────────────────────────────────────
     %% FLOW LEGEND (Self-Explanatory Arrow Styles)
