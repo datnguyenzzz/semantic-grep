@@ -441,3 +441,53 @@ func (tq *TurboQuant) ScorePrepared(preparedQuery []float64, qv *QuantizedVector
 	}
 	return dot / math.Sqrt(normSq)
 }
+
+// GetCentroidBounds returns the maximum absolute centroid value and minimum absolute centroid value squared.
+func (tq *TurboQuant) GetCentroidBounds() (float64, float64) {
+	var maxVal float64
+	var minSq float64 = math.MaxFloat64
+	for _, val := range tq.codebook.Centroids {
+		absVal := math.Abs(val)
+		if absVal > maxVal {
+			maxVal = absVal
+		}
+		sq := val * val
+		if sq < minSq {
+			minSq = sq
+		}
+	}
+	return maxVal, minSq
+}
+
+// ScorePreparedWithPruning scores a quantized vector with early-exit pruning if it cannot beat the threshold.
+func (tq *TurboQuant) ScorePreparedWithPruning(preparedQuery []float64, querySuffixEnergy []float64, maxCentroid, minCentroidSq float64, threshold float64, qv *QuantizedVector) (float64, bool) {
+	if len(qv.Indices) != len(preparedQuery) {
+		return 0.0, false
+	}
+	var dot float64
+	var normSq float64
+	centroids := tq.codebook.Centroids
+	for i, idx := range qv.Indices {
+		val := centroids[idx]
+		dot += preparedQuery[i] * val
+		normSq += val * val
+
+		// Perform pruning check every 512 coordinates
+		if i > 0 && i%512 == 0 {
+			remaining := len(preparedQuery) - i
+			maxRemainingDot := querySuffixEnergy[i] * math.Sqrt(float64(remaining)) * maxCentroid
+			maxPossibleDot := dot + maxRemainingDot
+			minPossibleNorm := math.Sqrt(normSq + float64(remaining)*minCentroidSq)
+			if minPossibleNorm > 0 {
+				maxPossibleSim := maxPossibleDot / minPossibleNorm
+				if maxPossibleSim < threshold {
+					return 0.0, true // Pruned!
+				}
+			}
+		}
+	}
+	if normSq == 0 {
+		return 0.0, false
+	}
+	return dot / math.Sqrt(normSq), false
+}

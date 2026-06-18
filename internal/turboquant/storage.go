@@ -1,6 +1,7 @@
 package turboquant
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -36,11 +37,11 @@ func NewStorage(dimension, bitWidth int) *Storage {
 	}
 }
 
-func (s *Storage) Load(filePath string, tq *TurboQuant) (map[string]*QuantizedVector, error) {
+func (s *Storage) Load(filePath string, tq *TurboQuant) (map[string][]byte, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return make(map[string]*QuantizedVector), nil
+			return make(map[string][]byte), nil
 		}
 		return nil, err
 	}
@@ -64,7 +65,7 @@ func (s *Storage) Load(filePath string, tq *TurboQuant) (map[string]*QuantizedVe
 	}
 
 	// Rebuild vectors map
-	vectors := make(map[string]*QuantizedVector, numVectors)
+	vectors := make(map[string][]byte, numVectors)
 	buf := make([]byte, bytesPerVector)
 
 	for i := range numVectors {
@@ -86,18 +87,13 @@ func (s *Storage) Load(filePath string, tq *TurboQuant) (map[string]*QuantizedVe
 		serialized := make([]byte, bytesPerVector-36)
 		copy(serialized, buf[36:])
 
-		qv, err := tq.Deserialize(serialized)
-		if err != nil {
-			continue
-		}
-
-		vectors[id] = qv
+		vectors[id] = serialized
 	}
 
 	return vectors, nil
 }
 
-func (s *Storage) Save(filePath string, tq *TurboQuant, vectors map[string]*QuantizedVector) error {
+func (s *Storage) Save(filePath string, tq *TurboQuant, vectors map[string][]byte) error {
 	// Re-write the file fresh to prevent accumulation of deleted items
 	tmpFile := filePath + ".tmp"
 	_ = os.Remove(tmpFile)
@@ -108,6 +104,9 @@ func (s *Storage) Save(filePath string, tq *TurboQuant, vectors map[string]*Quan
 	}
 	defer f.Close()
 
+	// Use buffered IO for writing
+	writer := bufio.NewWriter(f)
+
 	// Write header
 	header := make([]byte, HeaderSize)
 	copy(header[0:4], []byte("TQLM"))
@@ -115,7 +114,7 @@ func (s *Storage) Save(filePath string, tq *TurboQuant, vectors map[string]*Quan
 	binary.LittleEndian.PutUint32(header[8:12], uint32(len(vectors)))
 	binary.LittleEndian.PutUint32(header[12:16], uint32(s.bytesPerVector))
 
-	if _, err := f.Write(header); err != nil {
+	if _, err := writer.Write(header); err != nil {
 		return err
 	}
 
@@ -124,26 +123,26 @@ func (s *Storage) Save(filePath string, tq *TurboQuant, vectors map[string]*Quan
 	binary.LittleEndian.PutUint32(meta[0:4], uint32(s.dimension))
 	meta[4] = uint8(s.bitWidth)
 
-	if _, err := f.Write(meta); err != nil {
+	if _, err := writer.Write(meta); err != nil {
 		return err
 	}
 
 	// Write all records
 	recordBuf := make([]byte, s.bytesPerVector)
-	for id, qv := range vectors {
-		serialized, err := tq.Serialize(qv)
-		if err != nil {
-			return err
-		}
-
+	for id, serialized := range vectors {
 		idBytes := make([]byte, 36)
 		copy(idBytes, []byte(id))
 		copy(recordBuf[0:36], idBytes)
 		copy(recordBuf[36:], serialized)
 
-		if _, err := f.Write(recordBuf); err != nil {
+		if _, err := writer.Write(recordBuf); err != nil {
 			return err
 		}
+	}
+
+	// Flush buffered writer to disk
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush storage buffer: %w", err)
 	}
 
 	f.Close()

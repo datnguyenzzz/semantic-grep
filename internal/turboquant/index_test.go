@@ -113,3 +113,76 @@ func TestIndex_AddSearchDelete(t *testing.T) {
 		t.Errorf("expected id-2 to remain after deleting id-1, got %s", resultsAfterDelete[0].ID)
 	}
 }
+
+func TestIndex_NoisyQueryAccuracy(t *testing.T) {
+	// Create a temp directory for our storage file
+	tmpDir, err := os.MkdirTemp("", "turboquant-noisy-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "noisy_test.tqv")
+
+	dim := 256
+	tq, err := NewTurboQuant(dim, 4, 123) // different seed
+	if err != nil {
+		t.Fatalf("failed to initialize TurboQuant: %v", err)
+	}
+
+	index, err := NewIndex(filePath, tq)
+	if err != nil {
+		t.Fatalf("failed to initialize Index: %v", err)
+	}
+
+	rng := rand.New(rand.NewSource(12345))
+
+	numVectors := 10
+	sourceVecs := make([][]float32, numVectors)
+
+	// Generate and index 10 distinct, high-dimensional vectors
+	for i := 0; i < numVectors; i++ {
+		v := make([]float32, dim)
+		for j := 0; j < dim; j++ {
+			v[j] = float32(rng.NormFloat64())
+		}
+		sourceVecs[i] = v
+
+		id := string(rune('A' + i)) // "A", "B", "C", ...
+		err = index.Add(id, v)
+		if err != nil {
+			t.Fatalf("failed to add vector %s: %v", id, err)
+		}
+	}
+
+	// For each vector, create a noisy query and verify the search finds the exact source vector
+	for i := range numVectors {
+		targetID := string(rune('A' + i))
+
+		// Create query by adding small random noise (e.g. 0.05 scaling factor) to the source vector
+		query := make([]float32, dim)
+		for j := range dim {
+			query[j] = sourceVecs[i][j] + float32(rng.NormFloat64()*0.05)
+		}
+
+		// Search with limit 1
+		results, err := index.Search(query, nil, 1)
+		if err != nil {
+			t.Fatalf("failed to search index for query %s: %v", targetID, err)
+		}
+
+		if len(results) != 1 {
+			t.Fatalf("expected exactly 1 search result, got %d", len(results))
+		}
+
+		// Assert that the best matching ID is exactly the original source vector ID!
+		if results[0].ID != targetID {
+			t.Errorf("accuracy check failed: queried noisy version of %s but search matched %s", targetID, results[0].ID)
+		}
+
+		// Also assert that the similarity score is high (typically > 0.90)
+		if results[0].Similarity < 0.90 {
+			t.Errorf("expected high similarity for exact noisy match of %s, got %.4f", targetID, results[0].Similarity)
+		}
+	}
+}

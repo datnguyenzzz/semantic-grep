@@ -1,6 +1,4 @@
-//go:build integration
-
-package main
+package scripts
 
 import (
 	"net"

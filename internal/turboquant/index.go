@@ -1,7 +1,7 @@
 package turboquant
 
 import (
-	"sort"
+	"math"
 	"sync"
 )
 
@@ -9,7 +9,7 @@ type Index struct {
 	tq       *TurboQuant
 	storage  *Storage
 	filePath string
-	vectors  map[string]*QuantizedVector
+	vectors  map[string][]byte
 	mu       sync.RWMutex
 }
 
@@ -29,14 +29,19 @@ func NewIndex(filePath string, tq *TurboQuant) (*Index, error) {
 }
 
 func (idx *Index) Add(id string, vec []float32) error {
-	idx.mu.Lock()
-	defer idx.mu.Unlock()
-
+	// ponytail: perform CPU-heavy rotation and quantization outside the lock to enable multi-core parallelism
 	qv, err := idx.tq.Quantize(vec)
 	if err != nil {
 		return err
 	}
-	idx.vectors[id] = qv
+	serialized, err := idx.tq.Serialize(qv)
+	if err != nil {
+		return err
+	}
+
+	idx.mu.Lock()
+	idx.vectors[id] = serialized
+	idx.mu.Unlock()
 	return nil
 }
 
@@ -85,26 +90,57 @@ func (idx *Index) Search(query []float32, activeIDs map[string]bool, limit int) 
 		return nil, err
 	}
 
+	// Compute query suffix energy array for fast early pruning checks
+	querySuffixEnergy := make([]float64, len(preparedQuery))
+	var sum float64
+	for i := len(preparedQuery) - 1; i >= 0; i-- {
+		sum += preparedQuery[i] * preparedQuery[i]
+		querySuffixEnergy[i] = math.Sqrt(sum)
+	}
+
+	maxCentroid, minCentroidSq := idx.tq.GetCentroidBounds()
+
+	// Keep a dynamic list of results to track the running threshold
 	var results []SearchResult
-	for id, qv := range idx.vectors {
+	for id, serialized := range idx.vectors {
 		if activeIDs != nil && !activeIDs[id] {
 			continue
 		}
 
-		sim := idx.tq.ScorePrepared(preparedQuery, qv)
-		results = append(results, SearchResult{
-			ID:         id,
-			Similarity: sim,
-		})
-	}
+		qv, err := idx.tq.Deserialize(serialized)
+		if err != nil {
+			continue
+		}
 
-	// Sort descending by similarity
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Similarity > results[j].Similarity
-	})
+		// Calculate threshold: if we already have 'limit' results, the threshold is the worst similarity among them
+		threshold := -1.0
+		if len(results) >= limit {
+			threshold = results[len(results)-1].Similarity
+		}
 
-	if len(results) > limit {
-		results = results[:limit]
+		sim, pruned := idx.tq.ScorePreparedWithPruning(preparedQuery, querySuffixEnergy, maxCentroid, minCentroidSq, threshold, qv)
+		if pruned {
+			continue // Candidate pruned!
+		}
+
+		// Insert candidate at its sorted position
+		res := SearchResult{ID: id, Similarity: sim}
+		inserted := false
+		for i, existing := range results {
+			if sim > existing.Similarity {
+				results = append(results[:i], append([]SearchResult{res}, results[i:]...)...)
+				inserted = true
+				break
+			}
+		}
+		if !inserted {
+			results = append(results, res)
+		}
+
+		// Keep size capped at limit
+		if len(results) > limit {
+			results = results[:limit]
+		}
 	}
 
 	return results, nil

@@ -25,18 +25,20 @@ func TestStorage_LoadSave(t *testing.T) {
 
 	storage := NewStorage(dim, bw)
 
-	// Create some mock quantized vectors
+	// Create some mock quantized vectors and serialize them
 	v1 := make([]float32, dim)
 	v1[0] = 1.0
 	qv1, _ := tq.Quantize(v1)
+	ser1, _ := tq.Serialize(qv1)
 
 	v2 := make([]float32, dim)
 	v2[0] = -1.0
 	qv2, _ := tq.Quantize(v2)
+	ser2, _ := tq.Serialize(qv2)
 
-	vectors := map[string]*QuantizedVector{
-		"id-1": qv1,
-		"id-2": qv2,
+	vectors := map[string][]byte{
+		"id-1": ser1,
+		"id-2": ser2,
 	}
 
 	// 1. Test Save
@@ -64,10 +66,20 @@ func TestStorage_LoadSave(t *testing.T) {
 	}
 
 	// Verify loaded vector fields match original exactly
-	for id, originalQv := range vectors {
-		loadedQv, ok := loaded[id]
+	for id, originalSer := range vectors {
+		loadedSer, ok := loaded[id]
 		if !ok {
 			t.Fatalf("expected vector %s to be loaded", id)
+		}
+
+		originalQv, err := tq.Deserialize(originalSer)
+		if err != nil {
+			t.Fatalf("failed to deserialize original vector: %v", err)
+		}
+
+		loadedQv, err := tq.Deserialize(loadedSer)
+		if err != nil {
+			t.Fatalf("failed to deserialize loaded vector: %v", err)
 		}
 
 		// 1. Verify Norm is exactly equal
