@@ -4,6 +4,53 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 
 ---
 
+## 🚀 Core Capabilities
+
+### 1. Merkle Tree-Based Incremental Indexing
+* **Cryptographic Diffing:** Builds SHA-256 hashes of local codebase states. On subsequent scans, it diffs the new tree against the old state to isolate added, modified, and deleted files in milliseconds.
+* **Redundant-Free Vectorization:** Skips calling the LLM embedding API for unchanged files.
+* **Automatic Vector Compaction:** Automatically purges stale vector chunks of deleted/modified files from the binary vector index file during sync runs.
+
+### 2. Privacy-Preserving Vector-Only Indexing
+* **No Code Stored in DB:** Codebase file contents are **never** saved to DuckDB or disk index files. Only lightweight metadata headers are persisted (`File: <path> (Lines: <start>-<end>)`).
+* **On-Demand Local Loading:** During search/retrieval, the database layer parses metadata headers and **reads the code lines directly from your local disk on the fly**, streaming them dynamically to the agent.
+
+### 3. Decoupled In-Memory Vector Storage
+* **Metadata-Only SQL Store:** DuckDB is utilized strictly for fast metadata queries (ID, content path, CWD) and subdirectory path-resolution.
+* **Quantized Vector Index (.tqv)**: Quantized vectors are kept in a dedicated, high-performance binary index file (`~/.gemini/agent-mem.tqv`) using ultra-compression
+
+> ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
+
+---
+
+## Compression rate 
+
+```
+================================================================================
+        📊  TURBOQUANT VECTOR COMPRESSION BENCHMARK SUITE  📊                 
+================================================================================
+
+   📁 Targets: Aggregated Index (across 5 codebases)
+   • Scanned Files: 5100 | Total Semantic Chunks: 16961 | Dimensions: 1536
+   ------------------------------------------------------------------------------
+   │ Data Footprint Type            │ Footprint Size │ Comp. Ratio │ Savings    │
+   ├────────────────────────────────┼────────────────┼─────────────┼────────────┤
+   │ [1] Standard Float32[] RAM     │  101766.00 KB  │      1.0x   │     0.0%   │
+   │ [2] TurboQuant In-Memory Map   │   12998.86 KB  │      7.8x   │    87.2%   │
+   │ [3] TurboQuant On-Disk .tqv    │   13383.31 KB  │      7.6x   │    86.8%   │
+   └────────────────────────────────┴────────────────┴─────────────┴────────────┘
+
+   📈 Visual Storage Footprint Comparison (Bar Scale):
+
+   Standard Float32[] RAM   : [████████████████████████████████████████] (101766.0 KB)
+   TurboQuant In-Memory Map : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (12998.9 KB) — 12x savings!
+   TurboQuant On-Disk .tqv  : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (13383.3 KB) — Compact file!
+
+================================================================================
+```
+
+---
+
 ## 📐 System Architecture
 
 Below is the conceptual component diagram of the decoupled indexing, search pipeline, and storage layers:
@@ -69,62 +116,6 @@ graph TD
     db -->|Read/Write SQL| duckdb_file
     tq -->|Load/Save Index| tqv_file
 ```
-
----
-
-## 🚀 Core Capabilities
-
-### 1. Merkle Tree-Based Incremental Indexing
-* **Cryptographic Diffing:** Builds SHA-256 hashes of local codebase states. On subsequent scans, it diffs the new tree against the old state to isolate added, modified, and deleted files in milliseconds.
-* **Redundant-Free Vectorization:** Skips calling the LLM embedding API for unchanged files.
-* **Automatic Vector Compaction:** Automatically purges stale vector chunks of deleted/modified files from the binary vector index file during sync runs.
-
-### 2. Privacy-Preserving Vector-Only Indexing
-* **No Code Stored in DB:** Codebase file contents are **never** saved to DuckDB or disk index files. Only lightweight metadata headers are persisted (`File: <path> (Lines: <start>-<end>)`).
-* **On-Demand Local Loading:** During search/retrieval, the database layer parses metadata headers and **reads the code lines directly from your local disk on the fly**, streaming them dynamically to the agent.
-
-### 3. Decoupled In-Memory Vector Storage
-* **Metadata-Only SQL Store:** DuckDB is utilized strictly for fast metadata queries (ID, content path, CWD) and subdirectory path-resolution.
-* **Quantized Vector Index (.tqv)**: Quantized vectors are kept in a dedicated, high-performance binary index file (`~/.gemini/agent-mem.tqv`) using ultra-compression
-
-> ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
-
----
-
-## Compression rate 
-
-```
-================================================================================
-        📊  TURBOQUANT VECTOR COMPRESSION BENCHMARK SUITE  📊                 
-================================================================================
-
-   📁 Targets: Aggregated Index (across 5 codebases)
-   • Scanned Files: 5100 | Total Semantic Chunks: 16961 | Dimensions: 1536
-   ------------------------------------------------------------------------------
-   │ Data Footprint Type            │ Footprint Size │ Comp. Ratio │ Savings    │
-   ├────────────────────────────────┼────────────────┼─────────────┼────────────┤
-   │ [1] Standard Float32[] RAM     │  101766.00 KB  │      1.0x   │     0.0%   │
-   │ [2] TurboQuant In-Memory Map   │   12998.86 KB  │      7.8x   │    87.2%   │
-   │ [3] TurboQuant On-Disk .tqv    │   13383.31 KB  │      7.6x   │    86.8%   │
-   └────────────────────────────────┴────────────────┴─────────────┴────────────┘
-
-   📈 Visual Storage Footprint Comparison (Bar Scale):
-
-   Standard Float32[] RAM   : [████████████████████████████████████████] (101766.0 KB)
-   TurboQuant In-Memory Map : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (12998.9 KB) — 12x savings!
-   TurboQuant On-Disk .tqv  : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (13383.3 KB) — Compact file!
-
-================================================================================
-```
-
----
-
-## 🛠 Exposed MCP Tools
-
-* `search_memory`: **(MANDATORY FIRST-USE DIRECTIVE)**
-  * **Always search first**: Agents **MUST** always use this tool first to find codebase context, files, folders, local structures, functions, or configurations before attempting to read local files, list directories, or run shell search commands. Fall back to direct file reads or folder exploration only if semantic search returns no results.
-  * **Codebase Semantic Search**: Searches semantically across segments of indexed codebase files in the current workspace.
-  * **Privacy**: Codebase search segments are loaded dynamically on the fly from the local disk to preserve privacy.
 
 ---
 
