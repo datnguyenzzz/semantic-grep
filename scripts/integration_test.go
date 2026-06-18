@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"agent-mem/internal/callgraph"
 	"agent-mem/internal/db"
 	"agent-mem/internal/llm"
 	"agent-mem/internal/merkle"
@@ -399,5 +400,189 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 	}
 	if !strings.Contains(bestNetworkResult.Content, "func Connect") {
 		t.Errorf("expected best match to contain function body of Connect, got content: %s", bestNetworkResult.Content)
+	}
+}
+
+func TestCallGraphE2EIntegration(t *testing.T) {
+	// 1. Skip test gracefully if LiteLLM is offline
+	conn, err := net.DialTimeout("tcp", "localhost:36253", 100*time.Millisecond)
+	if err != nil {
+		t.Skip("Skipping live integration test: local LiteLLM server on localhost:36253 is unreachable")
+	}
+	conn.Close()
+
+	// 2. Setup isolated Home & DB
+	tmpHome, err := os.MkdirTemp("", "callgraph-e2e-home-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	os.Setenv("HOME", tmpHome)
+	defer os.Unsetenv("HOME")
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		t.Fatalf("failed to get tqv path: %v", err)
+	}
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
+	if err != nil {
+		t.Fatalf("failed to init TurboQuant: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to init Index: %v", err)
+	}
+
+	// 3. Setup mock codebase directory
+	tmpCodebase, err := os.MkdirTemp("", "callgraph-e2e-codebase-*")
+	if err != nil {
+		t.Fatalf("failed to create temp codebase: %v", err)
+	}
+	defer os.RemoveAll(tmpCodebase)
+
+	// File 1: Go (A -> B)
+	goContent := `package main
+func FunctionA() {
+	FunctionB()
+}
+func FunctionB() {}
+`
+	_ = os.WriteFile(filepath.Join(tmpCodebase, "main.go"), []byte(goContent), 0644)
+
+	// File 2: Terraform (module referencing subnet)
+	tfContent := `
+resource "aws_subnet" "public" {
+  vpc_id = module.vpc.vpc_id
+}
+module "vpc" {
+  source = "./vpc"
+}
+`
+	_ = os.WriteFile(filepath.Join(tmpCodebase, "main.tf"), []byte(tfContent), 0644)
+
+	// File 3: YAML (Deploy needs Build)
+	yamlContent := `
+steps:
+  - name: Build
+    id: build_step
+  - name: Deploy
+    needs: [Build]
+`
+	_ = os.WriteFile(filepath.Join(tmpCodebase, "pipeline.yaml"), []byte(yamlContent), 0644)
+
+	// 4. Run full Merkle tree index update
+	_, _, _, err = merkle.UpdateIndex(tmpCodebase, index)
+	if err != nil {
+		t.Fatalf("failed to execute full indexer sync: %v", err)
+	}
+
+	// 5. Query and verify Go Call Graph Node & Edge from real DuckDB lazily
+	nodeA, err := db.GetCallNode("FunctionA")
+	if err != nil {
+		t.Fatalf("failed to query Go call node FunctionA from DuckDB: %v", err)
+	}
+	if nodeA == nil || nodeA.Name != "FunctionA" {
+		t.Errorf("FunctionA node metadata was not saved or loaded correctly: %+v", nodeA)
+	}
+
+	calleesA, err := db.GetCallees("FunctionA")
+	if err != nil {
+		t.Fatalf("failed to query callees of FunctionA: %v", err)
+	}
+	if len(calleesA) != 1 || calleesA[0].Name != "FunctionB" {
+		t.Errorf("expected 1 callee (FunctionB), got: %+v", calleesA)
+	}
+
+	// 6. Query and verify Terraform Dependency Graph Node & Edge from real DuckDB lazily
+	tfSubnetNode, err := db.GetCallNode("aws_subnet.public")
+	if err != nil {
+		t.Fatalf("failed to query TF subnet node: %v", err)
+	}
+	if tfSubnetNode == nil {
+		t.Errorf("expected TF subnet node to be indexed and stored in DuckDB")
+	}
+
+	calleesSubnet, err := db.GetCallees("resource.aws_subnet.public")
+	if err != nil {
+		t.Fatalf("failed to query TF subnet callees: %v", err)
+	}
+	if len(calleesSubnet) != 1 || calleesSubnet[0].Name != "module.vpc" {
+		t.Errorf("expected subnet callee to be module.vpc, got: %+v", calleesSubnet)
+	}
+
+	// 7. Query and verify YAML Dependency Graph Node & Edge from real DuckDB lazily
+	yamlDeployNode, err := db.GetCallNode("step.Deploy")
+	if err != nil {
+		t.Fatalf("failed to query YAML Deploy step: %v", err)
+	}
+	if yamlDeployNode == nil {
+		t.Errorf("expected YAML step.Deploy node to be indexed and stored in DuckDB")
+	}
+
+	calleesDeploy, err := db.GetCallees("step.Deploy")
+	if err != nil {
+		t.Fatalf("failed to query YAML Deploy callees: %v", err)
+	}
+	if len(calleesDeploy) != 1 || calleesDeploy[0].Name != "step.Build" {
+		t.Errorf("expected step.Deploy to depend on step.Build, got: %+v", calleesDeploy)
+	}
+}
+
+func TestCallGraphOnDemandDBQuerying(t *testing.T) {
+	// Create an isolated temp directory for our DuckDB database file
+	tmpHome, err := os.MkdirTemp("", "callgraph-lazy-db-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	// Set HOME environment so the DB path resolves inside tmpHome
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// 1. Populate nodes and edges inside our real DuckDB instance
+	nodeA := &callgraph.Node{Name: "FunctionA", FilePath: "file.go", StartLine: 1, EndLine: 5}
+	nodeB := &callgraph.Node{Name: "FunctionB", FilePath: "file.go", StartLine: 10, EndLine: 15}
+	nodeC := &callgraph.Node{Name: "FunctionC", FilePath: "file.go", StartLine: 20, EndLine: 25}
+
+	err = db.SaveCallGraph("file.go", []*callgraph.Node{nodeA, nodeB, nodeC}, []callgraph.Edge{
+		{Caller: "FunctionA", Callee: "FunctionB"},
+		{Caller: "FunctionB", Callee: "FunctionC"},
+	})
+	if err != nil {
+		t.Fatalf("failed to save mock call graph: %v", err)
+	}
+
+	// 2. Perform target node lookup using db.GetCallNode
+	targetNode, err := db.GetCallNode("FunctionA")
+	if err != nil {
+		t.Fatalf("failed to fetch target call node: %v", err)
+	}
+	if targetNode == nil || targetNode.Name != "FunctionA" {
+		t.Fatalf("expected to retrieve targetNode for FunctionA, got: %+v", targetNode)
+	}
+
+	// 3. Execute the actual search_call_graph tool's lazy database-querying report logic
+	report := callgraph.GenerateOnDemandTreeReport(targetNode, "both", 3, db.GetCallees, db.GetCallers)
+
+	// 4. Assert that the lazy callbacks successfully queried DuckDB and reconstructed the full call chain!
+	if !strings.Contains(report, "FunctionA") {
+		t.Errorf("expected report to contain FunctionA header")
+	}
+	if !strings.Contains(report, "FunctionB") {
+		t.Errorf("expected report to contain lazy callee FunctionB")
+	}
+	if !strings.Contains(report, "FunctionC") {
+		t.Errorf("expected report to contain lazy transitive callee FunctionC")
 	}
 }

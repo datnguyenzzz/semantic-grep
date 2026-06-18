@@ -185,3 +185,61 @@ steps:
 		t.Errorf("expected Deploy to transitively depend on Build: %s", report)
 	}
 }
+
+func TestGenerateOnDemandTreeReport(t *testing.T) {
+	nodeA := &Node{Name: "FunctionA", FilePath: "file1.go", StartLine: 1, EndLine: 5}
+	nodeB := &Node{Name: "FunctionB", FilePath: "file2.go", StartLine: 10, EndLine: 15}
+	nodeC := &Node{Name: "FunctionC", FilePath: "file2.go", StartLine: 20, EndLine: 25}
+
+	// Mock lazy callee retriever
+	mockGetCallees := func(caller string) ([]*Node, error) {
+		switch caller {
+		case "FunctionA":
+			return []*Node{nodeB}, nil
+		case "FunctionB":
+			return []*Node{nodeC}, nil
+		}
+		return nil, nil
+	}
+
+	// Mock lazy caller retriever
+	mockGetCallers := func(callee string) ([]*Node, error) {
+		switch callee {
+		case "FunctionC":
+			return []*Node{nodeB}, nil
+		case "FunctionB":
+			return []*Node{nodeA}, nil
+		}
+		return nil, nil
+	}
+
+	// 1. Verify on-demand report generation
+	report := GenerateOnDemandTreeReport(nodeA, "both", 3, mockGetCallees, mockGetCallers)
+
+	if !strings.Contains(report, "FunctionA") {
+		t.Errorf("expected report header to contain FunctionA")
+	}
+
+	// Downward Chain (A -> B -> C)
+	if !strings.Contains(report, "DOWNWARD CHAIN") {
+		t.Errorf("expected report to contain DOWNWARD CHAIN section")
+	}
+	if !strings.Contains(report, "FunctionB") {
+		t.Errorf("expected callee chain to contain FunctionB")
+	}
+	if !strings.Contains(report, "FunctionC") {
+		t.Errorf("expected callee chain to contain FunctionC")
+	}
+
+	// Upward Chain (C <- B <- A)
+	nodeCReport := GenerateOnDemandTreeReport(nodeC, "caller", 3, mockGetCallees, mockGetCallers)
+	if !strings.Contains(nodeCReport, "UPWARD CHAIN") {
+		t.Errorf("expected report to contain UPWARD CHAIN section")
+	}
+	if !strings.Contains(nodeCReport, "FunctionB") {
+		t.Errorf("expected caller chain to contain FunctionB")
+	}
+	if !strings.Contains(nodeCReport, "FunctionA") {
+		t.Errorf("expected caller chain to contain FunctionA")
+	}
+}
