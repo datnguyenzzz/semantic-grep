@@ -63,8 +63,30 @@ func TestStorage_LoadSave(t *testing.T) {
 		t.Errorf("expected id-2 to be loaded")
 	}
 
-	// Verify loaded vector fields match original
-	if loaded["id-1"].Norm != qv1.Norm {
-		t.Errorf("loaded vector norm mismatch: expected %v, got %v", qv1.Norm, loaded["id-1"].Norm)
+	// Verify loaded vector fields match original exactly
+	for id, originalQv := range vectors {
+		loadedQv, ok := loaded[id]
+		if !ok {
+			t.Fatalf("expected vector %s to be loaded", id)
+		}
+
+		// 1. Verify Norm is exactly equal
+		if loadedQv.Norm != originalQv.Norm {
+			t.Errorf("vector %s norm mismatch: expected %f, got %f", id, originalQv.Norm, loadedQv.Norm)
+		}
+
+		// 2. Verify Indices length matches exactly
+		if len(loadedQv.Indices) != len(originalQv.Indices) {
+			t.Errorf("vector %s indices length mismatch: expected %d, got %d", id, len(originalQv.Indices), len(loadedQv.Indices))
+			continue
+		}
+
+		// 3. Verify each coordinate/index is exactly equal
+		for i := 0; i < len(originalQv.Indices); i++ {
+			if loadedQv.Indices[i] != originalQv.Indices[i] {
+				t.Errorf("vector %s index at offset %d mismatch: expected %d, got %d", id, i, originalQv.Indices[i], loadedQv.Indices[i])
+				break
+			}
+		}
 	}
 }

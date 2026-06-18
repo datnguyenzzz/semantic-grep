@@ -4,6 +4,65 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 
 ---
 
+## 📐 System Architecture
+
+Below is the conceptual component diagram of the decoupled indexing, search pipeline, and storage layers:
+
+```plantuml
+@startuml
+package "Client / Agent Entrypoints" {
+    [Gemini CLI] as cli
+    [Indexer CLI] as idx_cli
+}
+
+package "agent-mem Extension" {
+    package "Exposed MCP Server" {
+        [MCP Server (cmd/server)] as mcp_srv
+    }
+
+    package "Core Engine" {
+        [Merkle Sync (internal/merkle)] as merkle
+        [Splitter (internal/splitter)] as splitter
+        [LLM Client (internal/llm)] as llm
+        [Metadata DB (internal/db)] as db
+        [TurboQuant Index (internal/turboquant)] as tq
+    }
+}
+
+cloud "Embedding Provider" {
+    [LiteLLM API] as litellm
+}
+
+database "Persistent Storage (~/.gemini/)" {
+    file "agent-mem.db (DuckDB Metadata)" as duckdb_file
+    file "agent-mem.tqv (Quantized Vectors)" as tqv_file
+}
+
+' Indexing Flow
+idx_cli --> merkle : Run Sync
+merkle --> splitter : Split Code Files
+merkle --> llm : Get Embeddings
+llm --> litellm : REST API
+merkle --> db : Save Metadata
+merkle --> tq : Index.Add(id, embedding)
+
+' MCP Query Flow
+cli --> mcp_srv : Call tool "search_memory"
+mcp_srv --> llm : Get query embedding
+mcp_srv --> tq : Index.Search(query, limit)
+tq --> mcp_srv : Top candidates (ID + Sim)
+mcp_srv --> db : Fetch metadata and filter by CWD 
+mcp_srv --> cli : Return Dynamic Code Context (privacy-preserving)
+
+' Persistence
+db --> duckdb_file : Read/Write SQL
+tq --> tqv_file : Load (on startup) / Save (on shutdown)
+
+@enduml
+```
+
+---
+
 ## 🚀 Core Capabilities
 
 ### 1. Merkle Tree-Based Incremental Indexing

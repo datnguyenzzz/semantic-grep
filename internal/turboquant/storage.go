@@ -7,7 +7,15 @@ import (
 	"os"
 )
 
-// Header size is 16 bytes: magic [4]byte ("TQLM") + version uint32 + num_vectors uint32 + bytes_per_vector uint32
+// Data Layout
+// +----------------------+--------------------+-----------------------+---------------------------+
+// |    magic (4-byte)    |  version (4-byte)  | len(vectors) (4-byte) | bytes_per_vector (4-byte) |
+// +----------------------+--------------------+-----------------------+---------------------------+
+// | dimensions (4 bytes) | bit width (1 byte) |
+// +---------------------------+-----------------------------------------------------+------
+// |    0. Row ID (36 bytes)   |   0. Serialised quantised vector (bytes_per_vector) |  ....
+// +---------------------------+-----------------------------------------------------+------
+
 const HeaderSize = 16
 
 // Metadata size is 5 bytes: dimension uint32 + bit_width uint8
@@ -59,7 +67,7 @@ func (s *Storage) Load(filePath string, tq *TurboQuant) (map[string]*QuantizedVe
 	vectors := make(map[string]*QuantizedVector, numVectors)
 	buf := make([]byte, bytesPerVector)
 
-	for i := 0; i < numVectors; i++ {
+	for i := range numVectors {
 		_, err := io.ReadFull(f, buf)
 		if err != nil {
 			if err == io.EOF {
