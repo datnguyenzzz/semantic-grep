@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"agent-mem/internal/db"
 	"agent-mem/internal/merkle"
 	"agent-mem/internal/turboquant"
 )
@@ -31,16 +32,30 @@ func main() {
 	fmt.Println("--------------------------------------------------------------------------------")
 	fmt.Println("  🔍 Scanning local workspace files...")
 
-	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
-	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	// Initialize TurboQuant once on startup (using default configurations)
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
 	if err != nil {
 		log.Fatalf("Failed to initialize TurboQuant: %v", err)
 	}
 
-	added, modified, deleted, err := merkle.UpdateIndex(absPath, tq)
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		log.Fatalf("Failed to resolve vector storage path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		log.Fatalf("Failed to initialize TurboQuant index: %v", err)
+	}
+
+	added, modified, deleted, err := merkle.UpdateIndex(absPath, index)
 	if err != nil {
 		fmt.Println("  ✗ Indexing failed.")
 		log.Fatalf("  Error details: %v", err)
+	}
+
+	// Persist the shared index changes back to the .tqv storage file before exiting
+	if err := index.Save(); err != nil {
+		log.Fatalf("Failed to save TurboQuant index to disk: %v", err)
 	}
 
 	fmt.Println("--------------------------------------------------------------------------------")

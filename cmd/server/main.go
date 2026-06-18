@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"agent-mem/internal/db"
@@ -19,12 +22,10 @@ import (
 )
 
 type SearchArgs struct {
-	Query    string  `json:"query" jsonschema:"The full semantic search query, detailed question, or specific coding pattern you want to locate. CRITICAL: Pass the complete user question, detailed coding concept, or natural language query (e.g. 'how long is the trace buffered time in otelcol' or 'database retry logic') instead of single keywords, symbols, or repository names to ensure high-fidelity semantic match."`
-	Category *string `json:"category,omitempty" jsonschema:"Optional category filter. Use 'personal' to search only user-level guidelines and preferences. Use 'project' to search only relevant code segments from registered/indexed codebases. Omit to search both categories concurrently."`
-	CWD      *string `json:"cwd,omitempty" jsonschema:"Optional absolute codebase path of the repository to search. If omitted, search_memory defaults to searching the current working directory of the workspace."`
+	Query string `json:"query" jsonschema:"The semantic search query, detailed question, or coding concept to locate. Always pass the complete user question or detailed context instead of single keywords to ensure high-fidelity semantic matching."`
 }
 
-func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
+func startPeriodicIndexUpdate(index *turboquant.Index) {
 	// ponytail: periodically run incremental codebase index update in background every 10 minutes, ONLY for registered codebases in DB
 	ticker := time.NewTicker(10 * time.Minute)
 	go func() {
@@ -33,8 +34,31 @@ func startPeriodicIndexUpdate(tq *turboquant.TurboQuant) {
 			if err != nil {
 				continue
 			}
+			updated := false
 			for _, c := range codebases {
-				_, _, _, _ = merkle.UpdateIndex(c.CWD, tq)
+				added, modified, deleted, err := merkle.UpdateIndex(c.CWD, index)
+				if err == nil && (added > 0 || modified > 0 || deleted > 0) {
+					updated = true
+				}
+			}
+			if updated {
+				log.Printf("Background codebase updates detected, compacting and saving TurboQuant index to disk...")
+				activeIDs := make(map[string]bool)
+				dbConn, err := db.Open()
+				if err == nil {
+					rows, err := dbConn.Query("SELECT id FROM gemini_memories")
+					if err == nil {
+						for rows.Next() {
+							var id string
+							if err := rows.Scan(&id); err == nil {
+								activeIDs[id] = true
+							}
+						}
+						rows.Close()
+					}
+					dbConn.Close()
+				}
+				_ = index.Compact(activeIDs)
 			}
 		}
 	}()
@@ -46,11 +70,34 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
-	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	// Initialize TurboQuant once on startup (using default configurations)
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
 	if err != nil {
 		log.Fatalf("Failed to initialize TurboQuant: %v", err)
 	}
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		log.Fatalf("Failed to resolve vector storage path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		log.Fatalf("Failed to initialize TurboQuant index: %v", err)
+	}
+
+	// Register system signal notifications to flush the in-memory index back to disk before terminating
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		sig := <-sigChan
+		log.Printf("Received signal %v, saving TurboQuant index to disk...", sig)
+		if err := index.Save(); err != nil {
+			log.Printf("Error saving TurboQuant index: %v", err)
+		} else {
+			log.Printf("TurboQuant index saved successfully.")
+		}
+		os.Exit(0)
+	}()
 
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    "agent-mem-server",
@@ -60,25 +107,15 @@ func main() {
 	// 1. Register search_memory tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_memory",
-		Description: "CRITICAL WORKFLOW:\n1. If you are not sure which codebase or repository to search, you MUST call 'list_codebases' first to return and discover all registered, indexed codebases on the system.\n2. Once the codebase is specified or chosen, use its absolute path as the 'cwd' argument (which is non-mandatory) combined with the complete, detailed user question or context as the 'query' argument to call 'search_memory' (e.g., Query: 'how long is the trace buffered time in otelcol-tail-sampling', CWD: '/Users/username/...').\n3. DO NOT read local files directly until you have run a semantic search using this tool. Only read local files manually if this tool returns no results, or if you need to perform a precise surgical edit of a specific file found during search.\n4. Searches semantically across past user preferences ('personal' category) and Go, Terraform, and YAML files in registered codebases ('project' category), loading matching code segments dynamically from disk on demand to preserve privacy.",
+		Description: "CRITICAL WORKFLOW DIRECTIVE: You MUST use this tool FIRST before calling any other tool, listing directories, reading files, or executing shell commands to search for files, folders, local structures, functions, or configurations in this codebase. This tool searches semantically across segments of indexed codebase files in the current workspace. Always call this tool first with your complete, detailed natural language query or question.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		embedding, err := llm.GetEmbedding(args.Query)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		category := ""
-		if args.Category != nil {
-			category = *args.Category
-		}
-
-		cwd := ""
-		if args.CWD != nil && *args.CWD != "" {
-			cwd = *args.CWD
-		} else {
-			cwd, _ = os.Getwd()
-		}
-		results, err := db.SearchMemories(embedding, category, cwd, 10, tq)
+		cwd, _ := os.Getwd()
+		results, err := db.SearchMemories(embedding, cwd, 10, index)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -91,52 +128,21 @@ func main() {
 			}, nil, nil
 		}
 
-		var formatted string
+		var formatted strings.Builder
 		for _, row := range results {
 			codebaseName := filepath.Base(row.CWD)
-			formatted += fmt.Sprintf("[Codebase: %s] [Path: %s] [Category: %s] (Similarity: %.1f%%)\n%s\n\n---\n\n", codebaseName, row.CWD, row.Category, row.Similarity*100, row.Content)
+			fmt.Fprintf(&formatted, "[Codebase: %s] [Path: %s] (Similarity: %.1f%%)\n%s\n\n---\n\n", codebaseName, row.CWD, row.Similarity*100, row.Content)
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatted},
-			},
-		}, nil, nil
-	})
-
-	// 4. Register list_codebases tool
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "list_codebases",
-		Description: "Lists all local codebases currently registered, indexed, and available for semantic search on the user's system, including their absolute workspace paths, and the timestamp of their last indexing/sync. Use this tool to discover which directories have already been indexed and are searchable.",
-	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
-		codebases, err := db.ListCodebases()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if len(codebases) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No indexed codebases found. Use /index [path] to index a codebase."},
-				},
-			}, nil, nil
-		}
-
-		var formatted string
-		for _, c := range codebases {
-			name := filepath.Base(c.CWD)
-			formatted += fmt.Sprintf("- **%s**\n  Path: `%s`\n  Last Updated: %s\n\n", name, c.CWD, c.UpdatedAt.Format("2006-01-02 15:04:05"))
-		}
-
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: "### INDEXED CODEBASES PORTFOLIO\n\n" + formatted},
+				&mcp.TextContent{Text: formatted.String()},
 			},
 		}, nil, nil
 	})
 
 	// Start periodic background updates
-	startPeriodicIndexUpdate(tq)
+	startPeriodicIndexUpdate(index)
 
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("MCP Server failed to run: %v", err)

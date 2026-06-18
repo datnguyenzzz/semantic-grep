@@ -217,7 +217,7 @@ func collectFiles(node *MerkleNode) []string {
 }
 
 // UpdateIndex implements the Merkle-tree based incremental indexing
-func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, error) {
+func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error) {
 	if err := db.InitDatabase(); err != nil {
 		return 0, 0, 0, fmt.Errorf("database init failed: %w", err)
 	}
@@ -237,7 +237,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 			if json.Unmarshal([]byte(prevJSON), &prevTree) == nil {
 				deleted := collectFiles(&prevTree)
 				for _, path := range deleted {
-					_ = db.DeleteFileMemories(absPath, path)
+					_ = db.DeleteFileMemories(absPath, path, index)
 				}
 			}
 			_ = db.SaveMerkleTree(absPath, "", "{}")
@@ -265,7 +265,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 	// 4. Delete stale memories of removed files
 	for _, relPath := range deleted {
 		fmt.Printf("✗ Removing stale memories for deleted file: %s\n", relPath)
-		if err := db.DeleteFileMemories(absPath, relPath); err != nil {
+		if err := db.DeleteFileMemories(absPath, relPath, index); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for deleted file %s: %v\n", relPath, err)
 		}
 	}
@@ -273,7 +273,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 	// 5. Delete stale memories of modified files
 	for _, relPath := range modified {
 		fmt.Printf("⚙ Purging stale memories for modified file: %s\n", relPath)
-		if err := db.DeleteFileMemories(absPath, relPath); err != nil {
+		if err := db.DeleteFileMemories(absPath, relPath, index); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for modified file %s: %v\n", relPath, err)
 		}
 	}
@@ -365,7 +365,7 @@ func UpdateIndex(absPath string, tq *turboquant.TurboQuant) (int, int, int, erro
 			// ponytail: privacy preservation - save ONLY the metadata header to DuckDB instead of raw code chunks!
 			metadataHeader := fmt.Sprintf("File: %s (Lines: %d-%d)", res.relPath, res.startLine, res.endLine)
 			id := uuid.New().String()
-			if err := db.SaveMemory(id, metadataHeader, "project", absPath, res.embedding, tq); err != nil {
+			if err := db.SaveMemory(id, metadataHeader, "project", absPath, res.embedding, index); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to save chunk to memory store: %v\n", err)
 				continue
 			}

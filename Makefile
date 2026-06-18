@@ -11,10 +11,6 @@ build: clean
 	mkdir -p dist
 	@echo "Compiling mcp server..."
 	CGO_ENABLED=1 go build -o dist/server cmd/server/main.go
-	@echo "Compiling session-start hook..."
-	CGO_ENABLED=1 go build -o dist/session-start cmd/session-start/main.go
-	@echo "Compiling session-end hook..."
-	CGO_ENABLED=1 go build -o dist/session-end cmd/session-end/main.go
 	@echo "Compiling codebase indexer..."
 	CGO_ENABLED=1 go build -o dist/indexer cmd/indexer/main.go
 	@echo "Compilation completed successfully!"

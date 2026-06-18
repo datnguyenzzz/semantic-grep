@@ -4,8 +4,16 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"runtime"
 	"sync"
+)
+
+// Default configurations for the TurboQuant vector quantization
+const (
+	DefaultDimension = 1536
+	DefaultBitWidth  = 4
+	DefaultSeed      = 42
 )
 
 // Slice pools for reducing GC pressure in hot quantization/dequantization paths.
@@ -386,4 +394,50 @@ func (tq *TurboQuant) DeserializeBatchFrom(r io.Reader) ([]*QuantizedVector, err
 		qvs[i] = qv
 	}
 	return qvs, nil
+}
+
+// PrepareQuery rotates and normalizes a float32 query vector once for subsequent fast scoring.
+func (tq *TurboQuant) PrepareQuery(query []float32) ([]float64, error) {
+	dim := len(query)
+	if dim != tq.dimension {
+		return nil, fmt.Errorf("dimension mismatch: query length %d, expected %d", dim, tq.dimension)
+	}
+
+	var sumSq float64
+	for _, v := range query {
+		f := float64(v)
+		sumSq += f * f
+	}
+	norm := math.Sqrt(sumSq)
+	if norm == 0 {
+		return make([]float64, dim), nil
+	}
+
+	normalized := make([]float64, dim)
+	for i, v := range query {
+		normalized[i] = float64(v) / norm
+	}
+
+	rotated := make([]float64, dim)
+	tq.rotation.ApplyInto(normalized, rotated)
+	return rotated, nil
+}
+
+// ScorePrepared scores a quantized vector against a pre-rotated query vector.
+func (tq *TurboQuant) ScorePrepared(preparedQuery []float64, qv *QuantizedVector) float64 {
+	if len(qv.Indices) != len(preparedQuery) {
+		return 0.0
+	}
+	var dot float64
+	var normSq float64
+	centroids := tq.codebook.Centroids
+	for i, idx := range qv.Indices {
+		val := centroids[idx]
+		dot += preparedQuery[i] * val
+		normSq += val * val
+	}
+	if normSq == 0 {
+		return 0.0
+	}
+	return dot / math.Sqrt(normSq)
 }

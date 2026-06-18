@@ -2,7 +2,6 @@ package db
 
 // ponytail: keep db operations simple, open and close on every call, standardize all embeddings to exactly 3072 dimensions, and compress using the explicitly passed 4-bit TurboQuant dependency
 // ponytail: privacy preservation - codebase file contents are NEVER stored in the database, only their metadata. Code is read on-demand during searches from local disk.
-
 import (
 	"database/sql"
 	"fmt"
@@ -27,9 +26,9 @@ type Memory struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
-// normalizeVectorTo3072 ensures that every vector is exactly 3072 dimensions by slicing or padding
+// normalizeVectorTo3072 ensures that every vector is exactly target dimensions by slicing or padding
 func normalizeVectorTo3072(vec []float32) []float32 {
-	const targetDim = 3072
+	const targetDim = turboquant.DefaultDimension
 	if len(vec) == targetDim {
 		return vec
 	}
@@ -123,23 +122,20 @@ func InitDatabase() error {
 	}
 	defer db.Close()
 
-	// ponytail: automatic DuckDB schema migration - drop old FLOAT[] tables and recreate with BLOB for TurboQuant compression
+	// ponytail: automatic DuckDB schema migration - drop tables with embedding column as DuckDB now only stores metadata
 	var colType string
 	err = db.QueryRow("SELECT data_type FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'embedding'").Scan(&colType)
 	if err == nil {
-		if strings.Contains(strings.ToUpper(colType), "FLOAT") || strings.Contains(strings.ToUpper(colType), "ARRAY") {
-			_, _ = db.Exec("DROP TABLE gemini_memories")
-		}
+		_, _ = db.Exec("DROP TABLE gemini_memories")
 	}
 
-	// ponytail: store embeddings as BLOB for extremely efficient 4-bit vector quantization
+	// ponytail: store ONLY metadata in DuckDB; vectors are persisted separately in our dedicated .tqv files
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS gemini_memories (
 			id VARCHAR PRIMARY KEY,
 			content TEXT NOT NULL,
 			category VARCHAR NOT NULL,
 			cwd TEXT NOT NULL,
-			embedding BLOB,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
@@ -159,108 +155,132 @@ func InitDatabase() error {
 	return err
 }
 
-func SaveMemory(id, content, category, cwd string, embedding []float32, tq *turboquant.TurboQuant) error {
+func GetTQPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	dbDir := filepath.Join(home, ".gemini")
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		return "", err
+	}
+	return filepath.Join(dbDir, "agent-mem.tqv"), nil
+}
+
+func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index) error {
 	db, err := Open()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	if tq == nil {
-		return fmt.Errorf("turboquant dependency cannot be nil")
+	if index == nil {
+		return fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	// ponytail: normalize embedding vector to exactly 3072 dimensions
-	embedding = normalizeVectorTo3072(embedding)
-
-	qv, err := tq.Quantize(embedding)
-	if err != nil {
-		return fmt.Errorf("failed to quantize embedding: %w", err)
-	}
-
-	serializedBytes, err := tq.Serialize(qv)
-	if err != nil {
-		return fmt.Errorf("failed to serialize quantized vector: %w", err)
-	}
-
+	// 1. Save metadata to DuckDB (always save as project category)
 	query := `
-		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd, embedding)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
+		VALUES ($1, $2, 'project', $3)
 	`
+	_, err = db.Exec(query, id, content, cwd)
+	if err != nil {
+		return err
+	}
 
-	_, err = db.Exec(query, id, content, category, cwd, serializedBytes)
-	return err
+	// 2. Normalize and add to the shared TurboQuant index
+	embedding = normalizeVectorTo3072(embedding)
+	return index.Add(id, embedding)
 }
 
-func SearchMemories(queryEmbedding []float32, category, cwd string, limit int, tq *turboquant.TurboQuant) ([]Memory, error) {
+func SearchMemories(queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
+	if cwd != "" {
+		// Try to find if cwd is inside any indexed codebase (parent path resolution)
+		codebases, err := ListCodebases()
+		if err == nil {
+			var bestMatch string
+			for _, cb := range codebases {
+				if cwd == cb.CWD || strings.HasPrefix(cwd, cb.CWD+string(filepath.Separator)) {
+					if len(cb.CWD) > len(bestMatch) {
+						bestMatch = cb.CWD
+					}
+				}
+			}
+			if bestMatch != "" {
+				cwd = bestMatch
+			}
+		}
+	}
+
+	if index == nil {
+		return nil, fmt.Errorf("turboquant index cannot be nil")
+	}
+
+	// 1. Normalize query embedding to exactly 3072 dimensions
+	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
+
+	// 2. Search vector store FIRST using the shared turboquant.Index (score all records)
+	const candidateLimit = 200
+	searchResults, err := index.Search(queryEmbedding, nil, candidateLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(searchResults) == 0 {
+		return nil, nil
+	}
+
+	// Build a map of candidate ID -> similarity score, and a list of candidate IDs for the SQL query
+	simMap := make(map[string]float64)
+	idPlaceholders := make([]string, len(searchResults))
+	queryArgs := make([]any, 0, len(searchResults)+2)
+
+	for i, res := range searchResults {
+		simMap[res.ID] = res.Similarity
+		idPlaceholders[i] = fmt.Sprintf("$%d", i+1)
+		queryArgs = append(queryArgs, res.ID)
+	}
+
+	// 2. Query DuckDB to retrieve and filter metadata for these top candidate IDs
 	db, err := Open()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	if tq == nil {
-		return nil, fmt.Errorf("turboquant dependency cannot be nil")
-	}
-
-	// ponytail: normalize embedding vector to exactly 3072 dimensions
-	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
-
-	// ponytail: retrieve quantized vector BLOBs, dequantize on the fly, and score using Go-level CosineSimilarity
-	query := `
-		SELECT id, content, category, cwd, created_at, embedding
+	query := fmt.Sprintf(`
+		SELECT id, content, category, cwd, created_at
 		FROM gemini_memories
-	`
+		WHERE id IN (%s)
+	`, strings.Join(idPlaceholders, ", "))
 
 	var conditions []string
-	var args []any
-
-	if category != "" {
-		conditions = append(conditions, fmt.Sprintf("category = $%d", len(args)+1))
-		args = append(args, category)
-	}
 
 	if cwd != "" {
-		conditions = append(conditions, fmt.Sprintf("(cwd = $%d OR category = 'personal')", len(args)+1))
-		args = append(args, cwd)
+		conditions = append(conditions, fmt.Sprintf("cwd = $%d", len(queryArgs)+1))
+		queryArgs = append(queryArgs, cwd)
 	}
 
 	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
+		query += " AND " + strings.Join(conditions, " AND ")
 	}
 
-	rows, err := db.Query(query, args...)
+	rows, err := db.Query(query, queryArgs...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	// 3. Map retrieved active metadata rows to their similarity scores
 	var memories []Memory
 	for rows.Next() {
 		var m Memory
-		var embeddingBytes []byte
-		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt, &embeddingBytes)
+		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(embeddingBytes) > 0 {
-			qv, err := tq.Deserialize(embeddingBytes)
-			if err != nil {
-				continue
-			}
-
-			dequantized, err := tq.Dequantize(qv)
-			if err != nil {
-				continue
-			}
-
-			sim, err := turboquant.CosineSimilarity(queryEmbedding, dequantized)
-			if err != nil {
-				continue
-			}
-			m.Similarity = sim
-		}
+		m.Similarity = simMap[m.ID]
 
 		// ponytail: privacy preservation - if project category, load raw code content on the fly from local disk
 		if m.Category == "project" {
@@ -275,93 +295,13 @@ func SearchMemories(queryEmbedding []float32, category, cwd string, limit int, t
 		memories = append(memories, m)
 	}
 
-	// Sort results by similarity descending
+	// 4. Sort results descending by similarity
 	sort.Slice(memories, func(i, j int) bool {
 		return memories[i].Similarity > memories[j].Similarity
 	})
 
 	if len(memories) > limit {
 		memories = memories[:limit]
-	}
-
-	return memories, nil
-}
-
-func GetRecentMemories(cwd string, limit int) ([]Memory, error) {
-	db, err := Open()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	query := `
-		SELECT id, content, category, cwd, created_at
-		FROM gemini_memories
-		WHERE (category = 'project' AND cwd = $1) OR (category = 'personal')
-		ORDER BY created_at DESC
-		LIMIT $2
-	`
-
-	rows, err := db.Query(query, cwd, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var memories []Memory
-	for rows.Next() {
-		var m Memory
-		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-
-		// ponytail: privacy preservation - load raw code content on the fly from local disk
-		if m.Category == "project" {
-			if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
-				code, err := readCodeLines(m.CWD, relPath, start, end)
-				if err == nil && code != "" {
-					m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
-				}
-			}
-		}
-
-		memories = append(memories, m)
-	}
-
-	return memories, nil
-}
-
-// GetRecentPersonalMemories fetches the most recent personal memories up to the limit
-func GetRecentPersonalMemories(limit int) ([]Memory, error) {
-	db, err := Open()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	query := `
-		SELECT id, content, category, cwd, created_at
-		FROM gemini_memories
-		WHERE category = 'personal'
-		ORDER BY created_at DESC
-		LIMIT $1
-	`
-
-	rows, err := db.Query(query, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var memories []Memory
-	for rows.Next() {
-		var m Memory
-		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		memories = append(memories, m)
 	}
 
 	return memories, nil
@@ -403,22 +343,56 @@ func LoadMerkleTree(cwd string) (string, string, error) {
 }
 
 // DeleteFileMemories deletes the existing chunk memories of a specific codebase file
-func DeleteFileMemories(cwd, relPath string) error {
+func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 	db, err := Open()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	// ponytail: delete chunks belonging to file using the standard "File: <relPath> (Lines: %" prefix convention
-	query := `
+	// 1. Fetch the IDs of the chunks we are about to delete
+	querySel := `
+		SELECT id FROM gemini_memories
+		WHERE category = 'project'
+		  AND cwd = $1
+		  AND content LIKE 'File: ' || $2 || ' (Lines:%'
+	`
+	rows, err := db.Query(querySel, cwd, relPath)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var idsToDelete []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err == nil {
+			idsToDelete = append(idsToDelete, id)
+		}
+	}
+
+	// 2. Delete chunks belonging to file from DuckDB metadata
+	queryDel := `
 		DELETE FROM gemini_memories
 		WHERE category = 'project'
 		  AND cwd = $1
 		  AND content LIKE 'File: ' || $2 || ' (Lines:%'
 	`
-	_, err = db.Exec(query, cwd, relPath)
-	return err
+	_, err = db.Exec(queryDel, cwd, relPath)
+	if err != nil {
+		return err
+	}
+
+	if index == nil {
+		return nil // skip if index dependency is nil
+	}
+
+	// 3. Remove from the shared in-memory TurboQuant index
+	for _, id := range idsToDelete {
+		index.Delete(id)
+	}
+
+	return nil
 }
 
 type Codebase struct {

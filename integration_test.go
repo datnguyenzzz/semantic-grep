@@ -24,13 +24,13 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	}
 	conn.Close()
 
-	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
-	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	// Initialize TurboQuant once on startup (using default configurations)
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
 	if err != nil {
 		t.Fatalf("failed to initialize turboquant: %v", err)
 	}
 
-	// 1. Setup an isolated User Home directory so that we write to a brand new temp DuckDB file
+	// Setup isolated home first to resolve tqvPath correctly
 	tmpHome, err := os.MkdirTemp("", "agent-mem-home-*")
 	if err != nil {
 		t.Fatalf("failed to create temp home: %v", err)
@@ -39,6 +39,15 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 
 	os.Setenv("HOME", tmpHome)
 	defer os.Unsetenv("HOME")
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		t.Fatalf("failed to get tqv path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to initialize index: %v", err)
+	}
 
 	// 2. Setup a mock local codebase folder
 	tmpCodebase, err := os.MkdirTemp("", "agent-mem-codebase-*")
@@ -63,7 +72,7 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	_ = os.WriteFile(readmeMdPath, []byte("# Project\n\nThis is an integration test."), 0644)
 
 	// 3. Run the Indexer (First Full Index)
-	added, modified, deleted, err := merkle.UpdateIndex(tmpCodebase, tq)
+	added, modified, deleted, err := merkle.UpdateIndex(tmpCodebase, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex first run failed: %v", err)
 	}
@@ -86,7 +95,7 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	}
 
 	// 5. Incremental Index (No Changes)
-	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, tq)
+	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex second run failed: %v", err)
 	}
@@ -99,7 +108,7 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	// Edit main.go
 	_ = os.WriteFile(mainGoPath, []byte("package main\n\n// Run starts the app\nfunc Run() {\n\tprintln(\"App modified\")\n}"), 0644)
 
-	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, tq)
+	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex modification run failed: %v", err)
 	}
@@ -112,7 +121,7 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	// Delete config.tf
 	_ = os.Remove(configTfPath)
 
-	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, tq)
+	added, modified, deleted, err = merkle.UpdateIndex(tmpCodebase, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex deletion run failed: %v", err)
 	}
@@ -122,7 +131,7 @@ func TestEndToEndIndexerIntegration(t *testing.T) {
 	}
 }
 
-func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
+func TestMultiCodebaseIntegration(t *testing.T) {
 	// ponytail: skip test gracefully if the real LiteLLM server is not running in the current test environment
 	conn, err := net.DialTimeout("tcp", "localhost:36253", 100*time.Millisecond)
 	if err != nil {
@@ -130,8 +139,8 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	}
 	conn.Close()
 
-	// Initialize TurboQuant once on startup (3072 dimension, 4-bit, seed 42)
-	tq, err := turboquant.NewTurboQuant(3072, 4, 42)
+	// Initialize TurboQuant once on startup (using default configurations)
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
 	if err != nil {
 		t.Fatalf("failed to initialize turboquant: %v", err)
 	}
@@ -149,6 +158,15 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	// Initialize database
 	if err := db.InitDatabase(); err != nil {
 		t.Fatalf("failed to init db: %v", err)
+	}
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		t.Fatalf("failed to get tqv path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to initialize index: %v", err)
 	}
 
 	// 2. Setup Codebase A
@@ -175,36 +193,17 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	_ = os.WriteFile(configYamlPath, []byte("port: 8080\n"), 0644)
 
 	// 4. Index both codebases
-	_, _, _, err = merkle.UpdateIndex(tmpCodebaseA, tq)
+	_, _, _, err = merkle.UpdateIndex(tmpCodebaseA, index)
 	if err != nil {
 		t.Fatalf("failed to index codebase A: %v", err)
 	}
 
-	_, _, _, err = merkle.UpdateIndex(tmpCodebaseB, tq)
+	_, _, _, err = merkle.UpdateIndex(tmpCodebaseB, index)
 	if err != nil {
 		t.Fatalf("failed to index codebase B: %v", err)
 	}
 
-	// 5. Save more than 1 Personal Memories
-	mockEmbed1, err := llm.GetEmbedding("User prefers functional programming in Go")
-	if err != nil {
-		t.Fatalf("failed to get real embedding: %v", err)
-	}
-	err = db.SaveMemory("p1", "User prefers functional programming in Go", "personal", "", mockEmbed1, tq)
-	if err != nil {
-		t.Fatalf("failed to save personal memory 1: %v", err)
-	}
-
-	mockEmbed2, err := llm.GetEmbedding("User prefers space indentation of size 2")
-	if err != nil {
-		t.Fatalf("failed to get real embedding: %v", err)
-	}
-	err = db.SaveMemory("p2", "User prefers space indentation of size 2", "personal", "", mockEmbed2, tq)
-	if err != nil {
-		t.Fatalf("failed to save personal memory 2: %v", err)
-	}
-
-	// 6. Assertions:
+	// 5. Assertions:
 	// Verify that exactly 2 codebases are stored in our portfolio
 	codebases, err := db.ListCodebases()
 	if err != nil {
@@ -215,32 +214,18 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 		t.Errorf("expected 2 indexed codebases in portfolio, got %d", len(codebases))
 	}
 
-	// Verify we can find both personal memories in global searches
-	results, err := db.SearchMemories(mockEmbed1, "personal", tmpCodebaseA, 5, tq)
+	mockEmbed1, err := llm.GetEmbedding("func Main")
 	if err != nil {
-		t.Fatalf("failed to search memories: %v", err)
+		t.Fatalf("failed to get real embedding: %v", err)
 	}
 
-	foundP1 := false
-	foundP2 := false
-	for _, m := range results {
-		if m.ID == "p1" {
-			foundP1 = true
-		}
-		if m.ID == "p2" {
-			foundP2 = true
-		}
-	}
-
-	if !foundP1 {
-		t.Error("failed to find personal memory p1 in search results")
-	}
-	if !foundP2 {
-		t.Error("failed to find personal memory p2 in search results")
+	mockEmbed2, err := llm.GetEmbedding("port: 8080")
+	if err != nil {
+		t.Fatalf("failed to get real embedding: %v", err)
 	}
 
 	// Verify project chunks search correctly separates codebase origin
-	resultsA, err := db.SearchMemories(mockEmbed1, "project", tmpCodebaseA, 5, tq)
+	resultsA, err := db.SearchMemories(mockEmbed1, tmpCodebaseA, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search codebase A memories: %v", err)
 	}
@@ -259,7 +244,7 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	_ = os.WriteFile(configYamlPath, []byte("port: 9090\n"), 0644)
 
 	// Run incremental sync on Codebase A
-	addedA, modifiedA, deletedA, err := merkle.UpdateIndex(tmpCodebaseA, tq)
+	addedA, modifiedA, deletedA, err := merkle.UpdateIndex(tmpCodebaseA, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex on Codebase A failed: %v", err)
 	}
@@ -268,7 +253,7 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	}
 
 	// Run incremental sync on Codebase B
-	addedB, modifiedB, deletedB, err := merkle.UpdateIndex(tmpCodebaseB, tq)
+	addedB, modifiedB, deletedB, err := merkle.UpdateIndex(tmpCodebaseB, index)
 	if err != nil {
 		t.Fatalf("UpdateIndex on Codebase B failed: %v", err)
 	}
@@ -277,7 +262,7 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 	}
 
 	// Verify search results dynamically load the newly modified code on the fly from disk
-	resultsA_updated, err := db.SearchMemories(mockEmbed1, "project", tmpCodebaseA, 5, tq)
+	resultsA_updated, err := db.SearchMemories(mockEmbed1, tmpCodebaseA, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search updated codebase A memories: %v", err)
 	}
@@ -293,19 +278,126 @@ func TestMultiCodebaseAndPersonalMemoriesIntegration(t *testing.T) {
 		t.Error("expected search results for Codebase A to dynamically load modified content from disk")
 	}
 
-	resultsB_updated, err := db.SearchMemories(mockEmbed2, "project", tmpCodebaseB, 5, tq)
+	resultsB_updated, err := db.SearchMemories(mockEmbed2, tmpCodebaseB, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search updated codebase B memories: %v", err)
 	}
 
 	foundUpdatedB := false
 	for _, m := range resultsB_updated {
-		if strings.Contains(m.Content, "modified!") {
+		if strings.Contains(m.Content, "9090") {
 			foundUpdatedB = true
 			break
 		}
 	}
 	if !foundUpdatedB {
-		t.Error("expected search results for Codebase B to dynamically load modified content from disk")
+		t.Error("expected search results for Codebase B to dynamically load modified content (9090) from disk")
+	}
+}
+
+func TestSearchWithExactContentIntegration(t *testing.T) {
+	// ponytail: skip test gracefully if the real LiteLLM server is not running in the current test environment
+	conn, err := net.DialTimeout("tcp", "localhost:36253", 100*time.Millisecond)
+	if err != nil {
+		t.Skip("Skipping live integration test: local LiteLLM server on localhost:36253 is unreachable")
+	}
+	conn.Close()
+
+	// Initialize TurboQuant once on startup (using default configurations)
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
+	if err != nil {
+		t.Fatalf("failed to initialize turboquant: %v", err)
+	}
+
+	// 1. Setup isolated environment
+	tmpHome, err := os.MkdirTemp("", "exact-search-home-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	os.Setenv("HOME", tmpHome)
+	defer os.Unsetenv("HOME")
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		t.Fatalf("failed to get tqv path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to initialize index: %v", err)
+	}
+
+	// 2. Setup codebase
+	tmpCodebase, err := os.MkdirTemp("", "exact-search-codebase-*")
+	if err != nil {
+		t.Fatalf("failed to create temp codebase: %v", err)
+	}
+	defer os.RemoveAll(tmpCodebase)
+
+	mathGoPath := filepath.Join(tmpCodebase, "math.go")
+	mathCode := "package math\n\n// Add computes the sum of two integers.\nfunc Add(a, b int) int {\n\treturn a + b\n}"
+	_ = os.WriteFile(mathGoPath, []byte(mathCode), 0644)
+
+	networkGoPath := filepath.Join(tmpCodebase, "network.go")
+	networkCode := "package network\n\n// Connect opens a TCP connection to the server.\nfunc Connect(address string) error {\n\treturn nil\n}"
+	_ = os.WriteFile(networkGoPath, []byte(networkCode), 0644)
+
+	// 3. Index codebase
+	_, _, _, err = merkle.UpdateIndex(tmpCodebase, index)
+	if err != nil {
+		t.Fatalf("failed to index codebase: %v", err)
+	}
+
+	// 4. Perform Search for Math exact content
+	mathQuery := "computes the sum of two integers"
+	mathEmbed, err := llm.GetEmbedding(mathQuery)
+	if err != nil {
+		t.Fatalf("failed to get embedding for math query: %v", err)
+	}
+
+	resultsMath, err := db.SearchMemories(mathEmbed, tmpCodebase, 5, index)
+	if err != nil {
+		t.Fatalf("failed to search math memory: %v", err)
+	}
+
+	if len(resultsMath) == 0 {
+		t.Fatalf("expected search results for math query, got 0")
+	}
+
+	bestMathResult := resultsMath[0]
+	if !strings.Contains(bestMathResult.Content, "math.go") {
+		t.Errorf("expected best match to be math.go, got content: %s", bestMathResult.Content)
+	}
+	if !strings.Contains(bestMathResult.Content, "func Add") {
+		t.Errorf("expected best match to contain function body of Add, got content: %s", bestMathResult.Content)
+	}
+
+	// 5. Perform Search for Network exact content
+	networkQuery := "opens a TCP connection to the server"
+	networkEmbed, err := llm.GetEmbedding(networkQuery)
+	if err != nil {
+		t.Fatalf("failed to get embedding for network query: %v", err)
+	}
+
+	resultsNetwork, err := db.SearchMemories(networkEmbed, tmpCodebase, 5, index)
+	if err != nil {
+		t.Fatalf("failed to search network memory: %v", err)
+	}
+
+	if len(resultsNetwork) == 0 {
+		t.Fatalf("expected search results for network query, got 0")
+	}
+
+	bestNetworkResult := resultsNetwork[0]
+	if !strings.Contains(bestNetworkResult.Content, "network.go") {
+		t.Errorf("expected best match to be network.go, got content: %s", bestNetworkResult.Content)
+	}
+	if !strings.Contains(bestNetworkResult.Content, "func Connect") {
+		t.Errorf("expected best match to contain function body of Connect, got content: %s", bestNetworkResult.Content)
 	}
 }

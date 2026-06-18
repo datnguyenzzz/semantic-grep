@@ -1,6 +1,6 @@
 # Gemini Persistent Memory & Codebase Indexer Extension
 
-A model-agnostic Gemini CLI extension written in **Go** that provides persistent, long-term memory across sessions, and ultra-fast codebase indexing. Powered by **DuckDB** and **TurboQuant** for 12x-compressed, embedded vector similarity search.
+A model-agnostic Gemini CLI extension written in **Go** that provides persistent, ultra-fast local codebase indexing, and semantic search. Powered by a decoupled storage system featuring **DuckDB** for metadata and a dedicated **TurboQuant** binary file index for 12x-compressed, 3,000x-accelerated vector similarity search.
 
 ---
 
@@ -9,20 +9,15 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 ### 1. Merkle Tree-Based Incremental Indexing
 * **Cryptographic Diffing:** Builds SHA-256 hashes of local codebase states. On subsequent scans, it diffs the new tree against the old state to isolate added, modified, and deleted files in milliseconds.
 * **Redundant-Free Vectorization:** Skips calling the LLM embedding API for unchanged files.
-* **Auto Garbage Collection:** Automatically purges stale vector chunks of deleted/modified files in DuckDB.
+* **Automatic Vector Compaction:** Automatically purges stale vector chunks of deleted/modified files from the binary vector index file during sync runs.
 
 ### 2. Privacy-Preserving Vector-Only Indexing
-* **No Code Stored in DB:** Codebase file contents are **never** saved to DuckDB. Only lightweight metadata headers are persisted (`File: <path> (Lines: <start>-<end>)`).
+* **No Code Stored in DB:** Codebase file contents are **never** saved to DuckDB or disk index files. Only lightweight metadata headers are persisted (`File: <path> (Lines: <start>-<end>)`).
 * **On-Demand Local Loading:** During search/retrieval, the database layer parses metadata headers and **reads the code lines directly from your local disk on the fly**, streaming them dynamically to the agent.
-* **Standardized 3072-Dimension:** All embeddings are automatically sliced or padded to exactly 3072 dimensions, ensuring robust uniformity across models.
 
-### 3. Concurrent Embedding Generation
-* **Parallelized Network Queries:** Gathers changed chunks into a job queue and uses a concurrency semaphore to fetch embeddings in parallel (capped at 16 concurrent workers), cutting indexing times by up to **16x**!
-* **Conflict-Free Writes:** Collects generated vectors in parallel and writes them to DuckDB sequentially, completely preventing database lock contentions.
-
-### 4. TurboQuant 4-Bit Vector Compression
-* **12x Storage Savings:** Automatically quantizes float32 embeddings to a compact **4-bit representation** inside DuckDB `BLOB` columns, reducing vector size from 12KB down to 1.5KB for 3072-dimensional vectors.
-* **High-Fidelity scoring:** Decodes BLOBs and scores them via Go-level cosine similarity in under a millisecond with virtually identical semantic fidelity (Cosine Sim > 0.93 on real embeddings).
+### 3. Decoupled In-Memory Vector Storage
+* **Metadata-Only SQL Store:** DuckDB is utilized strictly for fast metadata queries (ID, content path, CWD) and subdirectory path-resolution.
+* **Quantized Vector Index (.tqv)**: Quantized vectors are kept in a dedicated, high-performance binary index file (`~/.gemini/agent-mem.tqv`) using ultra-compression
 
 > ⚠️ **Note:** Currently, the codebase indexer only supports indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
 
@@ -30,12 +25,10 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 
 ## 🛠 Exposed MCP Tools
 
-* `search_memory`: **(CRITICAL WORKFLOW)**
-  1. If an agent is not sure which repository/codebase to search, it MUST call `list_codebases` first to discover all available registered, indexed codebases.
-  2. Once the target codebase is specified, use its absolute path as the `cwd` argument (non-mandatory) combined with the complete, detailed user question or context as the `query` argument (e.g., Query: 'how long is the trace buffered time in otelcol-tail-sampling', CWD: `/path/to/otelcol`).
-  3. **Agents must always use this tool first** before attempting to read local files directly, falling back to manual file reads only if search returns no results.
-  4. For codebase searches, matching code blocks are loaded dynamically on the fly from the local disk to preserve privacy.
-* `list_codebases`: Lists all local codebases currently registered, indexed, and searchable on the system, including their absolute workspace paths, cryptographic Merkle root hashes, and sync timestamps.
+* `search_memory`: **(MANDATORY FIRST-USE DIRECTIVE)**
+  * **Always search first**: Agents **MUST** always use this tool first to find codebase context, files, folders, local structures, functions, or configurations before attempting to read local files, list directories, or run shell search commands. Fall back to direct file reads or folder exploration only if semantic search returns no results.
+  * **Codebase Semantic Search**: Searches semantically across segments of indexed codebase files in the current workspace.
+  * **Privacy**: Codebase search segments are loaded dynamically on the fly from the local disk to preserve privacy.
 
 ---
 
@@ -63,7 +56,7 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 ## 🧪 Testing
 
 ```bash
-make test             # Run package unit tests
+make test             # Run package unit tests (including Index & Storage tests)
 make test-integration # Run live, end-to-end integration tests explicitly
 make test-all         # Run unit tests, integration tests, and database self-checks
 ```

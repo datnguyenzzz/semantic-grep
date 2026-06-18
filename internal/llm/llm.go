@@ -10,11 +10,14 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"agent-mem/internal/turboquant"
 )
 
 type EmbedRequest struct {
-	Model string `json:"model"`
-	Input string `json:"input"`
+	Model      string `json:"model"`
+	Input      string `json:"input"`
+	Dimensions *int   `json:"dimensions,omitempty"`
 }
 
 type EmbedResponse struct {
@@ -112,9 +115,11 @@ func doRequest(method, endpoint string, reqBody any, respDest any) error {
 }
 
 func GetEmbedding(text string) ([]float32, error) {
+	dim := turboquant.DefaultDimension
 	reqBody := EmbedRequest{
-		Model: getEmbeddingModel(),
-		Input: text,
+		Model:      getEmbeddingModel(),
+		Input:      text,
+		Dimensions: &dim,
 	}
 
 	var embedResp EmbedResponse
