@@ -8,57 +8,66 @@ A model-agnostic Gemini CLI extension written in **Go** that provides persistent
 
 Below is the conceptual component diagram of the decoupled indexing, search pipeline, and storage layers:
 
-```plantuml
-@startuml
-package "Client / Agent Entrypoints" {
-    [Gemini CLI] as cli
-    [Indexer CLI] as idx_cli
-}
+```mermaid
+graph TD
+    %% Entrypoints
+    subgraph Client ["Client / Agent Entrypoints"]
+        cli[Gemini CLI]
+        idx_cli[Indexer CLI]
+    end
 
-package "agent-mem Extension" {
-    package "Exposed MCP Server" {
-        [MCP Server (cmd/server)] as mcp_srv
-    }
+    %% User's Environment
+    subgraph Workspace ["User's Local Workspace (On Disk)"]
+        code_files[User's Source Code<br/>.go, .tf, .yaml]
+    end
 
-    package "Core Engine" {
-        [Merkle Sync (internal/merkle)] as merkle
-        [Splitter (internal/splitter)] as splitter
-        [LLM Client (internal/llm)] as llm
-        [Metadata DB (internal/db)] as db
-        [TurboQuant Index (internal/turboquant)] as tq
-    }
-}
+    %% Extension
+    subgraph Extension ["agent-mem Extension"]
+        subgraph MCP ["Exposed MCP Server"]
+            mcp_srv[MCP Server<br/>cmd/server]
+        end
 
-cloud "Embedding Provider" {
-    [LiteLLM API] as litellm
-}
+        subgraph Core ["Core Engine"]
+            merkle[Merkle Sync<br/>internal/merkle]
+            splitter[Splitter<br/>internal/splitter]
+            llm[LLM Client<br/>internal/llm]
+            db[Metadata DB<br/>internal/db]
+            tq[TurboQuant Index<br/>internal/turboquant]
+        end
+    end
 
-database "Persistent Storage (~/.gemini/)" {
-    file "agent-mem.db (DuckDB Metadata)" as duckdb_file
-    file "agent-mem.tqv (Quantized Vectors)" as tqv_file
-}
+    %% Providers
+    subgraph Provider ["Embedding Provider"]
+        litellm[LiteLLM API]
+    end
 
-' Indexing Flow
-idx_cli --> merkle : Run Sync
-merkle --> splitter : Split Code Files
-merkle --> llm : Get Embeddings
-llm --> litellm : REST API
-merkle --> db : Save Metadata
-merkle --> tq : Index.Add(id, embedding)
+    %% Storage
+    subgraph Storage ["Persistent Storage (~/.gemini/)"]
+        duckdb_file[(agent-mem.db<br/>DuckDB Metadata Only<br/>NO CODE STORED)]
+        tqv_file[(agent-mem.tqv<br/>Quantized Vectors)]
+    end
 
-' MCP Query Flow
-cli --> mcp_srv : Call tool "search_memory"
-mcp_srv --> llm : Get query embedding
-mcp_srv --> tq : Index.Search(query, limit)
-tq --> mcp_srv : Top candidates (ID + Sim)
-mcp_srv --> db : Fetch metadata and filter by CWD 
-mcp_srv --> cli : Return Dynamic Code Context (privacy-preserving)
+    %% Indexing Flow
+    idx_cli -->|1. Index code| merkle
+    code_files -.->|Scan Directory| merkle
+    merkle -->|2. Split Code Files| splitter
+    merkle -->|3. Get Embeddings| llm
+    llm -->|4. REST API| litellm
+    merkle -->|5. Save Metadata Only| db
+    merkle -->|6. Add Vectors| tq
 
-' Persistence
-db --> duckdb_file : Read/Write SQL
-tq --> tqv_file : Load (on startup) / Save (on shutdown)
+    %% MCP Query Flow
+    cli -->|1. Call search_memory| mcp_srv
+    mcp_srv -->|2. Get Query Embedding| llm
+    mcp_srv -->|3. Index.Search| tq
+    tq -->|4. Top Candidate IDs| mcp_srv
+    mcp_srv -->|5. Fetch Metadata Only| db
+    mcp_srv ==>|6. DYNAMICALLY READ CODE LINES<br/>FOR MAXIMUM PRIVACY| code_files
+    mcp_srv -->|7. Return Combined Context| cli
 
-@enduml
+    %% Persistence
+    db -->|Read/Write SQL| duckdb_file
+    tq -->|Load/Save Index| tqv_file
 ```
 
 ---
