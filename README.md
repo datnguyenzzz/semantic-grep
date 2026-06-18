@@ -91,6 +91,34 @@ graph TD
 
 ---
 
+## Compression rate 
+
+```
+================================================================================
+        📊  TURBOQUANT VECTOR COMPRESSION BENCHMARK SUITE  📊                 
+================================================================================
+
+   📁 Targets: Aggregated Index (across 5 codebases)
+   • Scanned Files: 5100 | Total Semantic Chunks: 16961 | Dimensions: 1536
+   ------------------------------------------------------------------------------
+   │ Data Footprint Type            │ Footprint Size │ Comp. Ratio │ Savings    │
+   ├────────────────────────────────┼────────────────┼─────────────┼────────────┤
+   │ [1] Standard Float32[] RAM     │  101766.00 KB  │      1.0x   │     0.0%   │
+   │ [2] TurboQuant In-Memory Map   │   12998.86 KB  │      7.8x   │    87.2%   │
+   │ [3] TurboQuant On-Disk .tqv    │   13383.31 KB  │      7.6x   │    86.8%   │
+   └────────────────────────────────┴────────────────┴─────────────┴────────────┘
+
+   📈 Visual Storage Footprint Comparison (Bar Scale):
+
+   Standard Float32[] RAM   : [████████████████████████████████████████] (101766.0 KB)
+   TurboQuant In-Memory Map : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (12998.9 KB) — 12x savings!
+   TurboQuant On-Disk .tqv  : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (13383.3 KB) — Compact file!
+
+================================================================================
+```
+
+---
+
 ## 🛠 Exposed MCP Tools
 
 * `search_memory`: **(MANDATORY FIRST-USE DIRECTIVE)**

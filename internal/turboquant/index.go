@@ -145,3 +145,21 @@ func (idx *Index) Search(query []float32, activeIDs map[string]bool, limit int) 
 
 	return results, nil
 }
+
+// VectorsCount returns the number of vectors currently loaded in memory.
+func (idx *Index) VectorsCount() int {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	return len(idx.vectors)
+}
+
+// MemorySizeBytes calculates the exact memory footprint of all serialized vectors stored in RAM.
+func (idx *Index) MemorySizeBytes() int {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	total := 0
+	for id, serialized := range idx.vectors {
+		total += len(id) + len(serialized)
+	}
+	return total
+}

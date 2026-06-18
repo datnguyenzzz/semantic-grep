@@ -1,7 +1,7 @@
 # Makefile for Gemini CLI Persistent Memory Extension (agent-mem)
 # ponytail: keep targets clean, simple, and utilize standard shell commands
 
-.PHONY: all build rebuild install test clean self-check
+.PHONY: all build rebuild install test clean self-check benchmark
 
 all: build
 
@@ -56,6 +56,10 @@ test-all: test test-integration self-check
 self-check:
 	@echo "Running local database self-check..."
 	CGO_ENABLED=1 go run self-check.go
+
+test-compression-rate:
+	@echo "Running TurboQuant compression rate ..."
+	CGO_ENABLED=1 go test ./scripts -tags=integration -run=Test_compression_rate -v
 
 # Clean compiled binaries
 clean:
