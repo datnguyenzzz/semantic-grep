@@ -115,7 +115,7 @@ func main() {
 	// 1. Register search_memory tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_memory",
-		Description: "CRITICAL WORKFLOW DIRECTIVE: You MUST use this tool FIRST before calling any other tool, listing directories, reading files, or executing shell commands to search for files, folders, local structures, functions, or configurations in this codebase. This tool searches semantically across segments of indexed codebase files in the current workspace. Always call this tool first with your complete, detailed natural language query or question.",
+		Description: "MANDATORY FIRST-USE DIRECTIVE: Use this tool FIRST to explore code conceptually, locate files, configurations, or relevant functions before reading files, listing directories, or running grep. Traditional grep searches are highly token-inefficient and costly; use search_memory instead to locate matches semantically, faster and cheaper. Only use grep if you know the exact identifier name or require all matches.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
 		embedding, err := llm.GetEmbedding(args.Query)
 		if err != nil {
@@ -152,7 +152,7 @@ func main() {
 	// 2. Register search_call_graph tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_call_graph",
-		Description: "Explores the sequential call graph of a Go function (both callers and callees). IMPORTANT: You should first use 'search_memory' to find the target function name and LOC (line range) inside this repository, then use this tool to expand further to explore the sequential call chain (caller: who calls this, callee: what does this call, or both).",
+		Description: "Traverses and builds the bidirectional call/dependency graph (callers, callees, or both) of a function or method. Use this to understand code execution flow, sequence, or dependencies up to a custom depth. Do not use this for semantic keyword search; locate function names first via search_memory, then trace their call graph with this tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args CallGraphArgs) (*mcp.CallToolResult, any, error) {
 		cwd := ""
 		if args.CWD != nil && *args.CWD != "" {

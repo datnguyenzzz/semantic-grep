@@ -4,6 +4,17 @@ A model-agnostic Gemini CLI extension and MCP server in **Go** providing local c
 
 ---
 
+## 💡 Motivation & Tool Selection Guidelines
+
+Traditional `grep` searches across large codebases are highly token-inefficient, loading unnecessary matches and noise into the agent's context window—slowing down execution and driving up API costs. This extension provides semantic local indexing to help agents locate relevant code **faster and cheaper**.
+
+For the most efficient workflow:
+*   Use **`search_memory`** (Semantic Search) to explore code conceptually (e.g., finding where "storage cleanup" is handled or searching for an architectural concept).
+*   Use **`search_call_graph`** to trace dependencies and understand function/resource execution flows.
+*   Use standard **`grep`** only when you "Know the exact identifier" (e.g., a specific variable name, system property, or unique error string) or strictly "Need ALL matches".
+
+---
+
 ## ✨ Key Features
 
 *   **Merkle Tree Incremental Sync:** Computes directory tree diffs to index/re-embed only added or modified files (supporting `.go`, `.tf`, and `.yaml`/`.yml`).
