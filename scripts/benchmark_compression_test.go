@@ -140,7 +140,7 @@ func Test_compression_rate(t *testing.T) {
 
 			for i := range chunks {
 				mockVec := make([]float32, dim)
-				for j := 0; j < dim; j++ {
+				for j := range dim {
 					mockVec[j] = float32(rng.NormFloat64())
 				}
 
@@ -166,7 +166,7 @@ func Test_compression_rate(t *testing.T) {
 
 	var duckDBSizeKB float64
 	if home, err := os.UserHomeDir(); err == nil {
-		dbPath := filepath.Join(home, ".gemini", "agent-mem.db")
+		dbPath := filepath.Join(home, "agent-mem.db")
 		if fi, err := os.Stat(dbPath); err == nil {
 			duckDBSizeKB = float64(fi.Size()) / 1024.0
 		}
@@ -209,63 +209,6 @@ func Test_compression_rate(t *testing.T) {
 			SavedRatio: savedRatio,
 			DuckDBSize: duckDBSizeKB,
 			TotalLOC:   totalLOC,
-		}
-	} else {
-		fmt.Println("  [NOTICE] No active codebases were evaluated. Please modify the placeholder paths")
-		fmt.Println("           in scripts/benchmark_compression_test.go to point to your real codebases.")
-		fmt.Println()
-		fmt.Println("  Performing real quantization, serialization, and disk-writing for 1,000 mock chunks...")
-		fmt.Println("  (Measuring exact, physical on-disk file size with standard headers and metadata)")
-		fmt.Println()
-
-		simChunks := 1000
-		tqvPath := filepath.Join(tmpDir, "bench_simulated.tqv")
-		_ = os.Remove(tqvPath)
-
-		tq, err := turboquant.NewTurboQuant(dim, bitWidth, 42)
-		if err != nil {
-			t.Fatalf("failed to init TurboQuant: %v", err)
-		}
-		index, err := turboquant.NewIndex(tqvPath, tq)
-		if err != nil {
-			t.Fatalf("failed to init Index: %v", err)
-		}
-
-		for i := 0; i < simChunks; i++ {
-			mockVec := make([]float32, dim)
-			for j := 0; j < dim; j++ {
-				mockVec[j] = float32(rng.NormFloat64())
-			}
-			id := fmt.Sprintf("sim-chunk-%d", i)
-			_ = index.Add(id, mockVec)
-		}
-
-		err = index.Save()
-		if err != nil {
-			t.Fatalf("failed to save simulated Index: %v", err)
-		}
-
-		fi, err := os.Stat(tqvPath)
-		var actualDiskBytes int64
-		if err == nil {
-			actualDiskBytes = fi.Size()
-		}
-
-		origKB := float64(simChunks*dim*4) / 1024.0
-		tqMemKB := float64(index.MemorySizeBytes()) / 1024.0
-		tqDiskKB := float64(actualDiskBytes) / 1024.0
-		savedRatio := (1.0 - (tqMemKB / origKB)) * 100
-
-		results = resultData{
-			Title:      "Simulated (1,000 codebase chunks)",
-			Files:      50,
-			Chunks:     simChunks,
-			OrigSize:   origKB,
-			TqMemSize:  tqMemKB,
-			TqDiskSize: tqDiskKB,
-			SavedRatio: savedRatio,
-			DuckDBSize: duckDBSizeKB,
-			TotalLOC:   0,
 		}
 	}
 

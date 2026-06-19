@@ -169,21 +169,21 @@ flowchart TD
 ================================================================================
 
 📁 Targets: Aggregated Index (across 11 codebases)
-   • Scanned Files: 18_017 | Total Semantic Chunks: 141_210 | Dimensions: 1536
-   • Total Lines of Code (LOC): 3_436_130 | DuckDB Metadata Size: 0.76 MiB
+   • Scanned Files: 17,839 | Total Semantic Chunks: 139,072 | Dimensions: 3072
+   • Total Lines of Code (LOC): 3,435,711 | DuckDB Metadata Size: 0.76 MiB
   -------------------------------------------------------------------------------- 
    │ Data Footprint Type            │ Footprint Size │ Comp. Ratio │ Savings    │
    ├────────────────────────────────┼────────────────┼─────────────┼────────────┤
-   │ [1] Standard Float32[] RAM     │     827.40 MiB │      1.0x   │     0.0%   │
-   │ [2] TurboQuant In-Memory Map   │     105.85 MiB │      7.8x   │    87.2%   │
-   │ [3] TurboQuant On-Disk .tqv    │      56.81 MiB │     14.6x   │    93.1%   │
+   │ [1] Standard Float32[] RAM     │    1629.75 MiB │      1.0x   │     0.0%   │
+   │ [2] TurboQuant In-Memory Map   │     206.11 MiB │      7.9x   │    87.4%   │
+   │ [3] TurboQuant On-Disk .tqv    │     108.76 MiB │     15.0x   │    93.3%   │
    └────────────────────────────────┴────────────────┴─────────────┴────────────┘
 
    📈 Visual Storage Footprint Comparison (Bar Scale):
 
-   Standard Float32[] RAM   : [████████████████████████████████████████] (827.40 MiB)
-   TurboQuant In-Memory Map : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (105.85 MiB) 
-   TurboQuant On-Disk .tqv  : [██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (56.81 MiB)
+   Standard Float32[] RAM   : [████████████████████████████████████████] (1629.75 MiB)
+   TurboQuant In-Memory Map : [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (206.11 MiB)
+   TurboQuant On-Disk .tqv  : [██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] (108.76 MiB)
 
 ================================================================================
 ```

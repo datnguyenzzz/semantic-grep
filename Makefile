@@ -68,7 +68,7 @@ self-check:
 
 test-compression-rate:
 	@echo "Running TurboQuant compression rate ..."
-	CGO_ENABLED=1 go test ./scripts -tags=integration -run=Test_compression_rate -v
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=6000s -run=Test_compression_rate -v
 
 # Clean compiled binaries
 clean:
