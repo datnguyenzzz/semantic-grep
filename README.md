@@ -1,6 +1,6 @@
 # Codebase Indexer & Persistent Memory Extension (agent-mem)
 
-A model-agnostic MCP server and indexer written in **Go** that provides local codebase indexing, semantic search, and call graph navigation for developer assistant CLIs. It uses **DuckDB** to store codebase metadata and a quantized **TurboQuant** vector index to achieve high compression without sacrificing vector quality, while enabling fast vector similarity search.
+A model-agnostic, local-first MCP server and indexer written in **Go** that provides local codebase indexing, semantic search, and call graph navigation for developer assistant CLIs. Designed for maximum efficiency and privacy, `agent-mem` runs **entirely on your local machine**—combining high-performance analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver extremely fast, cost-effective search without requiring expensive, resource-heavy external vector databases.
 
 ---
 
