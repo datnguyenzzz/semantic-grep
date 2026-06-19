@@ -136,15 +136,6 @@ flowchart TD
     mcp_srv ===>|5. DYNAMICALLY READ CODE| code_files
     mcp_srv ===>|6. Return Context| cli
 
-     %% ──────────────────────────────────────────────────────────
-    %% FLOW LEGEND (Self-Explanatory Arrow Styles)
-    %% ──────────────────────────────────────────────────────────
-    subgraph Legend ["Legend / Flow Styles"]
-        direction LR
-        style_w[ ] -->|Thin line / Dashed| desc_w(Write / Ingestion Flow)
-        style_r[ ] ===>|Thick double line| desc_r(Read / Search Query Flow)
-    end
-
     %% ──────────────────────────────────────────────────────────
     %% FLOW LEGEND (Self-Explanatory Arrow Styles)
     %% ──────────────────────────────────────────────────────────
@@ -154,6 +145,17 @@ flowchart TD
         style_r[ ] ===>|Thick double line| desc_r(Read / Search Query Flow)
     end
 ```
+
+### 📐 Core Technical Pillars & Decisions
+
+1. **Cryptographic Merkle Trees for Incremental Syncs:**
+   To prevent expensive, redundant re-indexing of unaltered codebases, `agent-mem` recursively structures directory states as SHA-256 cryptographic Merkle Trees. During subsequent indexing sweeps, it diffs node hashes in milliseconds to isolate only the **filesystem delta (added, modified, or deleted files)**. Only the delta is processed and embedded, drastically reducing API token costs and sweep times.
+
+2. **DuckDB for Relational Metadata and Call Graphs:**
+   We utilize **[DuckDB](https://github.com/duckdb/duckdb)** as our metadata and relational store. DuckDB is a highly performant, serverless, in-process analytical (OLAP) database engine that excels at complex queries and joins. It provides complete transactional safety (ACID), runs entirely locally with zero daemon processes, and is optimized for querying dense AST call graph nodes, edges, and file-range metadata.
+
+3. **TurboQuant for In-Process Vector Quantization:**
+   Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `agent-mem` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
 
 ---
 
