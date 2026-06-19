@@ -1,6 +1,7 @@
-# Gemini Codebase Indexer With Persist Memory Extension
+# Codebase Indexer & Persistent Memory Extension (agent-mem)
+### Supported in Gemini CLI and Claude Code CLI
 
-A model-agnostic Gemini CLI extension and MCP server in **Go** providing local codebase indexing and semantic search. It uses **DuckDB** for metadata and a quantized **TurboQuant** vector index for 12x-compressed, 3000x-accelerated similarity search.
+A model-agnostic, high-performance MCP server and indexer in **Go** providing local codebase indexing and semantic search for developer assistant CLIs. It uses **DuckDB** for metadata and a quantized **TurboQuant** vector index for 12x-compressed, 3000x-accelerated similarity search.
 
 ---
 
@@ -52,8 +53,6 @@ Alternatively, install individually depending on your preferred CLI environment:
     ```bash
     make install-claude
     ```
-    *(Or register manually: `claude mcp add-json agent-mem '{"command":"/absolute/path/to/project/dist/server","args":[]}' --scope user`)*
-    *(Inside a Claude Code session, you can verify the extension status at any time by typing `/mcp`)*
 
 ### 2. Index a Codebase
 
