@@ -1,7 +1,6 @@
 # Codebase Indexer & Persistent Memory Extension (agent-mem)
-### Supported in Gemini CLI and Claude Code CLI
 
-A model-agnostic, high-performance MCP server and indexer in **Go** providing local codebase indexing and semantic search for developer assistant CLIs. It uses **DuckDB** for metadata and a quantized **TurboQuant** vector index for 12x-compressed, 3000x-accelerated similarity search.
+A model-agnostic MCP server and indexer written in **Go** that provides local codebase indexing, semantic search, and call graph navigation for developer assistant CLIs. It uses **DuckDB** to store codebase metadata and a quantized **TurboQuant** vector index to achieve high compression without sacrificing vector quality, while enabling fast vector similarity search.
 
 ---
 
