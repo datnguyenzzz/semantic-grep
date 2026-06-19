@@ -68,8 +68,6 @@ func main() {
 		fmt.Printf("│  Added Files                                 │ %-29d │\n", added)
 		fmt.Printf("│  Modified Files                              │ %-29d │\n", modified)
 		fmt.Printf("│  Deleted Files                               │ %-29d │\n", deleted)
-		fmt.Println("│  Vector Quantization Compression             │ 4-bit TurboQuant (BLOB)       │")
-		fmt.Println("│  Fidelity / Cosine Target Preserved          │ > 0.93 (8x storage saving)    │")
 		fmt.Println("└──────────────────────────────────────────────┴───────────────────────────────┘")
 		fmt.Println("  ✓ All changes synced successfully to DuckDB persistent memory!")
 	}

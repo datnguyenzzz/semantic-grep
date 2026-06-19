@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -137,7 +138,12 @@ func TestDBCallGraphCrossFileIntegration(t *testing.T) {
 		t.Errorf("expected 3 nodes, got %d", len(cg.Nodes))
 	}
 
-	report := cg.GenerateTreeReport("FunctionA", "callee", 3)
+	resp, err := cg.GenerateTreeReport("FunctionA", "callee", 3)
+	if err != nil {
+		t.Fatalf("failed to generate tree report: %v", err)
+	}
+	jsonBytes, _ := json.Marshal(resp)
+	report := string(jsonBytes)
 	if !strings.Contains(report, "FunctionB") || !strings.Contains(report, "FunctionC") {
 		t.Errorf("expected loaded call graph to trace A -> B -> C chain: %s", report)
 	}
@@ -162,7 +168,12 @@ func TestDBCallGraphCrossFileIntegration(t *testing.T) {
 		t.Errorf("expected FunctionB node from unaffected file2.go to remain")
 	}
 
-	updatedReport := cgUpdated.GenerateTreeReport("FunctionA", "callee", 3)
+	respUpdated, err := cgUpdated.GenerateTreeReport("FunctionA", "callee", 3)
+	if err != nil {
+		t.Fatalf("failed to generate updated report: %v", err)
+	}
+	jsonBytesUpdated, _ := json.Marshal(respUpdated)
+	updatedReport := string(jsonBytesUpdated)
 	if strings.Contains(updatedReport, "FunctionB") {
 		t.Errorf("stale edge FunctionA -> FunctionB was not cleaned up during incremental file save: %s", updatedReport)
 	}

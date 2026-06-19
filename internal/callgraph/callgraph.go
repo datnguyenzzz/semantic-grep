@@ -100,8 +100,22 @@ func BuildCallGraph(root string) (*CallGraph, error) {
 	}, nil
 }
 
-// GenerateTreeReport creates a beautiful, detailed bi-directional ASCII call tree report
-func (cg *CallGraph) GenerateTreeReport(targetFunc string, direction string, maxDepth int) string {
+type CallNode struct {
+	Name      string      `json:"name"`
+	FilePath  string      `json:"file_path"`
+	StartLine int         `json:"start_line"`
+	EndLine   int         `json:"end_line"`
+	Children  []*CallNode `json:"children,omitempty"`
+}
+
+type CallGraphResponse struct {
+	TargetNode *Node       `json:"target_node"`
+	Callers    []*CallNode `json:"callers,omitempty"`
+	Callees    []*CallNode `json:"callees,omitempty"`
+}
+
+// GenerateTreeReport creates a structured bi-directional call tree report
+func (cg *CallGraph) GenerateTreeReport(targetFunc string, direction string, maxDepth int) (*CallGraphResponse, error) {
 	// Find target node (matching exactly, or matching as a suffix, e.g. resource suffix or method suffix)
 	var targetNode *Node
 	for name, node := range cg.Nodes {
@@ -113,74 +127,58 @@ func (cg *CallGraph) GenerateTreeReport(targetFunc string, direction string, max
 	}
 
 	if targetNode == nil {
-		return fmt.Sprintf("Block/Function '%s' not found. Ensure it is defined in indexed Go, Terraform, or YAML files.", targetFunc)
+		return nil, fmt.Errorf("block/function '%s' not found", targetFunc)
 	}
 
-	report := fmt.Sprintf("🔍 Call/Dependency Graph Exploration for: **%s**\n", targetNode.Name)
-	report += fmt.Sprintf("   Declared in: `%s` (Lines: %d-%d)\n\n", targetNode.FilePath, targetNode.StartLine, targetNode.EndLine)
+	resp := &CallGraphResponse{
+		TargetNode: targetNode,
+	}
 
 	if direction == "caller" || direction == "both" {
-		report += "▲ **UPWARD CHAIN (Who calls/depends on this?):**\n"
-		callersTree := cg.buildCallersTree(targetFunc, 0, maxDepth, make(map[string]bool))
-		if callersTree == "" {
-			report += "   └── (No active upward callers/dependencies found)\n"
-		} else {
-			report += callersTree
-		}
-		report += "\n"
+		resp.Callers = cg.buildCallersJSON(targetFunc, 0, maxDepth, make(map[string]bool))
 	}
 
 	if direction == "callee" || direction == "both" {
-		report += "▼ **DOWNWARD CHAIN (What does this call/depend on?):**\n"
-		calleesTree := cg.buildCalleesTree(targetFunc, 0, maxDepth, make(map[string]bool))
-		if calleesTree == "" {
-			report += "   └── (No active downward callees/dependencies found)\n"
-		} else {
-			report += calleesTree
-		}
-		report += "\n"
+		resp.Callees = cg.buildCalleesJSON(targetFunc, 0, maxDepth, make(map[string]bool))
 	}
 
-	return report
+	return resp, nil
 }
 
-func (cg *CallGraph) buildCallersTree(funcName string, depth, maxDepth int, visited map[string]bool) string {
+func (cg *CallGraph) buildCallersJSON(funcName string, depth, maxDepth int, visited map[string]bool) []*CallNode {
 	if depth >= maxDepth || visited[funcName] {
-		return ""
+		return nil
 	}
 	visited[funcName] = true
 	defer func() { visited[funcName] = false }()
 
-	var tree []string
-	prefix := strings.Repeat("   ", depth)
-
+	var nodes []*CallNode
 	for _, edge := range cg.Edges {
 		if edge.Callee == funcName || strings.HasSuffix(edge.Caller, "."+edge.Callee) && edge.Callee == funcName || strings.HasSuffix(funcName, "."+edge.Callee) && edge.Callee != "" {
 			callerNode, exists := cg.Nodes[edge.Caller]
 			if exists {
-				lineStr := fmt.Sprintf("%s└── **%s** (`%s` Lines:%d-%d)\n", prefix, callerNode.Name, callerNode.FilePath, callerNode.StartLine, callerNode.EndLine)
-				subTree := cg.buildCallersTree(edge.Caller, depth+1, maxDepth, visited)
-				if subTree != "" {
-					lineStr += subTree
+				cn := &CallNode{
+					Name:      callerNode.Name,
+					FilePath:  callerNode.FilePath,
+					StartLine: callerNode.StartLine,
+					EndLine:   callerNode.EndLine,
 				}
-				tree = append(tree, lineStr)
+				cn.Children = cg.buildCallersJSON(edge.Caller, depth+1, maxDepth, visited)
+				nodes = append(nodes, cn)
 			}
 		}
 	}
-
-	return strings.Join(tree, "")
+	return nodes
 }
 
-func (cg *CallGraph) buildCalleesTree(funcName string, depth, maxDepth int, visited map[string]bool) string {
+func (cg *CallGraph) buildCalleesJSON(funcName string, depth, maxDepth int, visited map[string]bool) []*CallNode {
 	if depth >= maxDepth || visited[funcName] {
-		return ""
+		return nil
 	}
 	visited[funcName] = true
 	defer func() { visited[funcName] = false }()
 
-	var tree []string
-	prefix := strings.Repeat("   ", depth)
-
+	var nodes []*CallNode
 	for _, edge := range cg.Edges {
 		if edge.Caller == funcName {
 			var calleeNode *Node
@@ -192,115 +190,101 @@ func (cg *CallGraph) buildCalleesTree(funcName string, depth, maxDepth int, visi
 			}
 
 			if calleeNode != nil {
-				lineStr := fmt.Sprintf("%s└── **%s** (`%s` Lines:%d-%d)\n", prefix, calleeNode.Name, calleeNode.FilePath, calleeNode.StartLine, calleeNode.EndLine)
-				subTree := cg.buildCalleesTree(calleeNode.Name, depth+1, maxDepth, visited)
-				if subTree != "" {
-					lineStr += subTree
+				cn := &CallNode{
+					Name:      calleeNode.Name,
+					FilePath:  calleeNode.FilePath,
+					StartLine: calleeNode.StartLine,
+					EndLine:   calleeNode.EndLine,
 				}
-				tree = append(tree, lineStr)
+				cn.Children = cg.buildCalleesJSON(calleeNode.Name, depth+1, maxDepth, visited)
+				nodes = append(nodes, cn)
 			}
 		}
 	}
-
-	return strings.Join(tree, "")
+	return nodes
 }
 
-// GenerateOnDemandTreeReport creates an ASCII call tree report by fetching callers and callees lazily on the fly via callbacks
+// GenerateOnDemandTreeReport creates a structured call tree report by fetching callers and callees lazily on the fly via callbacks
 func GenerateOnDemandTreeReport(
 	targetNode *Node,
 	direction string,
 	maxDepth int,
 	getCallees func(caller string) ([]*Node, error),
 	getCallers func(callee string) ([]*Node, error),
-) string {
-	report := fmt.Sprintf("🔍 Call/Dependency Graph Exploration for: **%s**\n", targetNode.Name)
-	report += fmt.Sprintf("   Declared in: `%s` (Lines: %d-%d)\n\n", targetNode.FilePath, targetNode.StartLine, targetNode.EndLine)
+) (*CallGraphResponse, error) {
+	resp := &CallGraphResponse{
+		TargetNode: targetNode,
+	}
 
 	if direction == "caller" || direction == "both" {
-		report += "▲ **UPWARD CHAIN (Who calls/depends on this?):**\n"
-		callersTree := buildOnDemandCallersTree(targetNode.Name, 0, maxDepth, make(map[string]bool), getCallers)
-		if callersTree == "" {
-			report += "   └── (No active upward callers/dependencies found)\n"
-		} else {
-			report += callersTree
-		}
-		report += "\n"
+		resp.Callers = buildOnDemandCallersJSON(targetNode.Name, 0, maxDepth, make(map[string]bool), getCallers)
 	}
 
 	if direction == "callee" || direction == "both" {
-		report += "▼ **DOWNWARD CHAIN (What does this call/depend on?):**\n"
-		calleesTree := buildOnDemandCalleesTree(targetNode.Name, 0, maxDepth, make(map[string]bool), getCallees)
-		if calleesTree == "" {
-			report += "   └── (No active downward callees/dependencies found)\n"
-		} else {
-			report += calleesTree
-		}
-		report += "\n"
+		resp.Callees = buildOnDemandCalleesJSON(targetNode.Name, 0, maxDepth, make(map[string]bool), getCallees)
 	}
 
-	return report
+	return resp, nil
 }
 
-func buildOnDemandCallersTree(
+func buildOnDemandCallersJSON(
 	funcName string,
 	depth, maxDepth int,
 	visited map[string]bool,
 	getCallers func(callee string) ([]*Node, error),
-) string {
+) []*CallNode {
 	if depth >= maxDepth || visited[funcName] {
-		return ""
+		return nil
 	}
 	visited[funcName] = true
 	defer func() { visited[funcName] = false }()
 
 	callers, err := getCallers(funcName)
 	if err != nil || len(callers) == 0 {
-		return ""
+		return nil
 	}
 
-	var tree []string
-	prefix := strings.Repeat("   ", depth)
-
+	var nodes []*CallNode
 	for _, callerNode := range callers {
-		lineStr := fmt.Sprintf("%s└── **%s** (`%s` Lines:%d-%d)\n", prefix, callerNode.Name, callerNode.FilePath, callerNode.StartLine, callerNode.EndLine)
-		subTree := buildOnDemandCallersTree(callerNode.Name, depth+1, maxDepth, visited, getCallers)
-		if subTree != "" {
-			lineStr += subTree
+		cn := &CallNode{
+			Name:      callerNode.Name,
+			FilePath:  callerNode.FilePath,
+			StartLine: callerNode.StartLine,
+			EndLine:   callerNode.EndLine,
 		}
-		tree = append(tree, lineStr)
+		cn.Children = buildOnDemandCallersJSON(callerNode.Name, depth+1, maxDepth, visited, getCallers)
+		nodes = append(nodes, cn)
 	}
-
-	return strings.Join(tree, "")
+	return nodes
 }
 
-func buildOnDemandCalleesTree(
+func buildOnDemandCalleesJSON(
 	funcName string,
 	depth, maxDepth int,
 	visited map[string]bool,
 	getCallees func(caller string) ([]*Node, error),
-) string {
+) []*CallNode {
 	if depth >= maxDepth || visited[funcName] {
-		return ""
+		return nil
 	}
 	visited[funcName] = true
 	defer func() { visited[funcName] = false }()
 
 	callees, err := getCallees(funcName)
 	if err != nil || len(callees) == 0 {
-		return ""
+		return nil
 	}
 
-	var tree []string
-	prefix := strings.Repeat("   ", depth)
-
+	var nodes []*CallNode
 	for _, calleeNode := range callees {
-		lineStr := fmt.Sprintf("%s└── **%s** (`%s` Lines:%d-%d)\n", prefix, calleeNode.Name, calleeNode.FilePath, calleeNode.StartLine, calleeNode.EndLine)
-		subTree := buildOnDemandCalleesTree(calleeNode.Name, depth+1, maxDepth, visited, getCallees)
-		if subTree != "" {
-			lineStr += subTree
+		cn := &CallNode{
+			Name:      calleeNode.Name,
+			FilePath:  calleeNode.FilePath,
+			StartLine: calleeNode.StartLine,
+			EndLine:   calleeNode.EndLine,
 		}
-		tree = append(tree, lineStr)
+		cn.Children = buildOnDemandCalleesJSON(calleeNode.Name, depth+1, maxDepth, visited, getCallees)
+		nodes = append(nodes, cn)
 	}
-
-	return strings.Join(tree, "")
+	return nodes
 }

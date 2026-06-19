@@ -3,6 +3,7 @@
 package scripts
 
 import (
+	"encoding/json"
 	"net"
 	"os"
 	"path/filepath"
@@ -573,7 +574,12 @@ func TestCallGraphOnDemandDBQuerying(t *testing.T) {
 	}
 
 	// 3. Execute the actual search_call_graph tool's lazy database-querying report logic
-	report := callgraph.GenerateOnDemandTreeReport(targetNode, "both", 3, db.GetCallees, db.GetCallers)
+	resp, err := callgraph.GenerateOnDemandTreeReport(targetNode, "both", 3, db.GetCallees, db.GetCallers)
+	if err != nil {
+		t.Fatalf("failed to generate on demand report: %v", err)
+	}
+	jsonBytes, _ := json.Marshal(resp)
+	report := string(jsonBytes)
 
 	// 4. Assert that the lazy callbacks successfully queried DuckDB and reconstructed the full call chain!
 	if !strings.Contains(report, "FunctionA") {

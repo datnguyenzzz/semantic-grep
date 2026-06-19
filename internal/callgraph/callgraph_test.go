@@ -1,6 +1,7 @@
 package callgraph
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,7 +57,12 @@ func MainProcess() {
 	}
 
 	// Verify the complete, multi-file nested callee chain report
-	report := cg.GenerateTreeReport("MainProcess", "callee", 3)
+	resp, err := cg.GenerateTreeReport("MainProcess", "callee", 3)
+	if err != nil {
+		t.Fatalf("failed to generate tree report: %v", err)
+	}
+	jsonBytes, _ := json.Marshal(resp)
+	report := string(jsonBytes)
 	if !strings.Contains(report, "Add") {
 		t.Errorf("expected MainProcess callee chain to contain Add: %s", report)
 	}
@@ -65,7 +71,12 @@ func MainProcess() {
 	}
 
 	// Verify reverse caller chain
-	upwardReport := cg.GenerateTreeReport("ValidateInput", "caller", 3)
+	respUpward, err := cg.GenerateTreeReport("ValidateInput", "caller", 3)
+	if err != nil {
+		t.Fatalf("failed to generate upward report: %v", err)
+	}
+	jsonBytesUpward, _ := json.Marshal(respUpward)
+	upwardReport := string(jsonBytesUpward)
 	if !strings.Contains(upwardReport, "Add") {
 		t.Errorf("expected ValidateInput callers to contain Add: %s", upwardReport)
 	}
@@ -127,7 +138,12 @@ resource "aws_route_table" "route_a" {
 	}
 
 	// Verify that the route_table callee chain contains both its cross-file module and resource dependencies
-	report := cg.GenerateTreeReport("aws_route_table.route_a", "callee", 2)
+	resp, err := cg.GenerateTreeReport("aws_route_table.route_a", "callee", 2)
+	if err != nil {
+		t.Fatalf("failed to generate tree report: %v", err)
+	}
+	jsonBytes, _ := json.Marshal(resp)
+	report := string(jsonBytes)
 	if !strings.Contains(report, "aws_vpc.main") {
 		t.Errorf("expected route_table callee chain to contain aws_vpc.main: %s", report)
 	}
@@ -177,7 +193,12 @@ steps:
 	}
 
 	// Verify step.Deploy depends on step.Test (cross-file) which depends on step.Build (within-file)
-	report := cg.GenerateTreeReport("step.Deploy", "callee", 3)
+	respDeploy, err := cg.GenerateTreeReport("step.Deploy", "callee", 3)
+	if err != nil {
+		t.Fatalf("failed to generate tree report: %v", err)
+	}
+	jsonBytesDeploy, _ := json.Marshal(respDeploy)
+	report := string(jsonBytesDeploy)
 	if !strings.Contains(report, "step.Test") {
 		t.Errorf("expected Deploy to depend on Test: %s", report)
 	}
@@ -214,32 +235,33 @@ func TestGenerateOnDemandTreeReport(t *testing.T) {
 	}
 
 	// 1. Verify on-demand report generation
-	report := GenerateOnDemandTreeReport(nodeA, "both", 3, mockGetCallees, mockGetCallers)
+	resp, err := GenerateOnDemandTreeReport(nodeA, "both", 3, mockGetCallees, mockGetCallers)
+	if err != nil {
+		t.Fatalf("failed to generate on demand report: %v", err)
+	}
 
-	if !strings.Contains(report, "FunctionA") {
-		t.Errorf("expected report header to contain FunctionA")
+	if resp.TargetNode.Name != "FunctionA" {
+		t.Errorf("expected target FunctionA, got %s", resp.TargetNode.Name)
 	}
 
 	// Downward Chain (A -> B -> C)
-	if !strings.Contains(report, "DOWNWARD CHAIN") {
-		t.Errorf("expected report to contain DOWNWARD CHAIN section")
+	if len(resp.Callees) != 1 || resp.Callees[0].Name != "FunctionB" {
+		t.Errorf("expected callee FunctionB")
 	}
-	if !strings.Contains(report, "FunctionB") {
-		t.Errorf("expected callee chain to contain FunctionB")
-	}
-	if !strings.Contains(report, "FunctionC") {
-		t.Errorf("expected callee chain to contain FunctionC")
+	if len(resp.Callees[0].Children) != 1 || resp.Callees[0].Children[0].Name != "FunctionC" {
+		t.Errorf("expected nested callee FunctionC")
 	}
 
 	// Upward Chain (C <- B <- A)
-	nodeCReport := GenerateOnDemandTreeReport(nodeC, "caller", 3, mockGetCallees, mockGetCallers)
-	if !strings.Contains(nodeCReport, "UPWARD CHAIN") {
-		t.Errorf("expected report to contain UPWARD CHAIN section")
+	respC, err := GenerateOnDemandTreeReport(nodeC, "caller", 3, mockGetCallees, mockGetCallers)
+	if err != nil {
+		t.Fatalf("failed to generate on demand caller report: %v", err)
 	}
-	if !strings.Contains(nodeCReport, "FunctionB") {
-		t.Errorf("expected caller chain to contain FunctionB")
+
+	if len(respC.Callers) != 1 || respC.Callers[0].Name != "FunctionB" {
+		t.Errorf("expected caller FunctionB")
 	}
-	if !strings.Contains(nodeCReport, "FunctionA") {
-		t.Errorf("expected caller chain to contain FunctionA")
+	if len(respC.Callers[0].Children) != 1 || respC.Callers[0].Children[0].Name != "FunctionA" {
+		t.Errorf("expected nested caller FunctionA")
 	}
 }

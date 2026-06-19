@@ -4,12 +4,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -31,6 +31,42 @@ type CallGraphArgs struct {
 	CWD          *string `json:"cwd,omitempty" jsonschema:"Optional absolute directory path of the codebase to build the call graph from. Defaults to the current workspace."`
 	Direction    *string `json:"direction,omitempty" jsonschema:"Optional direction to traverse. Supported values: 'caller', 'callee', or 'both'. Defaults to 'both'."`
 	Depth        *int    `json:"depth,omitempty" jsonschema:"Optional maximum depth of call chain traversal. Defaults to 2."`
+}
+
+type MemoryResult struct {
+	Codebase   string  `json:"codebase"`
+	Path       string  `json:"path"`
+	Similarity float64 `json:"similarity_percentage"`
+	Content    string  `json:"content"`
+}
+
+type MemoryResponse struct {
+	SchemaDescription map[string]string `json:"schema_description"`
+	Results           []MemoryResult    `json:"results"`
+}
+
+var MemorySchemaDescription = map[string]string{
+	"schema_description":    "Explanatory key-value definitions for all properties inside this search_memory response structure.",
+	"results":               "A list of semantically matched codebase code chunks, sorted descending by similarity.",
+	"codebase":              "The base directory name of the local workspace codebase.",
+	"path":                  "The absolute or relative path of the file containing the matched segment.",
+	"similarity_percentage": "The similarity score percentage between the search query and the segment (higher means closer match).",
+	"content":               "The actual matching code segment lines read on demand from disk.",
+}
+
+type CallGraphMCPResponse struct {
+	SchemaDescription map[string]string     `json:"schema_description"`
+	TargetNode        *callgraph.Node       `json:"target_node"`
+	Callers           []*callgraph.CallNode `json:"callers,omitempty"`
+	Callees           []*callgraph.CallNode `json:"callees,omitempty"`
+}
+
+var CallGraphSchemaDescription = map[string]string{
+	"schema_description": "Explanatory key-value definitions for all properties inside this response structure.",
+	"target_node":        "The metadata of the block/function that was explored (Name, FilePath, StartLine, EndLine).",
+	"callers":            "A tree representation of functions/blocks that call or depend on the target node.",
+	"callees":            "A tree representation of functions/blocks called or referenced by the target node.",
+	"children":           "Nested dependencies (e.g. callers of a caller, or callees of a callee) tracing the execution tree recursively.",
 }
 
 func startPeriodicIndexUpdate(index *turboquant.Index) {
@@ -128,23 +164,30 @@ func main() {
 			return nil, nil, err
 		}
 
-		if len(results) == 0 {
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "No matching memories found."},
-				},
-			}, nil, nil
-		}
-
-		var formatted strings.Builder
+		var mcpResults []MemoryResult
 		for _, row := range results {
 			codebaseName := filepath.Base(row.CWD)
-			fmt.Fprintf(&formatted, "[Codebase: %s] [Path: %s] (Similarity: %.1f%%)\n%s\n\n---\n\n", codebaseName, row.CWD, row.Similarity*100, row.Content)
+			mcpResults = append(mcpResults, MemoryResult{
+				Codebase:   codebaseName,
+				Path:       row.CWD,
+				Similarity: row.Similarity * 100,
+				Content:    row.Content,
+			})
+		}
+
+		mcpResponse := MemoryResponse{
+			SchemaDescription: MemorySchemaDescription,
+			Results:           mcpResults,
+		}
+
+		jsonBytes, err := json.MarshalIndent(mcpResponse, "", "  ")
+		if err != nil {
+			return nil, nil, err
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: formatted.String()},
+				&mcp.TextContent{Text: string(jsonBytes)},
 			},
 		}, nil, nil
 	})
@@ -171,24 +214,46 @@ func main() {
 			depth = *args.Depth
 		}
 
-		var report string
+		var report *callgraph.CallGraphResponse
+		var err error
 
 		// Attempt fast on-demand lazy database querying (O(1) memory & DB connections)
 		targetNode, err := db.GetCallNode(args.FunctionName)
 		if err == nil && targetNode != nil {
-			report = callgraph.GenerateOnDemandTreeReport(targetNode, direction, depth, db.GetCallees, db.GetCallers)
+			report, err = callgraph.GenerateOnDemandTreeReport(targetNode, direction, depth, db.GetCallees, db.GetCallers)
 		} else {
 			// Resilient Fallback: recursively walk and build the graph from disk on the fly
-			cg, err := callgraph.BuildCallGraph(cwd)
-			if err != nil {
-				return nil, nil, err
+			cg, errBuild := callgraph.BuildCallGraph(cwd)
+			if errBuild != nil {
+				return nil, nil, errBuild
 			}
-			report = cg.GenerateTreeReport(args.FunctionName, direction, depth)
+			report, err = cg.GenerateTreeReport(args.FunctionName, direction, depth)
+		}
+
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: fmt.Sprintf("Error: %v", err)},
+				},
+				IsError: true,
+			}, nil, nil
+		}
+
+		mcpReport := CallGraphMCPResponse{
+			SchemaDescription: CallGraphSchemaDescription,
+			TargetNode:        report.TargetNode,
+			Callers:           report.Callers,
+			Callees:           report.Callees,
+		}
+
+		jsonBytes, err := json.MarshalIndent(mcpReport, "", "  ")
+		if err != nil {
+			return nil, nil, err
 		}
 
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
-				&mcp.TextContent{Text: report},
+				&mcp.TextContent{Text: string(jsonBytes)},
 			},
 		}, nil, nil
 	})

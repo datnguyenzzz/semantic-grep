@@ -44,6 +44,7 @@ index:
 
 # Run tests and self-checks
 test:
+	go clean -testcache
 	@echo "Running package unit tests..."
 	CGO_ENABLED=1 go test ./... -v
 
