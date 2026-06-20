@@ -196,7 +196,10 @@ flowchart TD
 
 To evaluate the mathematical accuracy of our quantized TurboQuant local vector index compared to industry-standard Product Quantization (FAISS), we measure **Recall-1-@k**—the frequency with which the absolute true nearest neighbor (ground-truth unquantized top-1) is captured within the top-$k$ quantized results.
 
-*   **`results/recall_chart_d1536_4bit.png`** (OpenAI 1536 dimensions comparison)
-*   **`results/recall_chart_d3072_4bit.png`** (OpenAI 3072 dimensions comparison)
+*   OpenAI's dataset 1536 dimensions comparison
+![dim_1536](`results/recall_chart_d1536_4bit.png`)
+
+*   OpenAI's dataset 3072 dimensions comparison
+![dim_3072](`results/recall_chart_d3072_4bit.png`)
 
 These charts visually trace and compare **Recall accuracy ($Y$-axis)** across different **candidate thresholds $k$ ($X$-axis)**, proving that TurboQuant's 4-bit random orthogonal rotation achieves comparable or superior recall rates to standard Product Quantization while requiring **zero pre-training data or prebuilt codebooks**!
