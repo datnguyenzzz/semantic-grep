@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"agent-mem/internal/callgraph"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

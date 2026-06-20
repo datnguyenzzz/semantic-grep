@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-
-	"agent-mem/internal/turboquant"
 )
 
 type EmbedRequest struct {
@@ -26,29 +24,6 @@ type EmbedResponse struct {
 
 type EmbedData struct {
 	Embedding []float32 `json:"embedding"`
-}
-
-type ChatRequest struct {
-	Model          string          `json:"model"`
-	Messages       []ChatMessage   `json:"messages"`
-	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
-}
-
-type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type ResponseFormat struct {
-	Type string `json:"type"`
-}
-
-type ChatResponse struct {
-	Choices []ChatChoice `json:"choices"`
-}
-
-type ChatChoice struct {
-	Message ChatMessage `json:"message"`
 }
 
 func getBaseURL() string {
@@ -67,14 +42,6 @@ func getEmbeddingModel() string {
 	model := os.Getenv("LITELLM_EMBEDDING_MODEL")
 	if model == "" {
 		return "gemini-embedding-001"
-	}
-	return model
-}
-
-func getChatModel() string {
-	model := os.Getenv("LITELLM_CHAT_MODEL")
-	if model == "" {
-		return "gpt-5"
 	}
 	return model
 }
@@ -114,8 +81,18 @@ func doRequest(method, endpoint string, reqBody any, respDest any) error {
 	return json.NewDecoder(resp.Body).Decode(respDest)
 }
 
-func GetEmbedding(text string) ([]float32, error) {
-	dim := turboquant.DefaultDimension
+// DefaultClient is the default global ILLM instance (implementing LiteLLM)
+var DefaultClient ILLM = &LiteLLM{}
+
+// Package-level delegations to maintain 100% backward-compatibility with all existing callers
+func GetEmbedding(text string, dim int) ([]float32, error) {
+	return DefaultClient.GetEmbedding(text, dim)
+}
+
+// LiteLLM implements the ILLM interface using HTTP REST client calls
+type LiteLLM struct{}
+
+func (l *LiteLLM) GetEmbedding(text string, dim int) ([]float32, error) {
 	reqBody := EmbedRequest{
 		Model:      getEmbeddingModel(),
 		Input:      text,
@@ -132,25 +109,4 @@ func GetEmbedding(text string) ([]float32, error) {
 	}
 
 	return embedResp.Data[0].Embedding, nil
-}
-
-func GenerateJSON(prompt string) (string, error) {
-	reqBody := ChatRequest{
-		Model: getChatModel(),
-		Messages: []ChatMessage{
-			{Role: "user", Content: prompt},
-		},
-		ResponseFormat: &ResponseFormat{Type: "json_object"},
-	}
-
-	var chatResp ChatResponse
-	if err := doRequest("POST", "chat/completions", reqBody, &chatResp); err != nil {
-		return "", err
-	}
-
-	if len(chatResp.Choices) == 0 || chatResp.Choices[0].Message.Content == "" {
-		return "", fmt.Errorf("no text content returned by LiteLLM")
-	}
-
-	return chatResp.Choices[0].Message.Content, nil
 }

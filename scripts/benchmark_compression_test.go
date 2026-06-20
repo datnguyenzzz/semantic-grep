@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"agent-mem/internal/splitter"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/splitter"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 // targetExtensions checks if a file is indexable

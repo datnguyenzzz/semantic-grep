@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"agent-mem/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/callgraph"
 )
 
 func TestDBCallGraphPersistence(t *testing.T) {

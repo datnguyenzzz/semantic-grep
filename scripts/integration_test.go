@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"agent-mem/internal/callgraph"
-	"agent-mem/internal/db"
-	"agent-mem/internal/llm"
-	"agent-mem/internal/merkle"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	"github.com/datnguyenzzz/agent-context/internal/merkle"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 func TestEndToEndIndexerIntegration(t *testing.T) {
@@ -216,12 +216,12 @@ func TestMultiCodebaseIntegration(t *testing.T) {
 		t.Errorf("expected 2 indexed codebases in portfolio, got %d", len(codebases))
 	}
 
-	mockEmbed1, err := llm.GetEmbedding("func Main")
+	mockEmbed1, err := llm.GetEmbedding("func Main", turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to get real embedding: %v", err)
 	}
 
-	mockEmbed2, err := llm.GetEmbedding("port: 8080")
+	mockEmbed2, err := llm.GetEmbedding("port: 8080", turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to get real embedding: %v", err)
 	}
@@ -357,7 +357,7 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 
 	// 4. Perform Search for Math exact content
 	mathQuery := "computes the sum of two integers"
-	mathEmbed, err := llm.GetEmbedding(mathQuery)
+	mathEmbed, err := llm.GetEmbedding(mathQuery, turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to get embedding for math query: %v", err)
 	}
@@ -381,7 +381,7 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 
 	// 5. Perform Search for Network exact content
 	networkQuery := "opens a TCP connection to the server"
-	networkEmbed, err := llm.GetEmbedding(networkQuery)
+	networkEmbed, err := llm.GetEmbedding(networkQuery, turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to get embedding for network query: %v", err)
 	}

@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"agent-mem/internal/callgraph"
-	"agent-mem/internal/db"
-	"agent-mem/internal/llm"
-	"agent-mem/internal/merkle"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	"github.com/datnguyenzzz/agent-context/internal/merkle"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -81,39 +81,66 @@ func startPeriodicIndexUpdate(index *turboquant.Index) {
 	}
 	ticker := time.NewTicker(syncInterval)
 	go func() {
+		// 1. Run an immediate initial indexing sweep on startup
+		runIndexSweep(index, true)
+
+		// 2. Fall into periodic background update ticks
 		for range ticker.C {
-			codebases, err := db.ListCodebases()
-			if err != nil {
-				continue
-			}
-			updated := false
-			for _, c := range codebases {
-				added, modified, deleted, err := merkle.UpdateIndex(c.CWD, index)
-				if err == nil && (added > 0 || modified > 0 || deleted > 0) {
-					updated = true
-				}
-			}
-			if updated {
-				log.Printf("Background codebase updates detected, compacting and saving TurboQuant index to disk...")
-				activeIDs := make(map[string]bool)
-				dbConn, err := db.Open()
-				if err == nil {
-					rows, err := dbConn.Query("SELECT id FROM gemini_memories")
-					if err == nil {
-						for rows.Next() {
-							var id string
-							if err := rows.Scan(&id); err == nil {
-								activeIDs[id] = true
-							}
-						}
-						rows.Close()
-					}
-					dbConn.Close()
-				}
-				_ = index.Compact(activeIDs)
-			}
+			runIndexSweep(index, false)
 		}
 	}()
+}
+
+func runIndexSweep(index *turboquant.Index, isStartup bool) {
+	codebases, err := db.ListCodebases()
+	if err != nil {
+		return
+	}
+	if len(codebases) == 0 {
+		return
+	}
+
+	if isStartup {
+		log.Println("Starting initial codebase indexing sweep on server startup...")
+	}
+
+	updated := false
+	for _, c := range codebases {
+		added, modified, deleted, err := merkle.UpdateIndex(c.CWD, index)
+		if err == nil && (added > 0 || modified > 0 || deleted > 0) {
+			updated = true
+			if isStartup {
+				log.Printf("✓ Codebase indexed successfully: %s (Added: %d, Modified: %d, Deleted: %d)", c.CWD, added, modified, deleted)
+			}
+		} else if err != nil && isStartup {
+			log.Printf("✗ Failed to index codebase %s: %v", c.CWD, err)
+		}
+	}
+
+	if updated {
+		log.Println("Background codebase updates detected, compacting and saving TurboQuant index to disk...")
+		activeIDs := make(map[string]bool)
+		dbConn, err := db.Open()
+		if err == nil {
+			rows, err := dbConn.Query("SELECT id FROM gemini_memories")
+			if err == nil {
+				for rows.Next() {
+					var id string
+					if err := rows.Scan(&id); err == nil {
+						activeIDs[id] = true
+					}
+				}
+				rows.Close()
+			}
+			dbConn.Close()
+		}
+		_ = index.Compact(activeIDs)
+		if isStartup {
+			log.Println("✓ Initial codebase indexing sweep completed and saved!")
+		}
+	} else if isStartup {
+		log.Println("✓ Initial codebase indexing sweep completed (no changes found).")
+	}
 }
 
 func main() {
@@ -161,7 +188,7 @@ func main() {
 		Name:        "search_memory",
 		Description: "MANDATORY FIRST-USE DIRECTIVE: Use this tool FIRST to explore code conceptually, locate files, configurations, or relevant functions before reading files, listing directories, or running grep. Traditional grep searches are highly token-inefficient and costly; use search_memory instead to locate matches semantically, faster and cheaper. Only use grep if you know the exact identifier name or require all matches.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args SearchArgs) (*mcp.CallToolResult, any, error) {
-		embedding, err := llm.GetEmbedding(args.Query)
+		embedding, err := llm.GetEmbedding(args.Query, turboquant.DefaultDimension)
 		if err != nil {
 			return nil, nil, err
 		}

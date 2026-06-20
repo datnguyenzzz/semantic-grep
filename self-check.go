@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"agent-mem/internal/db"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 func main() {

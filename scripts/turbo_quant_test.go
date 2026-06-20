@@ -3,8 +3,6 @@
 package scripts
 
 import (
-	"agent-mem/internal/llm"
-	"agent-mem/internal/turboquant"
 	"bytes"
 	"compress/gzip"
 	"compress/zlib"
@@ -14,6 +12,9 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 func Test_TurboQuant(t *testing.T) {

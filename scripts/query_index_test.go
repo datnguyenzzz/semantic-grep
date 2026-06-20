@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"agent-mem/internal/db"
-	"agent-mem/internal/llm"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 func Test_QueryIndex(t *testing.T) {
@@ -45,7 +45,7 @@ func Test_QueryIndex(t *testing.T) {
 	t.Logf("Executing query: %s", query)
 
 	// 3. Fetch Query Embedding via LiteLLM
-	embedding, err := llm.GetEmbedding(query)
+	embedding, err := llm.GetEmbedding(query, turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to get embedding: %v", err)
 	}

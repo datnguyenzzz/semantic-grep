@@ -14,11 +14,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"agent-mem/internal/callgraph"
-	"agent-mem/internal/db"
-	"agent-mem/internal/llm"
-	"agent-mem/internal/splitter"
-	"agent-mem/internal/turboquant"
+	"github.com/datnguyenzzz/agent-context/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	"github.com/datnguyenzzz/agent-context/internal/splitter"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 
 	"github.com/google/uuid"
 )
@@ -338,7 +338,7 @@ func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error)
 					wg.Done()
 				}()
 
-				embedding, err := llm.GetEmbedding(j.formattedContent)
+				embedding, err := llm.GetEmbedding(j.formattedContent, turboquant.DefaultDimension)
 				results[idx] = IndexResult{
 					relPath:          j.relPath,
 					startLine:        j.startLine,
