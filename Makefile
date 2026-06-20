@@ -83,6 +83,10 @@ test-compression-rate:
 	@echo "Running TurboQuant compression rate ..."
 	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=6000s -run=Test_compression_rate -v
 
+test-recall:
+	@echo "Running TurboQuant recall bench ..."
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=6000s -run=Test_Recall_TurboQuant -v
+
 # Clean compiled binaries
 clean:
 	@echo "Cleaning up dist/ directory..."

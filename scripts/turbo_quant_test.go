@@ -108,7 +108,7 @@ func Test_TurboQuant(t *testing.T) {
 
 		for _, txt := range sampleTexts {
 			fmt.Printf("  • Text: \"%s\"\n", txt)
-			embedding, err := llm.GetEmbedding(txt)
+			embedding, err := llm.GetEmbedding(txt, turboquant.DefaultDimension)
 			if err != nil {
 				fmt.Printf("    ERROR generating embedding: %v\n\n", err)
 				continue

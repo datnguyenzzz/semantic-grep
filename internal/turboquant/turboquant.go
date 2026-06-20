@@ -12,7 +12,7 @@ import (
 
 // Default configurations for the TurboQuant vector quantization with environment overrides
 var (
-	DefaultDimension = intEnv("TURBOQUANT_DIMENSION", 3072)
+	DefaultDimension = intEnv("TURBOQUANT_DIMENSION", 1536)
 	DefaultBitWidth  = intEnv("TURBOQUANT_BIT_WIDTH", 4)
 	DefaultSeed      = int64(intEnv("TURBOQUANT_SEED", 42))
 )
