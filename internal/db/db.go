@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/datnguyenzzz/agent-context/internal/callgraph"
@@ -26,6 +27,8 @@ type Memory struct {
 	Similarity float64   `json:"similarity,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 }
+
+const CandidateMultiplier = 3
 
 // normalizeVectorTo3072 ensures that every vector is exactly target dimensions by slicing or padding
 func normalizeVectorTo3072(vec []float32) []float32 {
@@ -113,6 +116,9 @@ func Open() (*sql.DB, error) {
 }
 
 func InitDatabase() error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return err
@@ -214,7 +220,95 @@ func tokenize(content string) []string {
 	return tokens
 }
 
+var (
+	AsyncSaveWG sync.WaitGroup
+	dbLock      sync.Mutex
+)
+
+type MemoryBatchItem struct {
+	ID           string
+	Content      string // metadataHeader
+	CWD          string
+	Embedding    []float32
+	ChunkContent string
+}
+
+func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	db, err := Open()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	if index == nil {
+		return fmt.Errorf("turboquant index cannot be nil")
+	}
+
+	// Start a single, robust ACID transaction to write all data in milliseconds
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmtMemory, err := tx.Prepare(`
+		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
+		VALUES ($1, $2, 'project', $3)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmtMemory.Close()
+
+	stmtSymbol, err := tx.Prepare(`
+		INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
+		VALUES ($1, $2, $3)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmtSymbol.Close()
+
+	for _, item := range items {
+		// 1. Save metadata
+		_, err = stmtMemory.Exec(item.ID, item.Content, item.CWD)
+		if err != nil {
+			return err
+		}
+
+		// 2. Tokenize and save symbol frequencies
+		tokens := tokenize(item.ChunkContent)
+		freq := make(map[string]int)
+		for _, t := range tokens {
+			freq[t]++
+		}
+
+		for token, count := range freq {
+			_, err = stmtSymbol.Exec(item.ID, token, count)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 3. Add to TurboQuant index in-memory
+		normalized := normalizeVectorTo3072(item.Embedding)
+		_ = index.Add(item.ID, normalized)
+	}
+
+	return tx.Commit()
+}
+
 func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index, chunkContent string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return err
@@ -257,92 +351,100 @@ func SaveMemory(id, content, category, cwd string, embedding []float32, index *t
 	return index.Add(id, embedding)
 }
 
-func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
-	if cwd != "" {
-		// Try to find if cwd is inside any indexed codebase (parent path resolution)
-		codebases, err := ListCodebases()
-		if err == nil {
-			var bestMatch string
-			for _, cb := range codebases {
-				if cwd == cb.CWD || strings.HasPrefix(cwd, cb.CWD+string(filepath.Separator)) {
-					if len(cb.CWD) > len(bestMatch) {
-						bestMatch = cb.CWD
-					}
-				}
-			}
-			if bestMatch != "" {
-				cwd = bestMatch
+type candidateRRF struct {
+	id       string
+	rrfScore float64
+}
+
+type scoredMemory struct {
+	m     Memory
+	score float64
+}
+
+func queryParentCodebaseCWD(cwd string) string {
+	if cwd == "" {
+		return ""
+	}
+	codebases, err := ListCodebases()
+	if err != nil {
+		return cwd
+	}
+	var bestMatch string
+	for _, cb := range codebases {
+		if cwd == cb.CWD || strings.HasPrefix(cwd, cb.CWD+string(filepath.Separator)) {
+			if len(cb.CWD) > len(bestMatch) {
+				bestMatch = cb.CWD
 			}
 		}
 	}
-
-	if index == nil {
-		return nil, fmt.Errorf("turboquant index cannot be nil")
+	if bestMatch != "" {
+		return bestMatch
 	}
+	return cwd
+}
 
-	// 1. Parse and tokenize query text
-	qTokens := tokenize(queryText)
-
-	// 2. Dense Semantic Search: score vectors (retrieve top candidates)
+func searchSemanticDense(queryEmbedding []float32, limit int, index *turboquant.Index) ([]turboquant.SearchResult, error) {
 	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
-	semResults, err := index.Search(queryEmbedding, nil, limit*3)
-	if err != nil {
-		return nil, err
-	}
+	return index.Search(queryEmbedding, nil, limit)
+}
 
-	// 3. Sparse Lexical Search: query matching symbol frequencies
+func searchLexicalSparse(qTokens []string, limit int) (map[string]float64, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	lexMap := make(map[string]float64) // memory_id -> score (0.0 to 1.0)
-	if len(qTokens) > 0 {
-		placeholders := make([]string, len(qTokens))
-		args := make([]any, len(qTokens))
-		for i, tok := range qTokens {
-			placeholders[i] = fmt.Sprintf("$%d", i+1)
-			args[i] = tok
-		}
-		querySql := fmt.Sprintf(`
-			SELECT memory_id, SUM(count) as match_count
-			FROM gemini_symbols
-			WHERE token IN (%s)
-			GROUP BY memory_id
-			ORDER BY match_count DESC
-			LIMIT 50
-		`, strings.Join(placeholders, ", "))
+	lexMap := make(map[string]float64)
+	placeholders := make([]string, len(qTokens))
+	args := make([]any, len(qTokens))
+	for i, tok := range qTokens {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = tok
+	}
+	querySql := fmt.Sprintf(`
+		SELECT memory_id, SUM(count) as match_count
+		FROM gemini_symbols
+		WHERE token IN (%s)
+		GROUP BY memory_id
+		ORDER BY match_count DESC
+		LIMIT %d
+	`, strings.Join(placeholders, ", "), limit)
 
-		rows, err := db.Query(querySql, args...)
-		if err == nil {
-			defer rows.Close()
-			maxCount := 1.0
-			type lexMatch struct {
-				id    string
-				count int
-			}
-			var matches []lexMatch
-			for rows.Next() {
-				var m lexMatch
-				if err := rows.Scan(&m.id, &m.count); err == nil {
-					matches = append(matches, m)
-					if float64(m.count) > maxCount {
-						maxCount = float64(m.count)
-					}
-				}
-			}
-			for _, m := range matches {
-				lexMap[m.id] = float64(m.count) / maxCount
+	rows, err := db.Query(querySql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	type lexMatch struct {
+		id    string
+		count int
+	}
+	var matches []lexMatch
+	maxCount := 1.0
+
+	for rows.Next() {
+		var m lexMatch
+		if err := rows.Scan(&m.id, &m.count); err == nil {
+			matches = append(matches, m)
+			if float64(m.count) > maxCount {
+				maxCount = float64(m.count)
 			}
 		}
 	}
 
-	if len(semResults) == 0 && len(lexMap) == 0 {
-		return nil, nil
+	for _, m := range matches {
+		lexMap[m.id] = float64(m.count) / maxCount
 	}
 
-	// 4. Reciprocal Rank Fusion (RRF) to merge Dense and Sparse rankings
+	return lexMap, nil
+}
+
+func computeRRF(semResults []turboquant.SearchResult, lexMap map[string]float64, limit int) []candidateRRF {
 	allCandIDs := make(map[string]bool)
 	semRank := make(map[string]int)
 	for i, res := range semResults {
@@ -369,10 +471,6 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 	}
 
 	const k = 60.0
-	type candidateRRF struct {
-		id       string
-		rrfScore float64
-	}
 	var fused []candidateRRF
 	for id := range allCandIDs {
 		score := 0.0
@@ -389,65 +487,76 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 		return fused[i].rrfScore > fused[j].rrfScore
 	})
 
-	// Take top candidates for scoped local grep re-ranking
-	topCandidates := fused
-	if len(topCandidates) > limit*3 {
-		topCandidates = topCandidates[:limit*3]
+	if len(fused) > limit {
+		return fused[:limit]
+	}
+	return fused
+}
+
+func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, error) {
+	if len(candidates) == 0 {
+		return nil, nil
 	}
 
-	// 5. Query Metadata for top candidates and read raw code on the fly
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	db, err := Open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	placeholders := make([]string, len(candidates))
+	queryArgs := make([]any, len(candidates))
+	for i, cand := range candidates {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		queryArgs[i] = cand.id
+	}
+
+	query := fmt.Sprintf(`
+		SELECT id, content, category, cwd, created_at
+		FROM gemini_memories
+		WHERE id IN (%s)
+	`, strings.Join(placeholders, ", "))
+
+	if cwd != "" {
+		query += fmt.Sprintf(" AND cwd = $%d", len(queryArgs)+1)
+		queryArgs = append(queryArgs, cwd)
+	}
+
+	rows, err := db.Query(query, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	var memories []Memory
-	if len(topCandidates) > 0 {
-		placeholders := make([]string, len(topCandidates))
-		queryArgs := make([]any, len(topCandidates))
-		for i, cand := range topCandidates {
-			placeholders[i] = fmt.Sprintf("$%d", i+1)
-			queryArgs[i] = cand.id
-		}
-
-		query := fmt.Sprintf(`
-			SELECT id, content, category, cwd, created_at
-			FROM gemini_memories
-			WHERE id IN (%s)
-		`, strings.Join(placeholders, ", "))
-
-		if cwd != "" {
-			query += fmt.Sprintf(" AND cwd = $%d", len(queryArgs)+1)
-			queryArgs = append(queryArgs, cwd)
-		}
-
-		rows, err := db.Query(query, queryArgs...)
+	for rows.Next() {
+		var m Memory
+		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
 		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var m Memory
-				err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
-				if err == nil {
-					if m.Category == "project" {
-						if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
-							code, err := readCodeLines(m.CWD, relPath, start, end)
-							if err == nil && code != "" {
-								m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
-							}
-						}
+			if m.Category == "project" {
+				if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
+					code, err := readCodeLines(m.CWD, relPath, start, end)
+					if err == nil && code != "" {
+						m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
 					}
-					memories = append(memories, m)
 				}
 			}
+			memories = append(memories, m)
 		}
 	}
+	return memories, nil
+}
 
-	// 6. On-the-Fly Scoped Local Grep Re-ranking (exact match boosting)
-	type scoredMemory struct {
-		m     Memory
-		score float64
-	}
+func applyGrepReRanking(memories []Memory, candidates []candidateRRF, queryText string, limit int) []Memory {
 	var scored []scoredMemory
 	lowerQuery := strings.ToLower(queryText)
 
 	for _, m := range memories {
 		rrf := 0.0
-		for _, cand := range topCandidates {
+		for _, cand := range candidates {
 			if cand.id == m.ID {
 				rrf = cand.rrfScore
 				break
@@ -479,11 +588,72 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 		finalResults = append(finalResults, scored[i].m)
 	}
 
-	return finalResults, nil
+	return finalResults
+}
+
+func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
+	cwd = queryParentCodebaseCWD(cwd)
+
+	if index == nil {
+		return nil, fmt.Errorf("turboquant index cannot be nil")
+	}
+
+	qTokens := tokenize(queryText)
+
+	// Concurrently query Dense Semantic path and Sparse Lexical path in parallel!
+	var semResults []turboquant.SearchResult
+	var semErr error
+	lexMap := make(map[string]float64)
+	var lexErr error
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	candidateLimit := min(100, limit*CandidateMultiplier)
+
+	go func() {
+		defer wg.Done()
+		semResults, semErr = searchSemanticDense(queryEmbedding, candidateLimit, index)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if len(qTokens) > 0 {
+			lexMap, lexErr = searchLexicalSparse(qTokens, candidateLimit)
+		}
+	}()
+
+	wg.Wait()
+
+	if semErr != nil {
+		return nil, fmt.Errorf("dense semantic path failed: %w", semErr)
+	}
+	if lexErr != nil {
+		return nil, fmt.Errorf("sparse lexical path failed: %w", lexErr)
+	}
+
+	if len(semResults) == 0 && len(lexMap) == 0 {
+		return nil, nil
+	}
+
+	// Reciprocal Rank Fusion (RRF) to mathematically merge Dense and Sparse rankings
+	topCandidates := computeRRF(semResults, lexMap, candidateLimit)
+
+	// Fetch memories metadata and on-the-fly read code from local disk
+	memories, err := fetchMemoriesMetadata(topCandidates, cwd)
+	if err != nil {
+		return nil, err
+	}
+
+	// On-the-Fly Scoped Local Grep Re-ranking (exact match boosting)
+	return applyGrepReRanking(memories, topCandidates, queryText, limit), nil
 }
 
 // SaveMerkleTree stores the serialized Merkle Tree state for a codebase
 func SaveMerkleTree(cwd, rootHash, treeJSON string) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return err
@@ -500,6 +670,9 @@ func SaveMerkleTree(cwd, rootHash, treeJSON string) error {
 
 // LoadMerkleTree retrieves the previously saved Merkle Tree root hash and JSON for a codebase
 func LoadMerkleTree(cwd string) (string, string, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return "", "", err
@@ -519,6 +692,9 @@ func LoadMerkleTree(cwd string) (string, string, error) {
 
 // DeleteFileMemories deletes the existing chunk memories of a specific codebase file
 func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return err
@@ -577,6 +753,9 @@ type Codebase struct {
 
 // ListCodebases returns all indexed codebases ordered by modification time
 func ListCodebases() ([]Codebase, error) {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
 	db, err := Open()
 	if err != nil {
 		return nil, err

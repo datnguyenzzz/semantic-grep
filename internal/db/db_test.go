@@ -2,9 +2,11 @@ package db
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/datnguyenzzz/agent-context/internal/callgraph"
@@ -309,6 +311,170 @@ func Test_HybridSearch(t *testing.T) {
 	bestResult := results[0]
 	if !strings.Contains(bestResult.Content, "ProcessPayment") {
 		t.Errorf("expected best match to be ProcessPayment memory, got: %s", bestResult.Content)
+	}
+}
+
+func Test_Tokenize(t *testing.T) {
+	text := "func Calculate_Fibonacci(val int) { return val_result; }"
+	tokens := tokenize(text)
+
+	expected := map[string]bool{
+		"func":               true,
+		"calculate_fibonacci": true,
+		"val":                true,
+		"int":                true,
+		"return":             true,
+		"val_result":         true,
+	}
+
+	for _, tok := range tokens {
+		if !expected[tok] {
+			t.Errorf("unexpected token generated: %s", tok)
+		}
+	}
+
+	if len(tokens) < 6 {
+		t.Errorf("expected at least 6 tokens, got %d", len(tokens))
+	}
+}
+
+func Test_ComputeRRF(t *testing.T) {
+	// 1. Mock dense semantic results
+	semResults := []turboquant.SearchResult{
+		{ID: "doc-A", Similarity: 0.9},
+		{ID: "doc-B", Similarity: 0.8},
+	}
+
+	// 2. Mock sparse lexical matches
+	lexMap := map[string]float64{
+		"doc-B": 1.0,
+		"doc-C": 0.5,
+	}
+
+	// 3. Compute RRF
+	fused := computeRRF(semResults, lexMap, 5)
+
+	if len(fused) == 0 {
+		t.Fatalf("expected fused results, got 0")
+	}
+
+	// doc-B is rank 2 in semantic and rank 1 in lexical. It should have the highest RRF score!
+	if fused[0].id != "doc-B" {
+		t.Errorf("expected doc-B to be ranked first after RRF fusion, got: %s", fused[0].id)
+	}
+}
+
+func Test_GrepReRanking(t *testing.T) {
+	memories := []Memory{
+		{ID: "doc-1", Content: "func ProcessPayment() { println(\"credit card\") }", Category: "project"},
+		{ID: "doc-2", Content: "func SendNotification() { println(\"email alert\") }", Category: "project"},
+	}
+
+	candidates := []candidateRRF{
+		{id: "doc-1", rrfScore: 0.05},
+		{id: "doc-2", rrfScore: 0.05},
+	}
+
+	// If we grep for "ProcessPayment", doc-1 should get boosted and ranked first!
+	reRanked := applyGrepReRanking(memories, candidates, "ProcessPayment", 5)
+
+	if len(reRanked) < 2 {
+		t.Fatalf("expected 2 reranked results, got: %d", len(reRanked))
+	}
+
+	if reRanked[0].ID != "doc-1" {
+		t.Errorf("expected doc-1 to be boosted to first place by grep match, got: %s", reRanked[0].ID)
+	}
+
+	// Verify that the boosted doc-1 score has been multiplied by 1.5
+	if reRanked[0].Similarity <= 0.05 {
+		t.Errorf("expected boosted similarity score to be greater than 0.05, got %f", reRanked[0].Similarity)
+	}
+}
+
+func Test_IndexerConcurrencySafety(t *testing.T) {
+	// Set target dimension to 16 for test execution
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() {
+		turboquant.DefaultDimension = originalDim
+	}()
+
+	// 1. Setup temporary home
+	tmpDir, err := os.MkdirTemp("", "db-concurrency-test-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 2. Setup mock TQ index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "test_concurrency.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 3. Launch 10 concurrent goroutines executing batch saves and searches in parallel on the same index!
+	var wg sync.WaitGroup
+	workers := 10
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			// Prepare batch items
+			items := []MemoryBatchItem{
+				{
+					ID:           fmt.Sprintf("mem-%d-1", workerID),
+					Content:      fmt.Sprintf("File: file_%d.go (Lines: 1-5)", workerID),
+					CWD:          tmpDir,
+					Embedding:    make([]float32, 16),
+					ChunkContent: "func ProcessPayment() { println(\"test\") }",
+				},
+				{
+					ID:           fmt.Sprintf("mem-%d-2", workerID),
+					Content:      fmt.Sprintf("File: file_%d.go (Lines: 10-15)", workerID),
+					CWD:          tmpDir,
+					Embedding:    make([]float32, 16),
+					ChunkContent: "func SendNotification() { println(\"email\") }",
+				},
+			}
+
+			// Save batch (writes to DuckDB and modifies TurboQuant index map)
+			_ = SaveMemoriesBatch(items, index)
+
+			// Query the index concurrently
+			_, _ = SearchMemories("ProcessPayment", make([]float32, 16), tmpDir, 5, index)
+		}(i)
+	}
+
+	// Wait for all concurrent workers to complete
+	wg.Wait()
+
+	// Wait for any background async saves to complete cleanly
+	AsyncSaveWG.Wait()
+
+	// 4. Verify that we have saved exactly workers * 2 memories successfully
+	memories, err := SearchMemories("ProcessPayment", make([]float32, 16), tmpDir, workers*2, index)
+	if err != nil {
+		t.Fatalf("failed to query: %v", err)
+	}
+
+	if len(memories) < workers {
+		t.Errorf("expected at least %d memory results, got %d", workers, len(memories))
 	}
 }
 

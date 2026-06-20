@@ -170,7 +170,9 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		sig := <-sigChan
-		log.Printf("Received signal %v, saving TurboQuant index to disk...", sig)
+		log.Printf("Received signal %v, waiting for background saves to complete...", sig)
+		db.AsyncSaveWG.Wait()
+		log.Printf("Saving TurboQuant index to disk...")
 		if err := index.Save(); err != nil {
 			log.Printf("Error saving TurboQuant index: %v", err)
 		} else {

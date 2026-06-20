@@ -1,9 +1,17 @@
 package merkle
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+
+	"github.com/datnguyenzzz/agent-context/internal/db"
+	"github.com/datnguyenzzz/agent-context/internal/llm"
+	mockllm "github.com/datnguyenzzz/agent-context/internal/llm/mocks"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestMerkleHashingAndDiffing(t *testing.T) {
@@ -140,5 +148,92 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 	added, modified, deleted = DiffTrees(tree4, tree5)
 	if len(added) != 1 || len(modified) != 0 || len(deleted) != 0 || added[0] != "config.yaml" {
 		t.Errorf("expected config.yaml to be added, got: added=%v, modified=%v, deleted=%v", added, modified, deleted)
+	}
+}
+
+func Test_UpdateIndexConcurrency(t *testing.T) {
+	// Set target dimension to 16 for test execution
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() {
+		turboquant.DefaultDimension = originalDim
+	}()
+
+	// 1. Setup temporary home
+	tmpDir, err := os.MkdirTemp("", "merkle-concurrency-test-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 2. Setup mock TQ index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "test_merkle_concurrency.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 3. Register MockILLM
+	mockLLM := mockllm.NewMockILLM(t)
+	mockLLM.On("GetEmbedding", mock.Anything, mock.Anything).Return(func(text string, dim int) []float32 {
+		mockVec := make([]float32, dim)
+		mockVec[0] = 1.0
+		return mockVec
+	}, nil)
+
+	llm.DefaultClient = mockLLM
+	defer func() {
+		llm.DefaultClient = &llm.LiteLLM{}
+	}()
+
+	// 4. Create multiple concurrent workspaces on disk
+	workers := 5
+	var wg sync.WaitGroup
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			// Create workspace and a go file inside
+			workspaceDir := filepath.Join(tmpDir, fmt.Sprintf("workspace-%d", workerID))
+			_ = os.MkdirAll(workspaceDir, 0755)
+			fileGo := filepath.Join(workspaceDir, "main.go")
+			_ = os.WriteFile(fileGo, []byte(fmt.Sprintf("package main\n\nfunc main() {\n\tprintln(\"Hello worker %d!\")\n}", workerID)), 0644)
+
+			// Save codebase CWD in database
+			_ = db.SaveMerkleTree(workspaceDir, "initial_hash", "{}")
+
+			// Run concurrent incremental index sweeps
+			_, _, _, _ = UpdateIndex(workspaceDir, index)
+		}(i)
+	}
+
+	// Wait for all concurrent index sweeps to return
+	wg.Wait()
+
+	// Wait for any background async transaction database writes to complete successfully
+	db.AsyncSaveWG.Wait()
+
+	// 5. Query matching memories globally to verify they were saved cleanly without race conditions!
+	results, err := db.SearchMemories("Hello worker", make([]float32, 16), "", workers*2, index)
+	if err != nil {
+		t.Fatalf("failed to query memories: %v", err)
+	}
+
+	if len(results) < workers {
+		t.Errorf("expected at least %d memory results, got %d", workers, len(results))
 	}
 }

@@ -157,13 +157,13 @@ flowchart TD
    Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `agent-mem` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
 
 4. **Multi-Retrieval Hybrid Search with RRF and Grep Boosting:**
-   To guarantee both deep semantic intent understanding and exact variable/symbol matches, `agent-mem` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** (an inverted index in **[DuckDB](https://github.com/duckdb/duckdb)** populated incrementally during sweeps) using **R[eciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. It then triggers an on-the-fly grep on the top candidate files (taking $<3\text{ms}$), applying a **robust 1.5x score boost** to candidates containing exact string-matches on disk—perfectly combining conceptual search and exact keyword matching without storing any raw code.
+   To guarantee both deep semantic intent understanding and exact variable/symbol matches, `agent-mem` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** (an inverted index in **[DuckDB](https://github.com/duckdb/duckdb)** populated incrementally during sweeps) using **[Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. It then triggers an on-the-fly grep on the top candidate files (taking $<3\text{ms}$), applying a **robust 1.5x score boost** to candidates containing exact string-matches on disk—perfectly combining conceptual search and exact keyword matching without storing any raw code.
 
 ---
 
 ## 📊 TurboQuant Vector Compression Benchmark
 
-> See [detailed](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_compression_test.go) 
+> See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_compression_test.go) 
 
 ```
 ================================================================================

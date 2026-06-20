@@ -75,6 +75,9 @@ func main() {
 		log.Fatalf("  Error details: %v", err)
 	}
 
+	// Wait for all background database writes to complete successfully
+	db.AsyncSaveWG.Wait()
+
 	// Persist the shared index changes back to the .tqv storage file before exiting
 	if err := index.Save(); err != nil {
 		log.Fatalf("Failed to save TurboQuant index to disk: %v", err)

@@ -217,39 +217,41 @@ func collectFiles(node *MerkleNode) []string {
 	return files
 }
 
-// UpdateIndex implements the Merkle-tree based incremental indexing
-func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error) {
-	if err := db.InitDatabase(); err != nil {
-		return 0, 0, 0, fmt.Errorf("database init failed: %w", err)
-	}
+type IndexJob struct {
+	relPath          string
+	startLine        int
+	endLine          int
+	formattedContent string
+}
 
-	// 1. Build the new Merkle tree from local codebase state
-	newTree, err := BuildMerkleTree(absPath, "")
-	if err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to build local Merkle tree: %w", err)
-	}
+type IndexResult struct {
+	relPath          string
+	startLine        int
+	endLine          int
+	formattedContent string
+	embedding        []float32
+	err              error
+}
 
-	// If no indexable files found, clean up and exit
-	if newTree == nil {
-		// Retrieve previous tree to purge if it existed
-		prevRoot, prevJSON, err := db.LoadMerkleTree(absPath)
-		if err == nil && prevRoot != "" {
-			var prevTree MerkleNode
-			if json.Unmarshal([]byte(prevJSON), &prevTree) == nil {
-				deleted := collectFiles(&prevTree)
-				for _, path := range deleted {
-					_ = db.DeleteFileMemories(absPath, path, index)
-				}
+func purgePreviousTreeIfEmpty(absPath string, index *turboquant.Index) error {
+	prevRoot, prevJSON, err := db.LoadMerkleTree(absPath)
+	if err == nil && prevRoot != "" {
+		var prevTree MerkleNode
+		if json.Unmarshal([]byte(prevJSON), &prevTree) == nil {
+			deleted := collectFiles(&prevTree)
+			for _, path := range deleted {
+				_ = db.DeleteFileMemories(absPath, path, index)
 			}
-			_ = db.SaveMerkleTree(absPath, "", "{}")
 		}
-		return 0, 0, 0, nil
+		_ = db.SaveMerkleTree(absPath, "", "{}")
 	}
+	return nil
+}
 
-	// 2. Load the previously stored Merkle tree
+func loadPreviousTree(absPath string) (*MerkleNode, error) {
 	prevRoot, prevJSON, err := db.LoadMerkleTree(absPath)
 	if err != nil {
-		return 0, 0, 0, fmt.Errorf("failed to load previous Merkle tree: %w", err)
+		return nil, err
 	}
 
 	var prevTree *MerkleNode
@@ -259,48 +261,22 @@ func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error)
 			prevTree = &pt
 		}
 	}
+	return prevTree, nil
+}
 
-	// 3. Diff trees
-	added, modified, deleted := DiffTrees(prevTree, newTree)
-
-	// 4. Delete stale memories of removed files
-	for _, relPath := range deleted {
-		fmt.Printf("✗ Removing stale memories for deleted file: %s\n", relPath)
+func purgeStaleMemories(absPath string, relPaths []string, index *turboquant.Index, action string) {
+	for _, relPath := range relPaths {
+		fmt.Printf("✗ %s stale memories for %s file: %s\n", action, strings.ToLower(action), relPath)
 		if err := db.DeleteFileMemories(absPath, relPath, index); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for deleted file %s: %v\n", relPath, err)
+			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for %s file %s: %v\n", strings.ToLower(action), relPath, err)
 		}
 		_ = db.DeleteCallGraph(relPath)
 	}
+}
 
-	// 5. Delete stale memories of modified files
-	for _, relPath := range modified {
-		fmt.Printf("⚙ Purging stale memories for modified file: %s\n", relPath)
-		if err := db.DeleteFileMemories(absPath, relPath, index); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for modified file %s: %v\n", relPath, err)
-		}
-		_ = db.DeleteCallGraph(relPath)
-	}
-
-	// 6. Index added and modified files concurrently
-	filesToProcess := append(added, modified...)
-	type IndexJob struct {
-		relPath          string
-		startLine        int
-		endLine          int
-		formattedContent string
-	}
-
-	type IndexResult struct {
-		relPath          string
-		startLine        int
-		endLine          int
-		formattedContent string
-		embedding        []float32
-		err              error
-	}
-
+func prepareIndexerJobs(absPath string, files []string) []IndexJob {
 	var jobs []IndexJob
-	for _, relPath := range filesToProcess {
+	for _, relPath := range files {
 		fullPath := filepath.Join(absPath, relPath)
 		chunks, err := splitter.SplitFile(fullPath)
 		if err != nil {
@@ -318,75 +294,135 @@ func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error)
 			})
 		}
 	}
+	return jobs
+}
 
-	if len(jobs) > 0 {
-		fmt.Printf("⚙ Generating embeddings concurrently for %d AST chunks...\n", len(jobs))
+func generateEmbeddings(jobs []IndexJob) []IndexResult {
+	results := make([]IndexResult, len(jobs))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 16) // Limit to 16 concurrent LiteLLM requests
 
-		results := make([]IndexResult, len(jobs))
-		var wg sync.WaitGroup
-		sem := make(chan struct{}, 16) // Limit to 16 concurrent LiteLLM requests
+	var completed int32
+	total := len(jobs)
 
-		var completed int32
-		total := len(jobs)
+	for i, job := range jobs {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int, j IndexJob) {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
 
-		for i, job := range jobs {
-			wg.Add(1)
-			sem <- struct{}{}
-			go func(idx int, j IndexJob) {
-				defer func() {
-					<-sem
-					wg.Done()
-				}()
-
-				embedding, err := llm.GetEmbedding(j.formattedContent, turboquant.DefaultDimension)
-				results[idx] = IndexResult{
-					relPath:          j.relPath,
-					startLine:        j.startLine,
-					endLine:          j.endLine,
-					formattedContent: j.formattedContent,
-					embedding:        embedding,
-					err:              err,
-				}
-
-				done := atomic.AddInt32(&completed, 1)
-				// ponytail: print carriage-return progress counter for responsive terminal status updates
-				fmt.Printf("\r⚙ Progress: %d/%d chunks processed... (%s)", done, total, j.relPath)
-			}(i, job)
-		}
-
-		wg.Wait()
-		fmt.Println() // print newline after finishing progress ticker
-
-		// Save results sequentially to DuckDB to avoid lock contention
-		savedCount := 0
-		for _, res := range results {
-			if res.err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Failed to generate embedding for %s: %v\n", res.relPath, res.err)
-				continue
+			embedding, err := llm.GetEmbedding(j.formattedContent, turboquant.DefaultDimension)
+			results[idx] = IndexResult{
+				relPath:          j.relPath,
+				startLine:        j.startLine,
+				endLine:          j.endLine,
+				formattedContent: j.formattedContent,
+				embedding:        embedding,
+				err:              err,
 			}
 
-			// ponytail: privacy preservation - save ONLY the metadata header to DuckDB instead of raw code chunks!
-			metadataHeader := fmt.Sprintf("File: %s (Lines: %d-%d)", res.relPath, res.startLine, res.endLine)
-			id := uuid.New().String()
-			if err := db.SaveMemory(id, metadataHeader, "project", absPath, res.embedding, index, res.formattedContent); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Failed to save chunk to memory store: %v\n", err)
-				continue
-			}
-			savedCount++
+			done := atomic.AddInt32(&completed, 1)
+			// ponytail: print carriage-return progress counter for responsive terminal status updates
+			fmt.Printf("\r⚙ Progress: %d/%d chunks processed... (%s)", done, total, j.relPath)
+		}(i, job)
+	}
+
+	wg.Wait()
+	fmt.Println() // print newline after finishing progress ticker
+	return results
+}
+
+func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboquant.Index) int {
+	var batchItems []db.MemoryBatchItem
+	savedCount := 0
+	for _, res := range results {
+		if res.err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to generate embedding for %s: %v\n", res.relPath, res.err)
+			continue
 		}
 
-		fmt.Printf("✓ Successfully indexed %d files (%d AST chunks)\n", len(filesToProcess), savedCount)
+		metadataHeader := fmt.Sprintf("File: %s (Lines: %d-%d)", res.relPath, res.startLine, res.endLine)
+		id := uuid.New().String()
+		batchItems = append(batchItems, db.MemoryBatchItem{
+			ID:           id,
+			Content:      metadataHeader,
+			CWD:          absPath,
+			Embedding:    res.embedding,
+			ChunkContent: res.formattedContent,
+		})
+		savedCount++
+	}
 
-		// ponytail: incrementally parse and update the AST Call/Dependency Graph inside DuckDB
-		fmt.Printf("⚙ Indexing Call Graph nodes and dependencies...\n")
-		for _, relPath := range filesToProcess {
-			fullPath := filepath.Join(absPath, relPath)
-			nodes, edges, err := callgraph.ParseFile(fullPath, relPath)
-			if err == nil {
-				_ = db.SaveCallGraph(relPath, nodes, edges)
+	if len(batchItems) > 0 {
+		db.AsyncSaveWG.Add(1)
+		go func(items []db.MemoryBatchItem) {
+			defer db.AsyncSaveWG.Done()
+			if err := db.SaveMemoriesBatch(items, index); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Background async index save failed: %v\n", err)
 			}
+		}(batchItems)
+	}
+	return savedCount
+}
+
+func syncASTCallGraphs(absPath string, files []string) {
+	fmt.Printf("⚙ Indexing Call Graph nodes and dependencies...\n")
+	for _, relPath := range files {
+		fullPath := filepath.Join(absPath, relPath)
+		nodes, edges, err := callgraph.ParseFile(fullPath, relPath)
+		if err == nil {
+			_ = db.SaveCallGraph(relPath, nodes, edges)
 		}
-		fmt.Printf("✓ Call Graph incrementally synchronized successfully.\n")
+	}
+	fmt.Printf("✓ Call Graph incrementally synchronized successfully.\n")
+}
+
+// UpdateIndex implements the Merkle-tree based incremental indexing
+func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error) {
+	if err := db.InitDatabase(); err != nil {
+		return 0, 0, 0, fmt.Errorf("database init failed: %w", err)
+	}
+
+	// 1. Build the new Merkle tree from local codebase state
+	newTree, err := BuildMerkleTree(absPath, "")
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to build local Merkle tree: %w", err)
+	}
+
+	// If no indexable files found, clean up and exit
+	if newTree == nil {
+		_ = purgePreviousTreeIfEmpty(absPath, index)
+		return 0, 0, 0, nil
+	}
+
+	// 2. Load the previously stored Merkle tree
+	prevTree, err := loadPreviousTree(absPath)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("failed to load previous Merkle tree: %w", err)
+	}
+
+	// 3. Diff trees
+	added, modified, deleted := DiffTrees(prevTree, newTree)
+
+	// 4. Delete stale memories of removed/modified files
+	purgeStaleMemories(absPath, deleted, index, "Removing")
+	purgeStaleMemories(absPath, modified, index, "Purging")
+
+	// 5. Index added and modified files concurrently
+	filesToProcess := append(added, modified...)
+	if len(filesToProcess) > 0 {
+		jobs := prepareIndexerJobs(absPath, filesToProcess)
+		if len(jobs) > 0 {
+			results := generateEmbeddings(jobs)
+			savedCount := batchSaveMemoriesAsync(absPath, results, index)
+			fmt.Printf("✓ Successfully indexed %d files (%d AST chunks)\n", len(filesToProcess), savedCount)
+
+			// 6. Incrementally parse and update the AST Call/Dependency Graph inside DuckDB
+			syncASTCallGraphs(absPath, filesToProcess)
+		}
 	}
 
 	// 7. Save updated Merkle Tree state
