@@ -1,6 +1,6 @@
-# Codebase Indexer & Persistent Memory Extension (agent-mem)
+# Codebase Indexer & Persistent Memory Extension (agent-context)
 
-A model-agnostic, local-first MCP server and indexer written in **Go** that provides local codebase indexing, semantic search, and call graph navigation for developer assistant CLIs. Designed for maximum efficiency and privacy, `agent-mem` runs **entirely on your local machine**—combining high-performance analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver extremely fast, cost-effective search without requiring expensive, resource-heavy external vector databases.
+A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Designed for maximum security and privacy, **the extension does not index, save, or store your full codebase text into any database**. Instead, `agent-context` runs **entirely on your local machine**—storing only lightweight metadata headers (like file paths and line ranges) and inverted AST symbol hashes, while combining high-performance local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Inverted-Index Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
 
 ---
 
@@ -18,7 +18,7 @@ For the most efficient workflow:
 ## ✨ Key Features
 
 *   **Merkle Tree Incremental Sync:** Computes directory tree diffs to index/re-embed only added or modified files (supporting `.go`, `.tf`, and `.yaml`/`.yml`).
-*   **Privacy-Preserving Vector Storage:** No code is stored in the database. Only metadata headers are saved; raw code is read directly from local disk on demand during search.
+*   **Privacy-Preserving Hybrid Search:** Fuses dense semantic vector search (TurboQuant) with sparse lexical AST symbol indexing (DuckDB `gemini_symbols` inverted index) using Reciprocal Rank Fusion (RRF), coupled with candidate-scoped on-the-fly local grep exact match boosting. Code is never stored in the database—only inverted tokens; raw code is read directly from disk on demand.
 *   **AST Call & Dependency Graph:** Extracts call nodes and edges incrementally into DuckDB, allowing fast traversal and ASCII call-tree generation.
 
 > ⚠️ **Note:** Currently, the codebase indexer and call graph builder support indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
@@ -98,7 +98,7 @@ flowchart TD
 
     %% Shared Environment & Databases
     subgraph Storage ["Shared Environment & Storage"]
-        duckdb_file[(agent-mem.db<br/>DuckDB Metadata & Call Graph)]
+        duckdb_file[(agent-mem.db<br/>DuckDB Metadata, Call Graph<br/>& Inverted Symbols Index)]
         tqv_file[(agent-mem.tqv<br/>Quantized Vectors)]
     end
 
@@ -155,6 +155,9 @@ flowchart TD
 
 3. **TurboQuant for In-Process Vector Quantization:**
    Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `agent-mem` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
+
+4. **Multi-Retrieval Hybrid Search with RRF and Grep Boosting:**
+   To guarantee both deep semantic intent understanding and exact variable/symbol matches, `agent-mem` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** (an inverted index in **[DuckDB](https://github.com/duckdb/duckdb)** populated incrementally during sweeps) using **R[eciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. It then triggers an on-the-fly grep on the top candidate files (taking $<3\text{ms}$), applying a **robust 1.5x score boost** to candidates containing exact string-matches on disk—perfectly combining conceptual search and exact keyword matching without storing any raw code.
 
 ---
 

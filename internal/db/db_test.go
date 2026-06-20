@@ -3,10 +3,12 @@ package db
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/datnguyenzzz/agent-context/internal/callgraph"
+	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
 func TestDBCallGraphPersistence(t *testing.T) {
@@ -228,6 +230,86 @@ func LoadCallGraph() (*callgraph.CallGraph, error) {
 		Nodes: nodes,
 		Edges: edges,
 	}, nil
+}
+
+func Test_HybridSearch(t *testing.T) {
+	// Set target dimension to 16 for test execution
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() {
+		turboquant.DefaultDimension = originalDim
+	}()
+
+	// 1. Set up a temporary home folder for the test
+	tmpDir, err := os.MkdirTemp("", "db-hybrid-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+
+	// 2. Setup mock TurboQuant and Index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed to init TQ: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "test.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to init index: %v", err)
+	}
+
+	// Create test workspace files on disk so scoped local grep can read them on the fly!
+	workspaceDir, err := os.MkdirTemp("", "test-workspace-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(workspaceDir)
+
+	file1Path := filepath.Join(workspaceDir, "file1.go")
+	_ = os.WriteFile(file1Path, []byte("package main\n\nfunc ProcessPayment() {\n\tprintln(\"Processing credit card payment...\")\n}"), 0644)
+
+	file2Path := filepath.Join(workspaceDir, "file2.go")
+	_ = os.WriteFile(file2Path, []byte("package main\n\nfunc SendNotification() {\n\tprintln(\"Sending email notification alert...\")\n}"), 0644)
+
+	// Save two memories (with small embedding length 16)
+	embed1 := make([]float32, 16)
+	embed1[0] = 1.0 // non-zero embedding for file1.go
+	header1 := "File: file1.go (Lines: 1-5)"
+	err = SaveMemory("id-payment", header1, "project", workspaceDir, embed1, index, "func ProcessPayment() credit card payment")
+	if err != nil {
+		t.Fatalf("failed to save memory 1: %v", err)
+	}
+
+	embed2 := make([]float32, 16)
+	embed2[1] = 1.0 // non-zero embedding for file2.go
+	header2 := "File: file2.go (Lines: 1-5)"
+	err = SaveMemory("id-notification", header2, "project", workspaceDir, embed2, index, "func SendNotification() email notification alert")
+	if err != nil {
+		t.Fatalf("failed to save memory 2: %v", err)
+	}
+
+	// 3. Test Lexical + Grep exact matching
+	results, err := SearchMemories("ProcessPayment", make([]float32, 16), workspaceDir, 5, index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatalf("expected search results to return, got 0")
+	}
+
+	bestResult := results[0]
+	if !strings.Contains(bestResult.Content, "ProcessPayment") {
+		t.Errorf("expected best match to be ProcessPayment memory, got: %s", bestResult.Content)
+	}
 }
 
 type dummy struct{} // prevent package import issue

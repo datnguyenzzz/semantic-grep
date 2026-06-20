@@ -200,7 +200,7 @@ func main() {
 		}
 
 		limit := min(intEnv("SEARCH_DEFAULT_LIMIT", 10), 50)
-		results, err := db.SearchMemories(embedding, cwd, limit, index)
+		results, err := db.SearchMemories(args.Query, embedding, cwd, limit, index)
 		if err != nil {
 			return nil, nil, err
 		}

@@ -62,7 +62,7 @@ func Test_QueryIndex(t *testing.T) {
 	}
 
 	// 5. Query matching memories
-	results, err := db.SearchMemories(embedding, "", 5, index)
+	results, err := db.SearchMemories(query, embedding, "", 5, index)
 	if err != nil {
 		t.Fatalf("failed to search memories: %v", err)
 	}

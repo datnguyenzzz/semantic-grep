@@ -89,14 +89,14 @@ func main() {
 	mockEmbed2[0] = -0.5
 
 	// Save memories (all automatically mapped as project category)
-	err = db.SaveMemory("test-g1", "Project uses React for frontend", "project", "/Users/thanh.nguyen/test-project", mockEmbed1, index)
+	err = db.SaveMemory("test-g1", "Project uses React for frontend", "project", "/Users/thanh.nguyen/test-project", mockEmbed1, index, "Project uses React for frontend")
 	if err != nil {
 		fmt.Printf("✗ Failed to save project memory 1: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("✓ Saved project memory 1.")
 
-	err = db.SaveMemory("test-g2", "Project uses DuckDB Node 'Neo' client", "project", "/Users/thanh.nguyen/test-project", mockEmbed2, index)
+	err = db.SaveMemory("test-g2", "Project uses DuckDB Node 'Neo' client", "project", "/Users/thanh.nguyen/test-project", mockEmbed2, index, "Project uses DuckDB Node 'Neo' client")
 	if err != nil {
 		fmt.Printf("✗ Failed to save project memory 2: %v\n", err)
 		os.Exit(1)
@@ -110,7 +110,7 @@ func main() {
 	}
 
 	// Search memories for first project memory
-	results, err := db.SearchMemories(mockEmbed1, "/Users/thanh.nguyen/test-project", 1, index)
+	results, err := db.SearchMemories("React for frontend", mockEmbed1, "/Users/thanh.nguyen/test-project", 1, index)
 	if err != nil {
 		fmt.Printf("✗ Failed to search project memory 1: %v\n", err)
 		os.Exit(1)
@@ -128,7 +128,7 @@ func main() {
 	fmt.Printf("✓ Correct project memory 1 found: %s\n", results[0].Content)
 
 	// Search memories for second project memory
-	resultsProject, err := db.SearchMemories(mockEmbed2, "/Users/thanh.nguyen/test-project", 1, index)
+	resultsProject, err := db.SearchMemories("DuckDB Node client", mockEmbed2, "/Users/thanh.nguyen/test-project", 1, index)
 	if err != nil {
 		fmt.Printf("✗ Failed to search project memory 2: %v\n", err)
 		os.Exit(1)

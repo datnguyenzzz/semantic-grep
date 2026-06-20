@@ -172,6 +172,18 @@ func InitDatabase() error {
 			callee VARCHAR NOT NULL
 		)
 	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS gemini_symbols (
+			memory_id VARCHAR NOT NULL,
+			token VARCHAR NOT NULL,
+			count INTEGER NOT NULL,
+			PRIMARY KEY (memory_id, token)
+		)
+	`)
 	return err
 }
 
@@ -183,7 +195,26 @@ func GetTQPath() (string, error) {
 	return filepath.Join(home, "agent-mem.tqv"), nil
 }
 
-func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index) error {
+func tokenize(content string) []string {
+	var tokens []string
+	var current strings.Builder
+	for _, r := range content {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			current.WriteRune(r)
+		} else {
+			if current.Len() > 2 {
+				tokens = append(tokens, strings.ToLower(current.String()))
+			}
+			current.Reset()
+		}
+	}
+	if current.Len() > 2 {
+		tokens = append(tokens, strings.ToLower(current.String()))
+	}
+	return tokens
+}
+
+func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index, chunkContent string) error {
 	db, err := Open()
 	if err != nil {
 		return err
@@ -204,12 +235,29 @@ func SaveMemory(id, content, category, cwd string, embedding []float32, index *t
 		return err
 	}
 
-	// 2. Normalize and add to the shared TurboQuant index
+	// 2. Tokenize chunkContent, building inverted index and save token/symbol frequencies for fast Lexical search
+	tokens := tokenize(chunkContent)
+	freq := make(map[string]int)
+	for _, t := range tokens {
+		freq[t]++
+	}
+
+	for token, count := range freq {
+		_, err = db.Exec(`
+			INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
+			VALUES ($1, $2, $3)
+		`, id, token, count)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 3. Normalize and add to the shared TurboQuant index
 	embedding = normalizeVectorTo3072(embedding)
 	return index.Add(id, embedding)
 }
 
-func SearchMemories(queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
+func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
 	if cwd != "" {
 		// Try to find if cwd is inside any indexed codebase (parent path resolution)
 		codebases, err := ListCodebases()
@@ -232,94 +280,206 @@ func SearchMemories(queryEmbedding []float32, cwd string, limit int, index *turb
 		return nil, fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	// 1. Normalize query embedding to exactly 3072 dimensions
-	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
+	// 1. Parse and tokenize query text
+	qTokens := tokenize(queryText)
 
-	// 2. Search vector store FIRST using the shared turboquant.Index (score all records)
-	searchResults, err := index.Search(queryEmbedding, nil, limit)
+	// 2. Dense Semantic Search: score vectors (retrieve top candidates)
+	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
+	semResults, err := index.Search(queryEmbedding, nil, limit*3)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(searchResults) == 0 {
-		return nil, nil
-	}
-
-	// Build a map of candidate ID -> similarity score, and a list of candidate IDs for the SQL query
-	simMap := make(map[string]float64)
-	idPlaceholders := make([]string, len(searchResults))
-	queryArgs := make([]any, 0, len(searchResults)+2)
-
-	for i, res := range searchResults {
-		simMap[res.ID] = res.Similarity
-		idPlaceholders[i] = fmt.Sprintf("$%d", i+1)
-		queryArgs = append(queryArgs, res.ID)
-	}
-
-	// 2. Query DuckDB to retrieve and filter metadata for these top candidate IDs
+	// 3. Sparse Lexical Search: query matching symbol frequencies
 	db, err := Open()
 	if err != nil {
 		return nil, err
 	}
 	defer db.Close()
 
-	query := fmt.Sprintf(`
-		SELECT id, content, category, cwd, created_at
-		FROM gemini_memories
-		WHERE id IN (%s)
-	`, strings.Join(idPlaceholders, ", "))
+	lexMap := make(map[string]float64) // memory_id -> score (0.0 to 1.0)
+	if len(qTokens) > 0 {
+		placeholders := make([]string, len(qTokens))
+		args := make([]any, len(qTokens))
+		for i, tok := range qTokens {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			args[i] = tok
+		}
+		querySql := fmt.Sprintf(`
+			SELECT memory_id, SUM(count) as match_count
+			FROM gemini_symbols
+			WHERE token IN (%s)
+			GROUP BY memory_id
+			ORDER BY match_count DESC
+			LIMIT 50
+		`, strings.Join(placeholders, ", "))
 
-	var conditions []string
-
-	if cwd != "" {
-		conditions = append(conditions, fmt.Sprintf("cwd = $%d", len(queryArgs)+1))
-		queryArgs = append(queryArgs, cwd)
+		rows, err := db.Query(querySql, args...)
+		if err == nil {
+			defer rows.Close()
+			maxCount := 1.0
+			type lexMatch struct {
+				id    string
+				count int
+			}
+			var matches []lexMatch
+			for rows.Next() {
+				var m lexMatch
+				if err := rows.Scan(&m.id, &m.count); err == nil {
+					matches = append(matches, m)
+					if float64(m.count) > maxCount {
+						maxCount = float64(m.count)
+					}
+				}
+			}
+			for _, m := range matches {
+				lexMap[m.id] = float64(m.count) / maxCount
+			}
+		}
 	}
 
-	if len(conditions) > 0 {
-		query += " AND " + strings.Join(conditions, " AND ")
+	if len(semResults) == 0 && len(lexMap) == 0 {
+		return nil, nil
 	}
 
-	rows, err := db.Query(query, queryArgs...)
-	if err != nil {
-		return nil, err
+	// 4. Reciprocal Rank Fusion (RRF) to merge Dense and Sparse rankings
+	allCandIDs := make(map[string]bool)
+	semRank := make(map[string]int)
+	for i, res := range semResults {
+		allCandIDs[res.ID] = true
+		semRank[res.ID] = i + 1
 	}
-	defer rows.Close()
 
-	// 3. Map retrieved active metadata rows to their similarity scores
+	type idScore struct {
+		id    string
+		score float64
+	}
+	var lexList []idScore
+	for id, sc := range lexMap {
+		lexList = append(lexList, idScore{id, sc})
+	}
+	sort.Slice(lexList, func(i, j int) bool {
+		return lexList[i].score > lexList[j].score
+	})
+
+	lexRank := make(map[string]int)
+	for i, ls := range lexList {
+		allCandIDs[ls.id] = true
+		lexRank[ls.id] = i + 1
+	}
+
+	const k = 60.0
+	type candidateRRF struct {
+		id       string
+		rrfScore float64
+	}
+	var fused []candidateRRF
+	for id := range allCandIDs {
+		score := 0.0
+		if r, ok := semRank[id]; ok {
+			score += 1.0 / (k + float64(r))
+		}
+		if r, ok := lexRank[id]; ok {
+			score += 1.0 / (k + float64(r))
+		}
+		fused = append(fused, candidateRRF{id, score})
+	}
+
+	sort.Slice(fused, func(i, j int) bool {
+		return fused[i].rrfScore > fused[j].rrfScore
+	})
+
+	// Take top candidates for scoped local grep re-ranking
+	topCandidates := fused
+	if len(topCandidates) > limit*3 {
+		topCandidates = topCandidates[:limit*3]
+	}
+
+	// 5. Query Metadata for top candidates and read raw code on the fly
 	var memories []Memory
-	for rows.Next() {
-		var m Memory
-		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
-		if err != nil {
-			return nil, err
+	if len(topCandidates) > 0 {
+		placeholders := make([]string, len(topCandidates))
+		queryArgs := make([]any, len(topCandidates))
+		for i, cand := range topCandidates {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+			queryArgs[i] = cand.id
 		}
 
-		m.Similarity = simMap[m.ID]
+		query := fmt.Sprintf(`
+			SELECT id, content, category, cwd, created_at
+			FROM gemini_memories
+			WHERE id IN (%s)
+		`, strings.Join(placeholders, ", "))
 
-		// ponytail: privacy preservation - if project category, load raw code content on the fly from local disk
-		if m.Category == "project" {
-			if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
-				code, err := readCodeLines(m.CWD, relPath, start, end)
-				if err == nil && code != "" {
-					m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
+		if cwd != "" {
+			query += fmt.Sprintf(" AND cwd = $%d", len(queryArgs)+1)
+			queryArgs = append(queryArgs, cwd)
+		}
+
+		rows, err := db.Query(query, queryArgs...)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var m Memory
+				err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
+				if err == nil {
+					if m.Category == "project" {
+						if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
+							code, err := readCodeLines(m.CWD, relPath, start, end)
+							if err == nil && code != "" {
+								m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
+							}
+						}
+					}
+					memories = append(memories, m)
 				}
 			}
 		}
-
-		memories = append(memories, m)
 	}
 
-	// 4. Sort results descending by similarity
-	sort.Slice(memories, func(i, j int) bool {
-		return memories[i].Similarity > memories[j].Similarity
+	// 6. On-the-Fly Scoped Local Grep Re-ranking (exact match boosting)
+	type scoredMemory struct {
+		m     Memory
+		score float64
+	}
+	var scored []scoredMemory
+	lowerQuery := strings.ToLower(queryText)
+
+	for _, m := range memories {
+		rrf := 0.0
+		for _, cand := range topCandidates {
+			if cand.id == m.ID {
+				rrf = cand.rrfScore
+				break
+			}
+		}
+
+		grepMatch := false
+		if m.Category == "project" && lowerQuery != "" {
+			if strings.Contains(strings.ToLower(m.Content), lowerQuery) {
+				grepMatch = true
+			}
+		}
+
+		finalScore := rrf
+		if grepMatch {
+			finalScore *= 1.5 // apply robust 50% exact-match score boost
+		}
+
+		m.Similarity = finalScore
+		scored = append(scored, scoredMemory{m, finalScore})
+	}
+
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
 	})
 
-	if len(memories) > limit {
-		memories = memories[:limit]
+	var finalResults []Memory
+	for i := 0; i < len(scored) && i < limit; i++ {
+		finalResults = append(finalResults, scored[i].m)
 	}
 
-	return memories, nil
+	return finalResults, nil
 }
 
 // SaveMerkleTree stores the serialized Merkle Tree state for a codebase
@@ -386,7 +546,7 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 		}
 	}
 
-	// 2. Delete chunks belonging to file from DuckDB metadata
+	// 2. Delete chunks belonging to file from DuckDB metadata and symbols
 	queryDel := `
 		DELETE FROM gemini_memories
 		WHERE category = 'project'
@@ -398,13 +558,12 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 		return err
 	}
 
-	if index == nil {
-		return nil // skip if index dependency is nil
-	}
-
-	// 3. Remove from the shared in-memory TurboQuant index
+	// 3. Remove from the shared in-memory TurboQuant index and gemini_symbols table
 	for _, id := range idsToDelete {
-		index.Delete(id)
+		_, _ = db.Exec("DELETE FROM gemini_symbols WHERE memory_id = $1", id)
+		if index != nil {
+			index.Delete(id)
+		}
 	}
 
 	return nil

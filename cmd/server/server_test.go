@@ -94,7 +94,7 @@ func Test_PeriodicIndexUpdate(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	// Verify that the codebase main.go was successfully scanned and indexed into DuckDB gemini_memories!
-	memories, err := db.SearchMemories(make([]float32, 16), tmpWorkspace, 5, index)
+	memories, err := db.SearchMemories("Hello test", make([]float32, 16), tmpWorkspace, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search memories: %v", err)
 	}

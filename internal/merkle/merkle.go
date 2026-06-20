@@ -368,7 +368,7 @@ func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error)
 			// ponytail: privacy preservation - save ONLY the metadata header to DuckDB instead of raw code chunks!
 			metadataHeader := fmt.Sprintf("File: %s (Lines: %d-%d)", res.relPath, res.startLine, res.endLine)
 			id := uuid.New().String()
-			if err := db.SaveMemory(id, metadataHeader, "project", absPath, res.embedding, index); err != nil {
+			if err := db.SaveMemory(id, metadataHeader, "project", absPath, res.embedding, index, res.formattedContent); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to save chunk to memory store: %v\n", err)
 				continue
 			}

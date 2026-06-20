@@ -227,7 +227,7 @@ func TestMultiCodebaseIntegration(t *testing.T) {
 	}
 
 	// Verify project chunks search correctly separates codebase origin
-	resultsA, err := db.SearchMemories(mockEmbed1, tmpCodebaseA, 5, index)
+	resultsA, err := db.SearchMemories("func Main", mockEmbed1, tmpCodebaseA, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search codebase A memories: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestMultiCodebaseIntegration(t *testing.T) {
 	}
 
 	// Verify search results dynamically load the newly modified code on the fly from disk
-	resultsA_updated, err := db.SearchMemories(mockEmbed1, tmpCodebaseA, 5, index)
+	resultsA_updated, err := db.SearchMemories("A modified", mockEmbed1, tmpCodebaseA, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search updated codebase A memories: %v", err)
 	}
@@ -280,7 +280,7 @@ func TestMultiCodebaseIntegration(t *testing.T) {
 		t.Error("expected search results for Codebase A to dynamically load modified content from disk")
 	}
 
-	resultsB_updated, err := db.SearchMemories(mockEmbed2, tmpCodebaseB, 5, index)
+	resultsB_updated, err := db.SearchMemories("port: 9090", mockEmbed2, tmpCodebaseB, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search updated codebase B memories: %v", err)
 	}
@@ -362,7 +362,7 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 		t.Fatalf("failed to get embedding for math query: %v", err)
 	}
 
-	resultsMath, err := db.SearchMemories(mathEmbed, tmpCodebase, 5, index)
+	resultsMath, err := db.SearchMemories(mathQuery, mathEmbed, tmpCodebase, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search math memory: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 		t.Fatalf("failed to get embedding for network query: %v", err)
 	}
 
-	resultsNetwork, err := db.SearchMemories(networkEmbed, tmpCodebase, 5, index)
+	resultsNetwork, err := db.SearchMemories(networkQuery, networkEmbed, tmpCodebase, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search network memory: %v", err)
 	}
@@ -590,5 +590,85 @@ func TestCallGraphOnDemandDBQuerying(t *testing.T) {
 	}
 	if !strings.Contains(report, "FunctionC") {
 		t.Errorf("expected report to contain lazy transitive callee FunctionC")
+	}
+}
+
+func Test_HybridSearchIntegration(t *testing.T) {
+	// Setup custom DB paths inside a temporary environment to keep it clean
+	tmpHome, err := os.MkdirTemp("", "hybrid-integration-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// Create real temporary workspace for integration files
+	tmpWorkspace, err := os.MkdirTemp("", "hybrid-workspace-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpWorkspace)
+
+	file1Path := filepath.Join(tmpWorkspace, "fibonacci.go")
+	fibonacciCode := `package math
+
+// CalculateFibonacciSequence recursively computes the fibonacci value of n.
+func CalculateFibonacciSequence(n int) int {
+	if n <= 1 {
+		return n
+	}
+	return CalculateFibonacciSequence(n-1) + CalculateFibonacciSequence(n-2)
+}`
+	_ = os.WriteFile(file1Path, []byte(fibonacciCode), 0644)
+
+	// Initialize real TurboQuant and test index
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
+	if err != nil {
+		t.Fatalf("failed to init TurboQuant: %v", err)
+	}
+
+	tqvPath := filepath.Join(tmpHome, "agent-mem.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to init Index: %v", err)
+	}
+
+	// Save codebase CWD in database
+	if err := db.SaveMerkleTree(tmpWorkspace, "initial_hash", "{}"); err != nil {
+		t.Fatalf("failed to save codebase: %v", err)
+	}
+
+	// 1. Run live incremental indexing sweep which triggers real LLM embeddings and symbol parsing
+	_, _, _, err = merkle.UpdateIndex(tmpWorkspace, index)
+	if err != nil {
+		t.Fatalf("failed to index workspace: %v", err)
+	}
+
+	// 2. Perform live hybrid search
+	query := "FibonacciSequence"
+	queryEmbed, err := llm.GetEmbedding(query, turboquant.DefaultDimension)
+	if err != nil {
+		t.Fatalf("failed to fetch embedding: %v. Is LiteLLM running?", err)
+	}
+
+	results, err := db.SearchMemories(query, queryEmbed, tmpWorkspace, 5, index)
+	if err != nil {
+		t.Fatalf("failed to query hybrid search: %v", err)
+	}
+
+	if len(results) == 0 {
+		t.Fatalf("expected search results to return matches, got 0")
+	}
+
+	bestResult := results[0]
+	if !strings.Contains(bestResult.Content, "CalculateFibonacciSequence") {
+		t.Errorf("expected best match to be the Fibonacci memory chunk, got content: %s", bestResult.Content)
 	}
 }
