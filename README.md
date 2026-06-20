@@ -131,7 +131,7 @@ flowchart TD
     cli ===>|1. Call search_call_graph| mcp_srv
     mcp_srv ===>|2. Get Query Embedding| llm
     mcp_srv ===>|3. Search Vectors| tqv_file
-    mcp_srv ===>|4. Fetch Metadata and Graph| duckdb_file
+    mcp_srv ===>|4. Sparse Lexical search and Call Graph data| duckdb_file
     mcp_srv ===>|5. DYNAMICALLY READ CODE| code_files
     mcp_srv ===>|6. Return Context| cli
 
