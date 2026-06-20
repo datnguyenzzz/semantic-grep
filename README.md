@@ -74,7 +74,6 @@ make test-all     # Run all tests & database self-checks
 Configure via environment variables:
 *   `LITELLM_BASE_URL`: API base URL (Default: `http://localhost:36253/v1`)
 *   `LITELLM_EMBEDDING_MODEL`: Embedding model (Default: `gemini-embedding-001`)
-*   `LITELLM_CHAT_MODEL`: Chat model (Default: `gpt-5`)
 
 ---
 

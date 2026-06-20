@@ -18,7 +18,20 @@ build: clean
 rebuild: build
 
 # [2] Install options for Gemini and Claude Code CLIs
-install: install-gemini install-claude
+install: build
+	@if [ -t 0 ]; then \
+		read -p "Enter LITELLM_BASE_URL (Optional, press Enter to skip): " url; \
+		read -p "Enter LITELLM_EMBEDDING_MODEL (Optional, press Enter to skip): " model; \
+		if [ ! -z "$$url" ] || [ ! -z "$$model" ]; then \
+			[ -z "$$url" ] && url="http://localhost:36253/v1" ; \
+			[ -z "$$model" ] && model="gemini-embedding-001" ; \
+			echo "LITELLM_BASE_URL=$$url" > $(HOME)/.agent-mem.env ; \
+			echo "LITELLM_EMBEDDING_MODEL=$$model" >> $(HOME)/.agent-mem.env ; \
+			echo "✓ Configurations saved successfully to $(HOME)/.agent-mem.env" ; \
+		fi \
+	fi
+	@make install-gemini
+	@make install-claude
 
 install-gemini: build
 	@echo "Uninstalling existing agent-context extension in Gemini CLI if any..."

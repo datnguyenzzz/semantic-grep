@@ -7,13 +7,35 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/datnguyenzzz/agent-context/internal/db"
 	"github.com/datnguyenzzz/agent-context/internal/merkle"
 	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
+func loadEnv() {
+	if home, err := os.UserHomeDir(); err == nil {
+		envPath := filepath.Join(home, ".agent-mem.env")
+		if content, err := os.ReadFile(envPath); err == nil {
+			for line := range strings.SplitSeq(string(content), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					os.Setenv(key, val)
+				}
+			}
+		}
+	}
+}
+
 func main() {
+	loadEnv()
 	targetDir := "."
 	if len(os.Args) > 1 {
 		targetDir = os.Args[1]

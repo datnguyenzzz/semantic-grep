@@ -144,6 +144,7 @@ func runIndexSweep(index *turboquant.Index, isStartup bool) {
 }
 
 func main() {
+	loadEnv()
 	// Initialize database schema on startup
 	if err := db.InitDatabase(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -338,4 +339,24 @@ func intEnv(key string, fallback int) int {
 		return fallback
 	}
 	return i
+}
+
+func loadEnv() {
+	if home, err := os.UserHomeDir(); err == nil {
+		envPath := filepath.Join(home, ".agent-mem.env")
+		if content, err := os.ReadFile(envPath); err == nil {
+			for line := range strings.SplitSeq(string(content), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) == 2 {
+					key := strings.TrimSpace(parts[0])
+					val := strings.TrimSpace(parts[1])
+					os.Setenv(key, val)
+				}
+			}
+		}
+	}
 }
