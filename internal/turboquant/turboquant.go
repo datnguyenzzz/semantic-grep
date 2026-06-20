@@ -76,6 +76,38 @@ func putFloat64Slice(s []float64) {
 	pool.Put(&s)
 }
 
+var uint8SlicePool sync.Map // map[int]*sync.Pool — pools keyed by dimension
+
+func getUint8Pool(dim int) *sync.Pool {
+	if v, ok := uint8SlicePool.Load(dim); ok {
+		return v.(*sync.Pool)
+	}
+	pool := &sync.Pool{
+		New: func() any {
+			s := make([]uint8, dim)
+			return &s
+		},
+	}
+	actual, _ := uint8SlicePool.LoadOrStore(dim, pool)
+	return actual.(*sync.Pool)
+}
+
+func getUint8Slice(dim int) []uint8 {
+	pool := getUint8Pool(dim)
+	sp := pool.Get().(*[]uint8)
+	s := *sp
+	clear(s)
+	return s
+}
+
+func putUint8Slice(s []uint8) {
+	if len(s) == 0 {
+		return
+	}
+	pool := getUint8Pool(len(s))
+	pool.Put(&s)
+}
+
 // TurboQuant is the core entry point of the SDK, encapsulating all quantization functionality.
 type TurboQuant struct {
 	dimension   int
@@ -423,15 +455,18 @@ func (tq *TurboQuant) PrepareQuery(query []float32) ([]float64, error) {
 	}
 	norm := math.Sqrt(sumSq)
 	if norm == 0 {
-		return make([]float64, dim), nil
+		rotated := getFloat64Slice(dim)
+		return rotated, nil
 	}
 
-	normalized := make([]float64, dim)
+	normalized := getFloat64Slice(dim)
+	defer putFloat64Slice(normalized)
+
 	for i, v := range query {
 		normalized[i] = float64(v) / norm
 	}
 
-	rotated := make([]float64, dim)
+	rotated := getFloat64Slice(dim)
 	tq.rotation.ApplyInto(normalized, rotated)
 	return rotated, nil
 }
@@ -470,6 +505,42 @@ func (tq *TurboQuant) GetCentroidBounds() (float64, float64) {
 		}
 	}
 	return maxVal, minSq
+}
+
+// ScorePreparedWithPruningBuf scores a raw buffered quantized vector with early-exit pruning.
+func (tq *TurboQuant) ScorePreparedWithPruningBuf(preparedQuery []float64, suffixEnergy []float64, maxCentroid, minCentroidSq float64, threshold float64, norm float32, indices []uint8) (float64, bool) {
+	if len(indices) != len(preparedQuery) {
+		return 0.0, true
+	}
+
+	var dot float64
+	var normSq float64
+	centroids := tq.codebook.Centroids
+	dim := len(preparedQuery)
+
+	for i := range dim {
+		// Pruning check using Cauchy-Schwarz bounds
+		if threshold > -1.0 {
+			remainingDim := dim - i
+			maxRemainingDot := float64(norm) * maxCentroid * suffixEnergy[i]
+			approxNormSq := normSq + float64(remainingDim)*minCentroidSq
+			if approxNormSq > 0 {
+				maxPossibleSim := (dot + maxRemainingDot) / math.Sqrt(approxNormSq)
+				if maxPossibleSim < threshold {
+					return 0.0, true // Pruned early!
+				}
+			}
+		}
+
+		val := centroids[indices[i]]
+		dot += preparedQuery[i] * val
+		normSq += val * val
+	}
+
+	if normSq == 0 {
+		return 0.0, false
+	}
+	return dot / math.Sqrt(normSq), false
 }
 
 // ScorePreparedWithPruning scores a quantized vector with early-exit pruning if it cannot beat the threshold.

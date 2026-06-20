@@ -152,6 +152,44 @@ func DeserializeQuantizedVector(data []byte, bitWidth, dimension int) (*Quantize
 	}, nil
 }
 
+func DeserializeQuantizedVectorBuf(data []byte, bitWidth, dimension int, dst []uint8) (float32, error) {
+	if len(data) < 4 {
+		return 0, fmt.Errorf("data too short")
+	}
+	norm := math.Float32frombits(binary.LittleEndian.Uint32(data[0:4]))
+	indexBuf := data[4:]
+
+	switch bitWidth {
+	case Bit2:
+		for i := range dimension {
+			byteIdx := i / 4
+			shift := uint(i%4) * 2
+			dst[i] = (indexBuf[byteIdx] >> shift) & 0x03
+		}
+	case Bit3:
+		bitPos := 0
+		for i := range dimension {
+			byteIdx := bitPos / 8
+			bitOffset := uint(bitPos % 8)
+			val := indexBuf[byteIdx] >> bitOffset
+			if bitOffset+3 > 8 && byteIdx+1 < len(indexBuf) {
+				val |= indexBuf[byteIdx+1] << (8 - bitOffset)
+			}
+			dst[i] = val & 0x07
+			bitPos += 3
+		}
+	case Bit4:
+		for i := 0; i < dimension; i += 2 {
+			b := indexBuf[i/2]
+			dst[i] = b & 0x0F
+			if i+1 < dimension {
+				dst[i+1] = b >> 4
+			}
+		}
+	}
+	return norm, nil
+}
+
 // unpackIndices2Bit extracts dimension indices from bytes, 4 indices per byte, low bits first.
 func unpackIndices2Bit(src []byte, dimension int) []uint8 {
 	indices := make([]uint8, dimension)

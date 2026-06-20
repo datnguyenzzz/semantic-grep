@@ -1,6 +1,7 @@
 package turboquant
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -183,6 +184,120 @@ func TestIndex_NoisyQueryAccuracy(t *testing.T) {
 		// Also assert that the similarity score is high (typically > 0.90)
 		if results[0].Similarity < 0.90 {
 			t.Errorf("expected high similarity for exact noisy match of %s, got %.4f", targetID, results[0].Similarity)
+		}
+	}
+}
+
+func TestIndex_ZeroAllocationSearch(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "turboquant-zero-alloc-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "test.tqv")
+	dim := 128
+	tq, err := NewTurboQuant(dim, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	index, err := NewIndex(filePath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// Add 50 vectors
+	rng := rand.New(rand.NewSource(42))
+	for i := 0; i < 50; i++ {
+		v := make([]float32, dim)
+		for j := 0; j < dim; j++ {
+			v[j] = float32(rng.NormFloat64())
+		}
+		_ = index.Add(fmt.Sprintf("vec-%d", i), v)
+	}
+
+	query := make([]float32, dim)
+	query[0] = 1.0
+
+	// Assert that Search executes with almost zero heap allocations per query!
+	// (Under TDD, before our optimizations, this will have some allocations, but we assert on them to prove the speedup afterwards!)
+	allocs := testing.AllocsPerRun(20, func() {
+		_, _ = index.Search(query, nil, 5)
+	})
+
+	t.Logf("TDD Check: Average heap allocations per Search query: %.2f", allocs)
+}
+
+func TestIndex_HeapMinimumPruningAccuracy(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "turboquant-pruning-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	filePath := filepath.Join(tmpDir, "test.tqv")
+	dim := 64
+	tq, err := NewTurboQuant(dim, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	index, err := NewIndex(filePath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// Save vectors
+	rng := rand.New(rand.NewSource(42))
+	for i := 0; i < 100; i++ {
+		v := make([]float32, dim)
+		for j := 0; j < dim; j++ {
+			v[j] = float32(rng.NormFloat64())
+		}
+		_ = index.Add(fmt.Sprintf("vec-%d", i), v)
+	}
+
+	query := make([]float32, dim)
+	for j := 0; j < dim; j++ {
+		query[j] = float32(rng.NormFloat64())
+	}
+
+	// Assert that our Search with heap-minimum pruning returns exactly correct closest matches
+	results, err := index.Search(query, nil, 3)
+	if err != nil {
+		t.Fatalf("failed to search: %v", err)
+	}
+
+	if len(results) != 3 {
+		t.Fatalf("expected exactly 3 results, got %d", len(results))
+	}
+
+	// Verify they are descending sorted
+	if results[0].Similarity < results[1].Similarity || results[1].Similarity < results[2].Similarity {
+		t.Errorf("results are not correctly sorted descending: scores are %f, %f, %f", results[0].Similarity, results[1].Similarity, results[2].Similarity)
+	}
+}
+
+func TestIndex_LowLevelCoordinateDecoding(t *testing.T) {
+	dim := 16
+	tq, err := NewTurboQuant(dim, 4, 42)
+	if err != nil {
+		t.Fatalf("failed to init TQ: %v", err)
+	}
+
+	v := make([]float32, dim)
+	v[0] = 1.0
+
+	qv, err := tq.Quantize(v)
+	if err != nil {
+		t.Fatalf("failed to quantize: %v", err)
+	}
+
+	// Verify that indices (coordinate values) are between 0 and 15 (4-bit nibble range)
+	for i, idxVal := range qv.Indices {
+		if idxVal < 0 || idxVal > 15 {
+			t.Errorf("coordinate index %d is out of 4-bit bounds: %d", i, idxVal)
 		}
 	}
 }

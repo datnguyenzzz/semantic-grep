@@ -90,8 +90,11 @@ func (idx *Index) Search(query []float32, activeIDs map[string]bool, limit int) 
 		return nil, err
 	}
 
-	// Compute query suffix energy array for fast early pruning checks
-	querySuffixEnergy := make([]float64, len(preparedQuery))
+	// Compute query suffix energy array for fast early pruning checks (using float64 slice pool)
+	querySuffixEnergy := getFloat64Slice(len(preparedQuery))
+	defer putFloat64Slice(querySuffixEnergy)
+	defer putFloat64Slice(preparedQuery) // also return preparedQuery to the pool when Search exits!
+
 	var sum float64
 	for i := len(preparedQuery) - 1; i >= 0; i-- {
 		sum += preparedQuery[i] * preparedQuery[i]
@@ -100,14 +103,18 @@ func (idx *Index) Search(query []float32, activeIDs map[string]bool, limit int) 
 
 	maxCentroid, minCentroidSq := idx.tq.GetCentroidBounds()
 
-	// Keep a dynamic list of results to track the running threshold
-	var results []SearchResult
+	// Lease a single uint8 index buffer from the pool for zero-allocation deserialization!
+	idxBuf := getUint8Slice(idx.tq.dimension)
+	defer putUint8Slice(idxBuf)
+
+	// Keep a dynamic list of results to track the running threshold (pre-allocated)
+	results := make([]SearchResult, 0, limit+1)
 	for id, serialized := range idx.vectors {
 		if activeIDs != nil && !activeIDs[id] {
 			continue
 		}
 
-		qv, err := idx.tq.Deserialize(serialized)
+		norm, err := DeserializeQuantizedVectorBuf(serialized, idx.tq.bitWidth, idx.tq.dimension, idxBuf)
 		if err != nil {
 			continue
 		}
@@ -118,28 +125,27 @@ func (idx *Index) Search(query []float32, activeIDs map[string]bool, limit int) 
 			threshold = results[len(results)-1].Similarity
 		}
 
-		sim, pruned := idx.tq.ScorePreparedWithPruning(preparedQuery, querySuffixEnergy, maxCentroid, minCentroidSq, threshold, qv)
+		sim, pruned := idx.tq.ScorePreparedWithPruningBuf(preparedQuery, querySuffixEnergy, maxCentroid, minCentroidSq, threshold, norm, idxBuf)
 		if pruned {
 			continue // Candidate pruned!
 		}
 
-		// Insert candidate at its sorted position
+		// Insert candidate at its sorted position (in-place zero-allocation!)
 		res := SearchResult{ID: id, Similarity: sim}
 		inserted := false
 		for i, existing := range results {
 			if sim > existing.Similarity {
-				results = append(results[:i], append([]SearchResult{res}, results[i:]...)...)
+				if len(results) < limit {
+					results = append(results, SearchResult{})
+				}
+				copy(results[i+1:], results[i:])
+				results[i] = res
 				inserted = true
 				break
 			}
 		}
-		if !inserted {
+		if !inserted && len(results) < limit {
 			results = append(results, res)
-		}
-
-		// Keep size capped at limit
-		if len(results) > limit {
-			results = results[:limit]
 		}
 	}
 
