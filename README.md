@@ -1,6 +1,6 @@
 # Codebase Indexer & Persistent Memory Extension (agent-context)
 
-A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Designed for security and privacy, **the extension does not index, save, or store your full codebase text into any database**. Instead, `agent-context` runs **entirely on your local machine**-storing only lightweight metadata headers and inverted AST symbol hashes, while combining high-performance local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Inverted-Index Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
+A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Operating **entirely on your local machine**, `agent-context` combines high-performance, natively indexed local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Native FTS Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
 
 ---
 
@@ -18,7 +18,7 @@ For the most efficient workflow:
 ## ✨ Key Features
 
 *   **Merkle Tree Incremental Sync:** Computes directory tree diffs to index/re-embed only added or modified files (supporting `.go`, `.tf`, and `.yaml`/`.yml`).
-*   **Privacy-Preserving Hybrid Search:** Fuses dense semantic vector search (TurboQuant) with sparse lexical AST symbol indexing (DuckDB `gemini_symbols` inverted index) using Reciprocal Rank Fusion (RRF), coupled with candidate-scoped on-the-fly local grep exact match boosting. Code is never stored in the database—only inverted tokens; raw code is read directly from disk on demand.
+*   **Blazing-Fast Hybrid Search:** Fuses dense semantic vector search (TurboQuant) with native Okapi BM25 full-text indexing (DuckDB FTS extension) using Reciprocal Rank Fusion (RRF), coupled with candidate-scoped in-memory grep exact-match boosting ($1.5\times$) to deliver extreme retrieval recall and rank elevation.
 *   **AST Call & Dependency Graph:** Extracts call nodes and edges incrementally into DuckDB, allowing fast traversal and ASCII call-tree generation.
 
 > ⚠️ **Note:** Currently, the codebase indexer and call graph builder support indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
@@ -98,7 +98,7 @@ flowchart TD
 
     %% Shared Environment & Databases
     subgraph Storage ["Shared Environment & Storage"]
-        duckdb_file[(agent-context.db<br/>DuckDB Metadata, Call Graph<br/>& Inverted Symbols Index)]
+        duckdb_file[(agent-context.db<br/>DuckDB Chunk Content, Call Graph<br/>& Native FTS Index)]
         tqv_file[(agent-context.tqv<br/>Quantized Vectors)]
     end
 
@@ -119,7 +119,7 @@ flowchart TD
     merkle -->|2. Split Files| splitter
     merkle -->|3. Get Embeddings| llm
     llm <-->|4. API Call| litellm
-    merkle -->|5. Save Metadata| duckdb_file
+    merkle -->|5. Save Chunk Content| duckdb_file
     merkle -->|5. Save Quantized Vectors| tqv_file
     merkle -->|6. Parse Call Graph| callgraph
     callgraph -->|7. Save Nodes & Edges| duckdb_file
@@ -132,8 +132,7 @@ flowchart TD
     mcp_srv ===>|2. Get Query Embedding| llm
     mcp_srv ===>|3. Search Vectors| tqv_file
     mcp_srv ===>|4. Sparse Lexical search and Call Graph data| duckdb_file
-    mcp_srv ===>|5. DYNAMICALLY READ CODE| code_files
-    mcp_srv ===>|6. Return Context| cli
+    mcp_srv ===>|5. Return Context| cli
 
     %% ──────────────────────────────────────────────────────────
     %% FLOW LEGEND (Self-Explanatory Arrow Styles)

@@ -1,6 +1,6 @@
 package merkle
 
-// ponytail: Merkle tree-based incremental indexer to prune unchanged code subtrees, avoiding redundant chunking & LLM embedding generation
+// Merkle tree-based incremental indexer to prune unchanged code subtrees, avoiding redundant chunking & LLM embedding generation
 
 import (
 	"crypto/sha256"
@@ -46,7 +46,6 @@ func sha256Hash(data string) string {
 
 func isIndexable(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
-	// ponytail: support Go, Terraform, and YAML files
 	return ext == ".go" || ext == ".tf" || ext == ".yaml" || ext == ".yml"
 }
 
@@ -325,7 +324,7 @@ func generateEmbeddings(jobs []IndexJob) []IndexResult {
 			}
 
 			done := atomic.AddInt32(&completed, 1)
-			// ponytail: print carriage-return progress counter for responsive terminal status updates
+			// print carriage-return progress counter for responsive terminal status updates
 			fmt.Printf("\r⚙ Progress: %d/%d chunks processed... (%s)", done, total, j.relPath)
 		}(i, job)
 	}
@@ -362,6 +361,8 @@ func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboq
 			defer db.AsyncSaveWG.Done()
 			if err := db.SaveMemoriesBatch(items, index); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Background async index save failed: %v\n", err)
+			} else {
+				_ = db.CreateFTSIndex()
 			}
 		}(batchItems)
 	}

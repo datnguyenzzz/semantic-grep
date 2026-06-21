@@ -14,7 +14,8 @@ import (
 	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 )
 
-func Test_QueryIndex(t *testing.T) {
+// Test_QuerySearch use for manually searching from the indexed codebase with the given query
+func Test_QuerySearch(t *testing.T) {
 	query := "how many percentage of non-interesting traces the otelcol-tail-sampling sampler export ?"
 
 	home, err := os.UserHomeDir()

@@ -1,6 +1,6 @@
 package splitter
 
-// ponytail: AST-based splitter manager for Go and Terraform, orchestrating the file-specific parsers and chunk refining
+// AST-based splitter manager for Go and Terraform, orchestrating the file-specific parsers and chunk refining
 
 import (
 	"fmt"

@@ -1,6 +1,6 @@
 package splitter
 
-// ponytail: parse Go AST using standard go/ast and go/parser, completely self-contained
+// parse Go AST using standard go/ast and go/parser, completely self-contained
 
 import (
 	"go/ast"

@@ -1,6 +1,6 @@
 package splitter
 
-// ponytail: parse YAML documents semantically by splitting along multi-document boundary separators (---), keeping documents intact for maximum context cohesion
+// parse YAML documents semantically by splitting along multi-document boundary separators (---), keeping documents intact for maximum context cohesion
 
 import (
 	"os"

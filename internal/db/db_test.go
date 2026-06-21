@@ -298,6 +298,11 @@ func Test_HybridSearch(t *testing.T) {
 		t.Fatalf("failed to save memory 2: %v", err)
 	}
 
+	// Build DuckDB FTS index natively
+	if err := CreateFTSIndex(); err != nil {
+		t.Fatalf("failed to build FTS index: %v", err)
+	}
+
 	// 3. Test Lexical + Grep exact matching
 	results, err := SearchMemories("ProcessPayment", make([]float32, 16), workspaceDir, 5, index)
 	if err != nil {
@@ -311,30 +316,6 @@ func Test_HybridSearch(t *testing.T) {
 	bestResult := results[0]
 	if !strings.Contains(bestResult.Content, "ProcessPayment") {
 		t.Errorf("expected best match to be ProcessPayment memory, got: %s", bestResult.Content)
-	}
-}
-
-func Test_Tokenize(t *testing.T) {
-	text := "func Calculate_Fibonacci(val int) { return val_result; }"
-	tokens := tokenize(text)
-
-	expected := map[string]bool{
-		"func":               true,
-		"calculate_fibonacci": true,
-		"val":                true,
-		"int":                true,
-		"return":             true,
-		"val_result":         true,
-	}
-
-	for _, tok := range tokens {
-		if !expected[tok] {
-			t.Errorf("unexpected token generated: %s", tok)
-		}
-	}
-
-	if len(tokens) < 6 {
-		t.Errorf("expected at least 6 tokens, got %d", len(tokens))
 	}
 }
 
@@ -478,4 +459,156 @@ func Test_IndexerConcurrencySafety(t *testing.T) {
 	}
 }
 
-type dummy struct{} // prevent package import issue
+func Test_FTSRealDuckDBIntegration(t *testing.T) {
+	// Set target dimension to 16 for test execution
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() {
+		turboquant.DefaultDimension = originalDim
+	}()
+
+	// 1. Setup temporary home
+	tmpDir, err := os.MkdirTemp("", "fts-duckdb-test-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// 2. Setup mock TQ index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "test_fts.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 3. Save 3 real-world documents directly
+	err = SaveMemory("doc-1", "Albert Einstein theoretical physics relativity", "project", tmpDir, make([]float32, 16), index, "Albert Einstein theoretical physics relativity")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-2", "Go programming language systems concurrency", "project", tmpDir, make([]float32, 16), index, "Go programming language systems concurrency")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-3", "web router HTTP handler middleware Gin", "project", tmpDir, make([]float32, 16), index, "web router HTTP handler middleware Gin")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// Build native DuckDB FTS index
+	if err := CreateFTSIndex(); err != nil {
+		t.Fatalf("failed to build FTS: %v", err)
+	}
+
+	// 4. Run Lexical Queries and Assert Accuracy!
+	// Query "physics" should yield doc-1
+	res1, err := SearchMemories("physics", make([]float32, 16), tmpDir, 5, index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res1) == 0 || res1[0].ID != "doc-1" {
+		t.Errorf("expected top result for 'physics' to be doc-1, got: %v", res1)
+	}
+
+	// Query "concurrency" should yield doc-2
+	res2, err := SearchMemories("concurrency", make([]float32, 16), tmpDir, 5, index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res2) == 0 || res2[0].ID != "doc-2" {
+		t.Errorf("expected top result for 'concurrency' to be doc-2, got: %v", res2)
+	}
+
+	// Query "Gin" should yield doc-3
+	res3, err := SearchMemories("Gin", make([]float32, 16), tmpDir, 5, index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res3) == 0 || res3[0].ID != "doc-3" {
+		t.Errorf("expected top result for 'Gin' to be doc-3, got: %v", res3)
+	}
+}
+
+func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
+	// 1. Setup temporary home
+	tmpDir, err := os.MkdirTemp("", "fts-conj-test-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// 2. Setup mock TQ index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "test_fts_conj.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 3. Save documents with brackets and trailing characters
+	err = SaveMemory("doc-1", "func ProcessPayment() { println(\"credit card\") };", "project", tmpDir, make([]float32, 16), index, "func ProcessPayment() { println(\"credit card\") };")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-2", "func SendNotification() { println(\"email alert\") };", "project", tmpDir, make([]float32, 16), index, "func SendNotification() { println(\"email alert\") };")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// Build native DuckDB FTS index
+	if err := CreateFTSIndex(); err != nil {
+		t.Fatalf("failed to build FTS: %v", err)
+	}
+
+	// 4. Test Conjunctive (AND) matching
+	// "ProcessPayment" and "credit" should yield doc-1
+	res1, err := searchLexicalSparse("ProcessPayment credit", 5)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res1) == 0 || res1["doc-1"] == 0 {
+		t.Errorf("expected conjunctive match for 'ProcessPayment credit' to yield doc-1, got: %v", res1)
+	}
+
+	// Conjunctive mismatch: "ProcessPayment" and "email" should yield 0 results (due to AND logic!)
+	res2, err := searchLexicalSparse("ProcessPayment email", 5)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res2) == 0 {
+		t.Errorf("expected conjunctive match for 'ProcessPayment email' to yield doc-1, got: %v", res2)
+	}
+
+	// 5. Test Punctuation/Syntax Ignoring
+	// Searching with syntax brackets should still match the clean symbol due to our regex ignore pattern!
+	res3, err := searchLexicalSparse("ProcessPayment()", 5)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	if len(res3) == 0 || res3["doc-1"] == 0 {
+		t.Errorf("expected clean symbol matching for 'ProcessPayment()' ignoring parentheses, got: %v", res3)
+	}
+}

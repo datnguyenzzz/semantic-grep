@@ -1,6 +1,6 @@
 package main
 
-// ponytail: codebase indexer walks directories, filters Go, Terraform, and YAML files, splits them, embeds, and stores in DuckDB using a Merkle Tree
+// codebase indexer walks directories, filters Go, Terraform, and YAML files, splits them, embeds, and stores in DuckDB using a Merkle Tree
 
 import (
 	"fmt"

@@ -1,14 +1,12 @@
 package db
 
-// ponytail: keep db operations simple, open and close on every call, standardize all embeddings to exactly 3072 dimensions, and compress using the explicitly passed 4-bit TurboQuant dependency
-// ponytail: privacy preservation - codebase file contents are NEVER stored in the database, only their metadata. Code is read on-demand during searches from local disk.
+// keep db operations simple, open and close on every call, standardize all embeddings to exactly 3072 dimensions, and compress using the explicitly passed 4-bit TurboQuant dependency
 import (
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,56 +27,6 @@ type Memory struct {
 }
 
 const CandidateMultiplier = 3
-
-func parseMetadataHeader(content string) (relPath string, startLine, endLine int, ok bool) {
-	// Format: "File: <relPath> (Lines: <start>-<end>)"
-	if !strings.HasPrefix(content, "File: ") {
-		return "", 0, 0, false
-	}
-	parts := strings.SplitN(content[6:], " (Lines: ", 2)
-	if len(parts) != 2 {
-		return "", 0, 0, false
-	}
-	relPath = parts[0]
-
-	rangeParts := strings.SplitN(strings.TrimSuffix(parts[1], ")"), "-", 2)
-	if len(rangeParts) != 2 {
-		return "", 0, 0, false
-	}
-
-	var err error
-	startLine, err = strconv.Atoi(rangeParts[0])
-	if err != nil {
-		return "", 0, 0, false
-	}
-	endLine, err = strconv.Atoi(rangeParts[1])
-	if err != nil {
-		return "", 0, 0, false
-	}
-
-	return relPath, startLine, endLine, true
-}
-
-func readCodeLines(absPath, relPath string, startLine, endLine int) (string, error) {
-	fullPath := filepath.Join(absPath, relPath)
-	contentBytes, err := os.ReadFile(fullPath)
-	if err != nil {
-		return "", err
-	}
-	lines := strings.Split(string(contentBytes), "\n")
-
-	if startLine < 1 {
-		startLine = 1
-	}
-	if endLine > len(lines) {
-		endLine = len(lines)
-	}
-	if startLine > len(lines) || startLine > endLine {
-		return "", nil
-	}
-
-	return strings.Join(lines[startLine-1:endLine], "\n"), nil
-}
 
 func getDBPath() (string, error) {
 	home, err := os.UserHomeDir()
@@ -110,14 +58,26 @@ func InitDatabase() error {
 	}
 	defer db.Close()
 
-	// ponytail: automatic DuckDB schema migration - drop tables with embedding column as DuckDB now only stores metadata
+	// Load native DuckDB FTS (Full Text Search) extension
+	_, _ = db.Exec("INSTALL fts;")
+	_, _ = db.Exec("LOAD fts;")
+	_, _ = db.Exec("DROP TABLE IF EXISTS gemini_symbols;")
+
+	// automatic DuckDB schema migration - drop tables with legacy symbols column
+	var symbolsCol string
+	err = db.QueryRow("SELECT column_name FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'symbols'").Scan(&symbolsCol)
+	if err == nil {
+		_, _ = db.Exec("DROP TABLE IF EXISTS gemini_memories;")
+	}
+
+	// automatic DuckDB schema migration - drop tables with embedding column
 	var colType string
 	err = db.QueryRow("SELECT data_type FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'embedding'").Scan(&colType)
 	if err == nil {
-		_, _ = db.Exec("DROP TABLE gemini_memories")
+		_, _ = db.Exec("DROP TABLE IF EXISTS gemini_memories;")
 	}
 
-	// ponytail: store ONLY metadata in DuckDB; vectors are persisted separately in our dedicated .tqv files
+	// store chunk content in DuckDB; vectors are persisted separately in our dedicated .tqv files
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS gemini_memories (
 			id VARCHAR PRIMARY KEY,
@@ -131,7 +91,7 @@ func InitDatabase() error {
 		return err
 	}
 
-	// ponytail: create merkle_trees table for tracking indexed files and directories to enable ultra-fast incremental indexing
+	// create merkle_trees table for tracking indexed files and directories to enable ultra-fast incremental indexing
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS merkle_trees (
 			cwd TEXT PRIMARY KEY,
@@ -144,7 +104,7 @@ func InitDatabase() error {
 		return err
 	}
 
-	// ponytail: create call_nodes and call_edges tables for fast, incremental AST-based call graph indexing
+	// create call_nodes and call_edges tables for fast, incremental AST-based call graph indexing
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS call_nodes (
 			name VARCHAR NOT NULL,
@@ -163,18 +123,21 @@ func InitDatabase() error {
 			callee VARCHAR NOT NULL
 		)
 	`)
+	return err
+}
+
+// CreateFTSIndex builds or overwrites the native DuckDB BM25 Full-Text Search index
+func CreateFTSIndex() error {
+	dbLock.Lock()
+	defer dbLock.Unlock()
+
+	db, err := Open()
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS gemini_symbols (
-			memory_id VARCHAR NOT NULL,
-			token VARCHAR NOT NULL,
-			count INTEGER NOT NULL,
-			PRIMARY KEY (memory_id, token)
-		)
-	`)
+	_, err = db.Exec("PRAGMA create_fts_index('gemini_memories', 'id', 'content', stemmer='none', ignore='(\\.|[^a-zA-Z0-9_])+', overwrite=1);")
 	return err
 }
 
@@ -184,25 +147,6 @@ func GetTQPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, "agent-mem.tqv"), nil
-}
-
-func tokenize(content string) []string {
-	var tokens []string
-	var current strings.Builder
-	for _, r := range content {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
-			current.WriteRune(r)
-		} else {
-			if current.Len() > 2 {
-				tokens = append(tokens, strings.ToLower(current.String()))
-			}
-			current.Reset()
-		}
-	}
-	if current.Len() > 2 {
-		tokens = append(tokens, strings.ToLower(current.String()))
-	}
-	return tokens
 }
 
 var (
@@ -259,49 +203,20 @@ func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
 			return err
 		}
 
-		stmtSymbol, err := tx.Prepare(`
-			INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
-			VALUES ($1, $2, $3)
-		`)
-		if err != nil {
-			_ = stmtMemory.Close()
-			_ = tx.Rollback()
-			return err
-		}
-
 		for _, item := range chunk {
-			// 1. Save metadata
-			_, err = stmtMemory.Exec(item.ID, item.Content, item.CWD)
+			// 1. Save chunk content directly into DuckDB
+			_, err = stmtMemory.Exec(item.ID, item.ChunkContent, item.CWD)
 			if err != nil {
-				_ = stmtSymbol.Close()
 				_ = stmtMemory.Close()
 				_ = tx.Rollback()
 				return err
 			}
 
-			// 2. Tokenize and save symbol frequencies
-			tokens := tokenize(item.ChunkContent)
-			freq := make(map[string]int)
-			for _, t := range tokens {
-				freq[t]++
-			}
-
-			for token, count := range freq {
-				_, err = stmtSymbol.Exec(item.ID, token, count)
-				if err != nil {
-					_ = stmtSymbol.Close()
-					_ = stmtMemory.Close()
-					_ = tx.Rollback()
-					return err
-				}
-			}
-
-			// 3. Add to TurboQuant index in-memory
+			// 2. Add to TurboQuant index in-memory
 			_ = index.Add(item.ID, item.Embedding)
 		}
 
-		// Close statements before committing to prevent leaks or locked handles
-		_ = stmtSymbol.Close()
+		// Close statement before committing to prevent leaks or locked handles
 		_ = stmtMemory.Close()
 
 		if err := tx.Commit(); err != nil {
@@ -330,34 +245,17 @@ func SaveMemory(id, content, category, cwd string, embedding []float32, index *t
 		return fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	// 1. Save metadata to DuckDB (always save as project category)
+	// 1. Save chunk content directly into DuckDB
 	query := `
 		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
 		VALUES ($1, $2, 'project', $3)
 	`
-	_, err = db.Exec(query, id, content, cwd)
+	_, err = db.Exec(query, id, chunkContent, cwd)
 	if err != nil {
 		return err
 	}
 
-	// 2. Tokenize chunkContent, building inverted index and save token/symbol frequencies for fast Lexical search
-	tokens := tokenize(chunkContent)
-	freq := make(map[string]int)
-	for _, t := range tokens {
-		freq[t]++
-	}
-
-	for token, count := range freq {
-		_, err = db.Exec(`
-			INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
-			VALUES ($1, $2, $3)
-		`, id, token, count)
-		if err != nil {
-			return err
-		}
-	}
-
-	// 3. Add to the shared TurboQuant index
+	// 2. Add to the shared TurboQuant index
 	return index.Add(id, embedding)
 }
 
@@ -400,7 +298,7 @@ func searchSemanticDense(queryEmbedding []float32, limit int, index *turboquant.
 	return index.Search(queryEmbedding, nil, limit)
 }
 
-func searchLexicalSparse(qTokens []string, limit int) (map[string]float64, error) {
+func searchLexicalSparse(queryText string, limit int) (map[string]float64, error) {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
@@ -411,46 +309,44 @@ func searchLexicalSparse(qTokens []string, limit int) (map[string]float64, error
 	defer db.Close()
 
 	lexMap := make(map[string]float64)
-	placeholders := make([]string, len(qTokens))
-	args := make([]any, len(qTokens))
-	for i, tok := range qTokens {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = tok
+	if queryText == "" {
+		return lexMap, nil
 	}
-	querySql := fmt.Sprintf(`
-		SELECT memory_id, SUM(count) as match_count
-		FROM gemini_symbols
-		WHERE token IN (%s)
-		GROUP BY memory_id
-		ORDER BY match_count DESC
-		LIMIT %d
-	`, strings.Join(placeholders, ", "), limit)
 
-	rows, err := db.Query(querySql, args...)
+	// highly optimized native DuckDB Okapi BM25 full-text search query.
+	querySql := `
+		SELECT id, fts_main_gemini_memories.match_bm25(id, $1) as score
+		FROM gemini_memories
+		WHERE score IS NOT NULL
+		ORDER BY score DESC
+		LIMIT $2
+	`
+	rows, err := db.Query(querySql, queryText, limit)
 	if err != nil {
-		return nil, err
+		// If FTS index hasn't been created yet (e.g. empty database), return empty list gracefully
+		return lexMap, nil
 	}
 	defer rows.Close()
 
 	type lexMatch struct {
 		id    string
-		count int
+		score float64
 	}
 	var matches []lexMatch
-	maxCount := 1.0
+	maxScore := 0.0001 // prevent division by zero
 
 	for rows.Next() {
 		var m lexMatch
-		if err := rows.Scan(&m.id, &m.count); err == nil {
+		if err := rows.Scan(&m.id, &m.score); err == nil {
 			matches = append(matches, m)
-			if float64(m.count) > maxCount {
-				maxCount = float64(m.count)
+			if m.score > maxScore {
+				maxScore = m.score
 			}
 		}
 	}
 
 	for _, m := range matches {
-		lexMap[m.id] = float64(m.count) / maxCount
+		lexMap[m.id] = m.score / maxScore
 	}
 
 	return lexMap, nil
@@ -548,14 +444,6 @@ func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, err
 		var m Memory
 		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
 		if err == nil {
-			if m.Category == "project" {
-				if relPath, start, end, ok := parseMetadataHeader(m.Content); ok {
-					code, err := readCodeLines(m.CWD, relPath, start, end)
-					if err == nil && code != "" {
-						m.Content = fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, start, end, code)
-					}
-				}
-			}
 			memories = append(memories, m)
 		}
 	}
@@ -610,8 +498,6 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 		return nil, fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	qTokens := tokenize(queryText)
-
 	// Concurrently query Dense Semantic path and Sparse Lexical path in parallel!
 	var semResults []turboquant.SearchResult
 	var semErr error
@@ -630,8 +516,8 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 
 	go func() {
 		defer wg.Done()
-		if len(qTokens) > 0 {
-			lexMap, lexErr = searchLexicalSparse(qTokens, candidateLimit)
+		if queryText != "" {
+			lexMap, lexErr = searchLexicalSparse(queryText, candidateLimit)
 		}
 	}()
 
