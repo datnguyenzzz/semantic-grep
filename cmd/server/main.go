@@ -1,6 +1,6 @@
 package main
 
-// ponytail: keep mcp server simple, use official go-sdk, map arguments cleanly, and run periodic Merkle tree index updates in background
+// keep mcp server simple, use official go-sdk, map arguments cleanly, and run periodic Merkle tree index updates in background
 
 import (
 	"context"
@@ -72,7 +72,7 @@ var CallGraphSchemaDescription = map[string]string{
 }
 
 func startPeriodicIndexUpdate(index *turboquant.Index) {
-	// ponytail: periodically run incremental codebase index update in background, ONLY for registered codebases in DB
+	// periodically run incremental codebase index update in background, ONLY for registered codebases in DB
 	syncInterval := 10 * time.Minute
 	if val := os.Getenv("BACKGROUND_SYNC_INTERVAL"); val != "" {
 		if dur, err := time.ParseDuration(val); err == nil {

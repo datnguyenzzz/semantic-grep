@@ -29,7 +29,7 @@ func NewIndex(filePath string, tq *TurboQuant) (*Index, error) {
 }
 
 func (idx *Index) Add(id string, vec []float32) error {
-	// ponytail: perform CPU-heavy rotation and quantization outside the lock to enable multi-core parallelism
+	// perform CPU-heavy rotation and quantization outside the lock to enable multi-core parallelism
 	qv, err := idx.tq.Quantize(vec)
 	if err != nil {
 		return err

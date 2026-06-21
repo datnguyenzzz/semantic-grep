@@ -1,5 +1,5 @@
 # Makefile for Gemini CLI Persistent Memory Extension (agent-mem)
-# ponytail: keep targets clean, simple, and utilize standard shell commands
+# keep targets clean, simple, and utilize standard shell commands
 
 .PHONY: all build rebuild install test clean self-check benchmark
 
@@ -87,12 +87,11 @@ test-recall:
 	@echo "Running TurboQuant recall bench ..."
 	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_Recall_TurboQuant -v
 
-test-effectivenss:
+test-effectiveness:
 	python3 scripts/download_data.py
-	@echo "Running Hybrid Search effectivenss, dim=3072, bench ..."
-	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_HybridSearchEffectiveness_d3072 -v
-	@echo "Running Hybrid Search effectivenss, dim=1536, bench ..."
-	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_HybridSearchEffectiveness_d1536 -v
+	@echo "Running Hybrid Search effectiveness benchmarks..."
+	mkdir -p results
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=^$$ -bench=Benchmark_HybridSearchEffectiveness -benchtime=1x -count=1 -cpuprofile=results/cpu.pprof -memprofile=results/mem.pprof -v
 
 # Clean compiled binaries
 clean:

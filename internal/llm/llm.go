@@ -1,6 +1,6 @@
 package llm
 
-// ponytail: use standard net/http for OpenAI-compatible LiteLLM endpoints to support any model with zero SDK dependencies
+// use standard net/http for OpenAI-compatible LiteLLM endpoints to support any model with zero SDK dependencies
 
 import (
 	"bytes"

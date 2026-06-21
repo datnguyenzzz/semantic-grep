@@ -1,6 +1,6 @@
 package main
 
-// ponytail: keep test extremely simple, run offline with mock embeddings, verify DuckDB logic with explicit TurboQuant dependencies
+// keep test extremely simple, run offline with mock embeddings, verify DuckDB logic with explicit TurboQuant dependencies
 
 import (
 	"fmt"

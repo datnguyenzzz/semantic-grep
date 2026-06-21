@@ -2,21 +2,21 @@
   "corpus_size": 50000,
   "eval_queries": 16666,
   "hybrid_search": {
-    "latency": 5457.142745709828,
-    "mrr": 0.9938697547901918,
+    "latency": 6456.476719068763,
+    "mrr": 0.9953768150726031,
     "recall_1": 0.99,
     "recall_3": 0.99,
     "recall_5": 0.99
   },
   "pure_lexical": {
-    "latency": 5447.226749069962,
-    "mrr": 0.8596403856154246,
-    "recall_1": 0.85,
-    "recall_3": 0.86,
-    "recall_5": 0.86
+    "latency": 6449.990579623185,
+    "mrr": 0.9685337413496542,
+    "recall_1": 0.96,
+    "recall_3": 0.97,
+    "recall_5": 0.97
   },
   "pure_semantic": {
-    "latency": 359.84189367574703,
+    "latency": 292.1984879395176,
     "mrr": 0.9523610944437811,
     "recall_1": 0.93,
     "recall_3": 0.97,

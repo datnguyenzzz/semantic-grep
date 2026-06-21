@@ -1,6 +1,6 @@
 package splitter
 
-// ponytail: parse Terraform lexical blocks using standard strings manipulation, completely self-contained
+// parse Terraform lexical blocks using standard strings manipulation, completely self-contained
 
 import (
 	"os"
