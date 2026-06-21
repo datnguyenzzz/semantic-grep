@@ -50,15 +50,6 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	benchmarkCWD := "/Users/thanh.nguyen/Documents/My_Code/agent-context/data"
 	_ = os.MkdirAll(benchmarkCWD, 0755)
 
-	// ponytail: register a robust, function-level deferred cleanup that deletes all temporary files on exit!
-	defer func() {
-		fmt.Printf("  🧹 Cleaning up temporary document files from %s...\n", benchmarkCWD)
-		for i := 0; i < limit; i++ {
-			_ = os.Remove(filepath.Join(benchmarkCWD, fmt.Sprintf("doc_%d.txt", i)))
-		}
-		fmt.Println("  ✓ Cleanup completed successfully.")
-	}()
-
 	// 1. Setup custom storage paths in a clean temporary directory to guarantee a fresh, pruned database state!
 	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("effectiveness-benchmark-d%d-*", dim))
 	if err != nil {
@@ -78,18 +69,12 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	// 2. Resolve dataset paths
 	textPath := filepath.Join(benchmarkCWD, fmt.Sprintf("dbpedia_text_d%d.json", dim))
 	if _, err := os.Stat(textPath); os.IsNotExist(err) {
-		textPath = filepath.Join("data", fmt.Sprintf("dbpedia_text_d%d.json", dim))
-		if _, err := os.Stat(textPath); os.IsNotExist(err) {
-			b.Skipf("Warning: Benchmark dataset dbpedia_text_d%d.json not found. Run python3 scripts/download_benchmark_text.py first.", dim)
-		}
+		b.Skipf("Warning: Benchmark dataset dbpedia_text_d%d.json not found. Run python3 scripts/download_benchmark_text.py first.", dim)
 	}
 
 	npyPath := filepath.Join(benchmarkCWD, fmt.Sprintf("openai-%d.npy", dim))
 	if _, err := os.Stat(npyPath); os.IsNotExist(err) {
-		npyPath = filepath.Join("data", fmt.Sprintf("openai-%d.npy", dim))
-		if _, err := os.Stat(npyPath); os.IsNotExist(err) {
-			b.Skipf("Warning: Benchmark dataset openai-%d.npy not found. Run scripts/download_data.py first.", dim)
-		}
+		b.Skipf("Warning: Benchmark dataset openai-%d.npy not found. Run scripts/download_data.py first.", dim)
 	}
 
 	// 3. Load raw text entries (limited to limit)
@@ -377,6 +362,13 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 			}
 		}
 	}
+
+	// ponytail: clean up all temporary document files immediately because query search evaluations are now completed!
+	fmt.Printf("  🧹 Cleaning up temporary document files immediately from %s...\n", benchmarkCWD)
+	for i := 0; i < limit; i++ {
+		_ = os.Remove(filepath.Join(benchmarkCWD, fmt.Sprintf("doc_%d.txt", i)))
+	}
+	fmt.Println("  ✓ Cleanup completed successfully.")
 
 	// 8. Calculate final scores
 	evalCountFloat := float64(evalSize)

@@ -71,10 +71,7 @@ func readNpyFile(path string, shape []int, limit int) ([]float32, error) {
 func loadOpenAI(dim int) ([][]float32, [][]float32, error) {
 	path := "/Users/thanh.nguyen/Documents/My_Code/agent-context/data/" + fmt.Sprintf("openai-%d.npy", dim)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path = filepath.Join("data", fmt.Sprintf("openai-%d.npy", dim))
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			path = filepath.Join("..", "data", fmt.Sprintf("openai-%d.npy", dim))
-		}
+		panic("Warning: Benchmark dataset openai-%d.npy not found. Run scripts/download_data.py first.")
 	}
 
 	shape := []int{101000, dim}

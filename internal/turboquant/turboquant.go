@@ -518,15 +518,22 @@ func (tq *TurboQuant) ScorePreparedWithPruningBuf(preparedQuery []float64, suffi
 	centroids := tq.codebook.Centroids
 	dim := len(preparedQuery)
 
+	// Pre-compute constants outside the loop to bypass millions of operations
+	thresholdSq := threshold * threshold
+	normMaxCentroid := float64(norm) * maxCentroid
+
 	for i := range dim {
-		// Pruning check using Cauchy-Schwarz bounds
-		if threshold > -1.0 {
+		// Optimization: Check pruning only every 16 steps after initial 64 dimensions to save 93.8% check overhead!
+		if threshold > -1.0 && i >= 64 && i%16 == 0 {
 			remainingDim := dim - i
-			maxRemainingDot := float64(norm) * maxCentroid * suffixEnergy[i]
 			approxNormSq := normSq + float64(remainingDim)*minCentroidSq
 			if approxNormSq > 0 {
-				maxPossibleSim := (dot + maxRemainingDot) / math.Sqrt(approxNormSq)
-				if maxPossibleSim < threshold {
+				maxPossibleDot := dot + normMaxCentroid*suffixEnergy[i]
+				if maxPossibleDot < 0 {
+					return 0.0, true // Pruned early!
+				}
+				// Optimization: Squaring the inequality completely eliminates math.Sqrt and divisions!
+				if maxPossibleDot*maxPossibleDot < thresholdSq*approxNormSq {
 					return 0.0, true // Pruned early!
 				}
 			}
