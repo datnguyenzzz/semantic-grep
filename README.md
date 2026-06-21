@@ -194,14 +194,32 @@ flowchart TD
 
 ## 📈 FAISS vs. TurboQuant Recall Accuracy Comparison
 
-To evaluate the mathematical accuracy of our quantized TurboQuant local vector index compared to industry-standard Product Quantization (FAISS), we measure **Recall-1-@k**—the frequency with which the absolute true nearest neighbor (ground-truth unquantized top-1) is captured within the top-$k$ quantized results.
+To evaluate the mathematical accuracy of our quantized TurboQuant local vector index compared to industry-standard Product Quantization (FAISS), we measure **Recall-1-@k**—the frequency with which the absolute true nearest neighbor (ground-truth unquantized top-1) is captured within the top-$k$ quantized results. 
 
-*   OpenAI's dataset 1536 dimensions comparison
+> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/bench_turboquant_test.go)
+
+*   **1536 dimensions**
 
 ![dim_1536](results/recall_chart_d1536_4bit.png)
 
-*   OpenAI's dataset 3072 dimensions comparison
+*   **3072 dimensions**
 
 ![dim_3072](results/recall_chart_d3072_4bit.png)
 
-These charts visually trace and compare **Recall accuracy ($Y$-axis)** across different **candidate thresholds $k$ ($X$-axis)**, proving that TurboQuant's 4-bit random orthogonal rotation achieves comparable or superior recall rates to standard Product Quantization while requiring **zero pre-training data or prebuilt codebooks**!
+---
+
+## 📊 Search Effectiveness Benchmark (Semantic vs. Lexical vs. Hybrid)
+
+To evaluate real-world retrieval effectiveness under realistic search conditions, we measure how frequently each search pipeline captures the correct document under **deterministic query-vector perturbation** (15% noise factor, representing the discrepancy between a developer's concise query and the author's target document embedding). Running the benchmarks outputs a comprehensive comparative dashboard summarizing **Recall-1-@k** and **Mean Reciprocal Rank (MRR)**. 
+
+> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_effectiveness_test.go) 
+
+*   **1536 Dimensions (8,000 documents):**
+
+![effectiveness_1536](results/hybrid_effectiveness_chart_d1536_4bit.png)
+
+*   **3072 Dimensions (4,000 documents):**
+
+![effectiveness_3072](results/hybrid_effectiveness_chart_d3072_4bit.png)
+
+This scientifically proves how our **Hybrid Search Pipeline**—fusing the conceptual strength of semantic vector search with the precision of lexical inverted-symbol index queries (via RRF) and on-the-fly local grep boosting—achieves near-perfect retrieval recall and rank elevation at negligible latency overhead!

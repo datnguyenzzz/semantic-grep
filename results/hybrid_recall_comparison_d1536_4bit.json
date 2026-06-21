@@ -1,0 +1,25 @@
+{
+  "corpus_size": 100000,
+  "eval_queries": 33333,
+  "hybrid_search": {
+    "latency": 5857.539645396454,
+    "mrr": 0.9896808968089674,
+    "recall_1": 0.98,
+    "recall_3": 0.99,
+    "recall_5": 0.99
+  },
+  "pure_lexical": {
+    "latency": 5847.124081240812,
+    "mrr": 0.8003660036600364,
+    "recall_1": 0.79,
+    "recall_3": 0.8,
+    "recall_5": 0.8
+  },
+  "pure_semantic": {
+    "latency": 357.4339843398434,
+    "mrr": 0.9206897068970656,
+    "recall_1": 0.88,
+    "recall_3": 0.95,
+    "recall_5": 0.96
+  }
+}

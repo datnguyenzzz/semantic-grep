@@ -54,10 +54,88 @@ def plot_dimension(dim):
     plt.close()
     print(f"✓ Successfully generated recall chart: {png_path}")
 
+def plot_effectiveness_for_dim(dim):
+    json_path = os.path.join(RESULTS_DIR, f"hybrid_recall_comparison_d{dim}_4bit.json")
+    if not os.path.exists(json_path):
+        print(f"⚠️  Effectiveness JSON not found at: {json_path}. Skipping d={dim}.")
+        return
+
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    # Extract metrics
+    methods = ["pure_semantic", "pure_lexical", "hybrid_search"]
+    method_labels = {
+        "pure_semantic": "Pure Semantic (TQ)",
+        "pure_lexical": "Pure Lexical (DB)",
+        "hybrid_search": "Our Hybrid Search"
+    }
+    colors = {
+        "pure_semantic": "crimson",
+        "pure_lexical": "darkgray",
+        "hybrid_search": "royalblue"
+    }
+
+    metrics = ["Recall@1", "Recall@3", "Recall@5", "MRR"]
+    
+    # Compile raw values
+    scores = {}
+    for m in methods:
+        m_data = data.get(m, {})
+        scores[m] = [
+            m_data.get("recall_1", 0.0),
+            m_data.get("recall_3", 0.0),
+            m_data.get("recall_5", 0.0),
+            m_data.get("mrr", 0.0)
+        ]
+
+    # Create Grouped Bar Chart
+    import numpy as np
+    x = np.arange(len(metrics))
+    width = 0.25  # width of each bar
+
+    plt.figure(figsize=(10, 6))
+
+    # Plot bars
+    plt.bar(x - width, scores["pure_semantic"], width, label=method_labels["pure_semantic"], color=colors["pure_semantic"])
+    plt.bar(x, scores["pure_lexical"], width, label=method_labels["pure_lexical"], color=colors["pure_lexical"])
+    plt.bar(x + width, scores["hybrid_search"], width, label=method_labels["hybrid_search"], color=colors["hybrid_search"])
+
+    # Format Chart
+    plt.xlabel("Evaluation Metrics", fontsize=12)
+    plt.ylabel("Score (0.0 to 1.0)", fontsize=12)
+    plt.title(f"Search Effectiveness Comparison (OpenAI d={dim})", fontsize=14, fontweight="bold")
+    plt.xticks(x, metrics, fontsize=11)
+    plt.ylim([0.0, 1.05])
+    plt.grid(True, axis="y", linestyle="--", alpha=0.5)
+    
+    # Add values on top of the bars
+    for i, m in enumerate(methods):
+        offset = (i - 1) * width
+        for j, val in enumerate(scores[m]):
+            plt.text(j + offset, val + 0.01, f"{val:.2f}", ha="center", va="bottom", fontsize=9, fontweight="bold")
+
+    plt.legend(fontsize=11, loc="upper left")
+    plt.tight_layout()
+
+    png_path = os.path.join(RESULTS_DIR, f"hybrid_effectiveness_chart_d{dim}_4bit.png")
+    plt.savefig(png_path, dpi=300)
+    plt.close()
+    print(f"✓ Successfully generated hybrid effectiveness chart: {png_path}")
+
 def main():
+    import sys
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    plot_dimension(1536)
-    plot_dimension(3072)
+    
+    # Check if 'effectiveness' is passed as a CLI argument
+    if len(sys.argv) > 1 and "effectiveness" in sys.argv:
+        print("📊 Plotting large-scale hybrid search effectiveness bar charts...")
+        plot_effectiveness_for_dim(1536)
+        plot_effectiveness_for_dim(3072)
+    else:
+        print("📈 Plotting FAISS vs. TurboQuant recall comparison curves...")
+        plot_dimension(1536)
+        plot_dimension(3072)
 
 if __name__ == "__main__":
     main()

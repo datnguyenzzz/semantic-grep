@@ -30,21 +30,6 @@ type Memory struct {
 
 const CandidateMultiplier = 3
 
-// normalizeVectorTo3072 ensures that every vector is exactly target dimensions by slicing or padding
-func normalizeVectorTo3072(vec []float32) []float32 {
-	targetDim := turboquant.DefaultDimension
-	if len(vec) == targetDim {
-		return vec
-	}
-	if len(vec) > targetDim {
-		return vec[:targetDim]
-	}
-	// Pad with zeros to exactly 3072
-	padded := make([]float32, targetDim)
-	copy(padded, vec)
-	return padded
-}
-
 func parseMetadataHeader(content string) (relPath string, startLine, endLine int, ok bool) {
 	// Format: "File: <relPath> (Lines: <start>-<end>)"
 	if !strings.HasPrefix(content, "File: ") {
@@ -251,58 +236,84 @@ func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
 		return fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	// Start a single, robust ACID transaction to write all data in milliseconds
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+	// We split the large batch into smaller chunks (each <= 500 items) to prevent long lock times and OOMs
+	chunkSize := 500
+	numItems := len(items)
 
-	stmtMemory, err := tx.Prepare(`
-		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
-		VALUES ($1, $2, 'project', $3)
-	`)
-	if err != nil {
-		return err
-	}
-	defer stmtMemory.Close()
+	for start := 0; start < numItems; start += chunkSize {
+		end := min(start+chunkSize, numItems)
+		chunk := items[start:end]
 
-	stmtSymbol, err := tx.Prepare(`
-		INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
-		VALUES ($1, $2, $3)
-	`)
-	if err != nil {
-		return err
-	}
-	defer stmtSymbol.Close()
-
-	for _, item := range items {
-		// 1. Save metadata
-		_, err = stmtMemory.Exec(item.ID, item.Content, item.CWD)
+		// Start a transaction for this smaller chunk
+		tx, err := db.Begin()
 		if err != nil {
 			return err
 		}
 
-		// 2. Tokenize and save symbol frequencies
-		tokens := tokenize(item.ChunkContent)
-		freq := make(map[string]int)
-		for _, t := range tokens {
-			freq[t]++
+		stmtMemory, err := tx.Prepare(`
+			INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
+			VALUES ($1, $2, 'project', $3)
+		`)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
 		}
 
-		for token, count := range freq {
-			_, err = stmtSymbol.Exec(item.ID, token, count)
+		stmtSymbol, err := tx.Prepare(`
+			INSERT OR REPLACE INTO gemini_symbols (memory_id, token, count)
+			VALUES ($1, $2, $3)
+		`)
+		if err != nil {
+			_ = stmtMemory.Close()
+			_ = tx.Rollback()
+			return err
+		}
+
+		for _, item := range chunk {
+			// 1. Save metadata
+			_, err = stmtMemory.Exec(item.ID, item.Content, item.CWD)
 			if err != nil {
+				_ = stmtSymbol.Close()
+				_ = stmtMemory.Close()
+				_ = tx.Rollback()
 				return err
 			}
+
+			// 2. Tokenize and save symbol frequencies
+			tokens := tokenize(item.ChunkContent)
+			freq := make(map[string]int)
+			for _, t := range tokens {
+				freq[t]++
+			}
+
+			for token, count := range freq {
+				_, err = stmtSymbol.Exec(item.ID, token, count)
+				if err != nil {
+					_ = stmtSymbol.Close()
+					_ = stmtMemory.Close()
+					_ = tx.Rollback()
+					return err
+				}
+			}
+
+			// 3. Add to TurboQuant index in-memory
+			_ = index.Add(item.ID, item.Embedding)
 		}
 
-		// 3. Add to TurboQuant index in-memory
-		normalized := normalizeVectorTo3072(item.Embedding)
-		_ = index.Add(item.ID, normalized)
-	}
+		// Close statements before committing to prevent leaks or locked handles
+		_ = stmtSymbol.Close()
+		_ = stmtMemory.Close()
 
-	return tx.Commit()
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+
+		// Report progress dynamically per-commit
+		fmt.Printf("\r  ⚙ Database batch writing progress: %d/%d entries committed...", end, numItems)
+	}
+	fmt.Println()
+
+	return nil
 }
 
 func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index, chunkContent string) error {
@@ -346,8 +357,7 @@ func SaveMemory(id, content, category, cwd string, embedding []float32, index *t
 		}
 	}
 
-	// 3. Normalize and add to the shared TurboQuant index
-	embedding = normalizeVectorTo3072(embedding)
+	// 3. Add to the shared TurboQuant index
 	return index.Add(id, embedding)
 }
 
@@ -384,7 +394,9 @@ func queryParentCodebaseCWD(cwd string) string {
 }
 
 func searchSemanticDense(queryEmbedding []float32, limit int, index *turboquant.Index) ([]turboquant.SearchResult, error) {
-	queryEmbedding = normalizeVectorTo3072(queryEmbedding)
+	if index == nil {
+		return nil, nil
+	}
 	return index.Search(queryEmbedding, nil, limit)
 }
 

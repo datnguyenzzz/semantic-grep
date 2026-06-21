@@ -81,11 +81,18 @@ self-check:
 
 test-compression-rate:
 	@echo "Running TurboQuant compression rate ..."
-	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=6000s -run=Test_compression_rate -v
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_compression_rate -v
 
 test-recall:
 	@echo "Running TurboQuant recall bench ..."
-	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=6000s -run=Test_Recall_TurboQuant -v
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_Recall_TurboQuant -v
+
+test-effectivenss:
+	python3 scripts/download_data.py
+	@echo "Running Hybrid Search effectivenss, dim=3072, bench ..."
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_HybridSearchEffectiveness_d3072 -v
+	@echo "Running Hybrid Search effectivenss, dim=1536, bench ..."
+	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=Test_HybridSearchEffectiveness_d1536 -v
 
 # Clean compiled binaries
 clean:

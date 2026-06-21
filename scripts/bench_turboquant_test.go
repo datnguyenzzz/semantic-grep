@@ -25,7 +25,7 @@ const (
 
 var KValues = []int{1, 2, 4, 8, 16, 32}
 
-func readNpyFile(path string, shape []int) ([]float32, error) {
+func readNpyFile(path string, shape []int, limit int) ([]float32, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -49,8 +49,15 @@ func readNpyFile(path string, shape []int) ([]float32, error) {
 	}
 
 	size := 1
-	for _, dim := range shape {
-		size *= dim
+	if len(shape) > 0 {
+		firstDim := shape[0]
+		if limit > 0 && limit < firstDim {
+			firstDim = limit
+		}
+		size = firstDim
+		for i := 1; i < len(shape); i++ {
+			size *= shape[i]
+		}
 	}
 
 	data := make([]float32, size)
@@ -71,7 +78,7 @@ func loadOpenAI(dim int) ([][]float32, [][]float32, error) {
 	}
 
 	shape := []int{101000, dim}
-	raw, err := readNpyFile(path, shape)
+	raw, err := readNpyFile(path, shape, 0)
 	if err != nil {
 		return nil, nil, err
 	}

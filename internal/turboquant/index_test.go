@@ -296,7 +296,7 @@ func TestIndex_LowLevelCoordinateDecoding(t *testing.T) {
 
 	// Verify that indices (coordinate values) are between 0 and 15 (4-bit nibble range)
 	for i, idxVal := range qv.Indices {
-		if idxVal < 0 || idxVal > 15 {
+		if idxVal > 15 {
 			t.Errorf("coordinate index %d is out of 4-bit bounds: %d", i, idxVal)
 		}
 	}
