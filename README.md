@@ -1,6 +1,6 @@
 # Codebase Indexer & Persistent Memory Extension (agent-context)
 
-A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Designed for maximum security and privacy, **the extension does not index, save, or store your full codebase text into any database**. Instead, `agent-context` runs **entirely on your local machine**—storing only lightweight metadata headers (like file paths and line ranges) and inverted AST symbol hashes, while combining high-performance local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Inverted-Index Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
+A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Designed for security and privacy, **the extension does not index, save, or store your full codebase text into any database**. Instead, `agent-context` runs **entirely on your local machine**-storing only lightweight metadata headers and inverted AST symbol hashes, while combining high-performance local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Inverted-Index Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
 
 ---
 
@@ -214,12 +214,12 @@ To evaluate real-world retrieval effectiveness under realistic search conditions
 
 > We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_effectiveness_test.go) 
 
-*   **1536 Dimensions (8,000 documents):**
+*   **1536 Dimensions (100,000 documents):**
 
 ![effectiveness_1536](results/hybrid_effectiveness_chart_d1536_4bit.png)
 
-*   **3072 Dimensions (4,000 documents):**
+*   **3072 Dimensions (50,000 documents):**
 
 ![effectiveness_3072](results/hybrid_effectiveness_chart_d3072_4bit.png)
 
-This scientifically proves how our **Hybrid Search Pipeline**—fusing the conceptual strength of semantic vector search with the precision of lexical inverted-symbol index queries (via RRF) and on-the-fly local grep boosting—achieves near-perfect retrieval recall and rank elevation at negligible latency overhead!
+This scientifically proves how our **Hybrid Search**—fusing the conceptual strength of semantic vector search with the precision of lexical inverted-symbol index queries (via RRF) and on-the-fly local grep boosting—achieves near-perfect retrieval recall and rank elevation.
