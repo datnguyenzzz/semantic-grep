@@ -267,6 +267,61 @@ func TestGenerateOnDemandTreeReport(t *testing.T) {
 	}
 }
 
+func TestBuildCallGraph_Python(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "callgraph-test-py-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pyCode := `
+class MyService:
+    def execute(self):
+        self.log_message()
+
+    def log_message(self):
+        print("Done")
+
+def main():
+    service = MyService()
+    service.execute()
+`
+
+	_ = os.WriteFile(filepath.Join(tmpDir, "service.py"), []byte(pyCode), 0644)
+
+	// Build Call Graph
+	cg, err := BuildCallGraph(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to build call graph: %v", err)
+	}
+
+	// Assert registered nodes (class and methods)
+	expectedNodes := []string{
+		"MyService",
+		"MyService.execute",
+		"MyService.log_message",
+		"main",
+	}
+	for _, expected := range expectedNodes {
+		if _, ok := cg.Nodes[expected]; !ok {
+			t.Errorf("expected Python node %s to be registered", expected)
+		}
+	}
+
+	// Assert registered edges
+	// execute should call log_message natively mapped to class!
+	foundEdge := false
+	for _, e := range cg.Edges {
+		if e.Caller == "MyService.execute" && e.Callee == "MyService.log_message" {
+			foundEdge = true
+			break
+		}
+	}
+	if !foundEdge {
+		t.Errorf("expected edge MyService.execute -> MyService.log_message, got edges: %v", cg.Edges)
+	}
+}
+
 // BuildCallGraph builds a recursive AST call/dependency graph for all files inside the specified root (helper for tests)
 func BuildCallGraph(root string) (*CallGraph, error) {
 	nodes := make(map[string]*Node)
@@ -285,7 +340,7 @@ func BuildCallGraph(root string) (*CallGraph, error) {
 		}
 
 		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".go" && ext != ".tf" && ext != ".yaml" && ext != ".yml" {
+		if ext != ".go" && ext != ".tf" && ext != ".yaml" && ext != ".yml" && ext != ".py" {
 			return nil
 		}
 

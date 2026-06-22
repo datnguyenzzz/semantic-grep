@@ -202,3 +202,39 @@ spec:
 		t.Errorf("chunk 1 range mismatch: expected 10-16, got %d-%d", chunks[1].StartLine, chunks[1].EndLine)
 	}
 }
+
+func TestSplitPythonFile(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "splitter-test-py-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pyCode := `
+class Calculator:
+    def __init__(self):
+        self.value = 0
+
+    def add(self, x):
+        self.value += x
+
+def main():
+    calc = Calculator()
+    calc.add(5)
+`
+	filePath := filepath.Join(tmpDir, "test.py")
+	err = os.WriteFile(filePath, []byte(pyCode), 0644)
+	if err != nil {
+		t.Fatalf("failed to write test.py: %v", err)
+	}
+
+	chunks, err := SplitFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to split Python file: %v", err)
+	}
+
+	// We expect 2 chunks: one for Calculator class, and one for top-level main function!
+	if len(chunks) < 2 {
+		t.Fatalf("expected at least 2 chunks, got %d", len(chunks))
+	}
+}

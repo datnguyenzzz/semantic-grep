@@ -38,6 +38,8 @@ func ParseFile(path, relPath string) ([]*Node, []Edge, error) {
 		err = parseTerraformFile(path, relPath, nodes, &edges)
 	case ".yaml", ".yml":
 		err = parseYamlFile(path, relPath, nodes, &edges)
+	case ".py":
+		err = parsePythonFile(path, relPath, nodes, &edges)
 	}
 
 	if err != nil {

@@ -698,4 +698,86 @@ func Test_SearchMemoriesPreFusionFiltering(t *testing.T) {
 	}
 }
 
+func Test_MinifyCode(t *testing.T) {
+	testCases := []struct {
+		name     string
+		category string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Non-project category bypass",
+			category: "user_note",
+			input:    "// This is a comment\nfunc Foo() {}",
+			expected: "// This is a comment\nfunc Foo() {}",
+		},
+		{
+			name:     "Go inline and empty lines",
+			category: "project",
+			input: `
+// Package declaration
+package main
+
+// Import libraries
+import "fmt"
+
+func main() {
+	// Print output
+	fmt.Println("Hello, World!") // inline comment
+}
+`,
+			expected: `package main
+import "fmt"
+func main() {
+	fmt.Println("Hello, World!")
+}`,
+		},
+		{
+			name:     "Go block comment single and multi-line",
+			category: "project",
+			input: `
+/*
+  This is a heavy
+  multi-line block comment.
+*/
+func main() {
+	/* inline block comment */
+	println("Running...")
+}
+`,
+			expected: `func main() {
+	println("Running...")
+}`,
+		},
+		{
+			name:     "Python and YAML comments",
+			category: "project",
+			input: `
+# This is a python config
+name: "my-app" # name of application
+
+# Port configuration
+port: 8080
+`,
+			expected: `name: "my-app"
+port: 8080`,
+		},
+		{
+			name:     "HTTP string safety",
+			category: "project",
+			input:    `url := "https://google.com" // search URL`,
+			expected: `url := "https://google.com"`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := minifyCode(tc.input, tc.category)
+			if strings.TrimSpace(res) != strings.TrimSpace(tc.expected) {
+				t.Errorf("minifyCode failed for %s.\nGOT:\n%s\nEXPECTED:\n%s", tc.name, res, tc.expected)
+			}
+		})
+	}
+}
+
 type dummy struct{} // prevent package import issue

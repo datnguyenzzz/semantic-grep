@@ -46,6 +46,8 @@ func SplitFile(filePath string) ([]Chunk, error) {
 		rawChunks, err = parseTerraformFile(filePath)
 	case ".yaml", ".yml":
 		rawChunks, err = parseYamlFile(filePath)
+	case ".py":
+		rawChunks, err = parsePythonFile(filePath)
 	default:
 		// Non-supported fallback (treat whole file as single chunk)
 		contentBytes, err := os.ReadFile(filePath)
