@@ -1,3 +1,7 @@
+<div align="center">
+    <img width="800" height="400" alt="Gemini_Generated_Image_nm6bednm6bednm6b" src="https://github.com/user-attachments/assets/9a83682a-7ac7-4f9f-bf27-1deda1891a43" />
+</div>
+
 # Codebase Indexer & Persistent Memory Extension (agent-context)
 
 A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Operating **entirely on your local machine**, `agent-context` combines high-performance, natively indexed local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Native FTS Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
