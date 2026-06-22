@@ -295,16 +295,25 @@ def main():
 		t.Fatalf("failed to build call graph: %v", err)
 	}
 
-	// Assert registered nodes (class and methods)
-	expectedNodes := []string{
-		"MyService",
-		"MyService.execute",
-		"MyService.log_message",
-		"main",
+	// Assert registered nodes (class and methods) with exact line range bounds!
+	expectedNodes := []struct {
+		name      string
+		startLine int
+		endLine   int
+	}{
+		{"MyService", 2, 7},
+		{"MyService.execute", 3, 4},
+		{"MyService.log_message", 6, 7},
+		{"main", 9, 11},
 	}
 	for _, expected := range expectedNodes {
-		if _, ok := cg.Nodes[expected]; !ok {
-			t.Errorf("expected Python node %s to be registered", expected)
+		n, ok := cg.Nodes[expected.name]
+		if !ok {
+			t.Errorf("expected Python node %s to be registered", expected.name)
+			continue
+		}
+		if n.StartLine != expected.startLine || n.EndLine != expected.endLine {
+			t.Errorf("node %s line mismatch: expected %d-%d, got %d-%d", expected.name, expected.startLine, expected.endLine, n.StartLine, n.EndLine)
 		}
 	}
 

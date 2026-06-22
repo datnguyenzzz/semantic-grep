@@ -1,147 +1,130 @@
 package callgraph
 
 import (
-	"bufio"
 	"os"
-	"regexp"
-	"strings"
+
+	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+	tree_sitter_python "github.com/tree-sitter/tree-sitter-python/bindings/go"
 )
 
-var (
-	pyFuncRegex  = regexp.MustCompile(`^\s*def\s+([a-zA-Z0-9_]+)\s*\(`)
-	pyClassRegex = regexp.MustCompile(`^\s*class\s+([a-zA-Z0-9_]+)`)
-	pyCallRegex  = regexp.MustCompile(`([a-zA-Z0-9_]+)\s*\(`)
-)
-
+// parsePythonFile parses a Python file using Tree-sitter to build nodes and call edges.
 func parsePythonFile(path, relPath string, nodes map[string]*Node, edges *[]Edge) error {
-	file, err := os.Open(path)
+	contentBytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
+	// 1. Initialize Tree-sitter parser
+	parser := tree_sitter.NewParser()
+	defer parser.Close()
 
-	type pyBlock struct {
-		name      string
-		startLine int
-		endLine   int
-	}
+	lang := tree_sitter.NewLanguage(tree_sitter_python.Language())
+	parser.SetLanguage(lang)
 
-	var blocks []pyBlock
-	currentClass := ""
-	currentBlock := ""
-	var currentBlockStart int
+	// 2. Parse content into an AST
+	tree := parser.Parse(contentBytes, nil)
+	defer tree.Close()
 
-	// First pass: locate all function and class definitions (nodes)
-	for idx, line := range lines {
-		lineNum := idx + 1
+	root := tree.RootNode()
 
-		// 1. Check for class definition
-		if match := pyClassRegex.FindStringSubmatch(line); len(match) > 1 {
-			currentClass = match[1]
-			// Register class as a node
-			nodeName := currentClass
-			nodes[nodeName] = &Node{
-				Name:      nodeName,
-				FilePath:  relPath,
-				StartLine: lineNum,
-				EndLine:   lineNum, // Will update at end of file
-			}
-			continue
+	// 3. Recursive traverser to register definition nodes and extract call edges
+	var traverse func(node *tree_sitter.Node, currentClass string, currentFunc string)
+	traverse = func(node *tree_sitter.Node, currentClass string, currentFunc string) {
+		if node == nil {
+			return
 		}
 
-		// 2. Check for function definition
-		if match := pyFuncRegex.FindStringSubmatch(line); len(match) > 1 {
-			funcName := match[1]
-			nodeName := funcName
-			if currentClass != "" {
-				// Check indentation to see if function is actually inside the class
-				indentation := len(line) - len(strings.TrimLeft(line, " \t"))
-				if indentation > 0 {
+		kind := node.Kind()
+
+		if kind == "class_definition" {
+			nameNode := node.ChildByFieldName("name")
+			if nameNode != nil {
+				className := string(contentBytes[nameNode.StartByte():nameNode.EndByte()])
+				startLine := int(node.StartPosition().Row) + 1
+				endLine := int(node.EndPosition().Row) + 1
+
+				nodes[className] = &Node{
+					Name:      className,
+					FilePath:  relPath,
+					StartLine: startLine,
+					EndLine:   endLine,
+				}
+
+				// Traverse class children with class context
+				for i := uint(0); i < node.ChildCount(); i++ {
+					traverse(node.Child(i), className, currentFunc)
+				}
+				return
+			}
+		}
+
+		if kind == "function_definition" {
+			nameNode := node.ChildByFieldName("name")
+			if nameNode != nil {
+				funcName := string(contentBytes[nameNode.StartByte():nameNode.EndByte()])
+				startLine := int(node.StartPosition().Row) + 1
+				endLine := int(node.EndPosition().Row) + 1
+
+				nodeName := funcName
+				if currentClass != "" {
 					nodeName = currentClass + "." + funcName
-				} else {
-					currentClass = "" // Reset class context if top-level def
 				}
-			}
 
-			// Finalize previous block if exists
-			if currentBlock != "" {
-				blocks = append(blocks, pyBlock{
-					name:      currentBlock,
-					startLine: currentBlockStart,
-					endLine:   lineNum - 1,
-				})
-			}
+				nodes[nodeName] = &Node{
+					Name:      nodeName,
+					FilePath:  relPath,
+					StartLine: startLine,
+					EndLine:   endLine,
+				}
 
-			currentBlock = nodeName
-			currentBlockStart = lineNum
-
-			nodes[nodeName] = &Node{
-				Name:      nodeName,
-				FilePath:  relPath,
-				StartLine: lineNum,
-				EndLine:   lineNum, // Will update when block ends
+				// Traverse function body with function context
+				for i := uint(0); i < node.ChildCount(); i++ {
+					traverse(node.Child(i), currentClass, nodeName)
+				}
+				return
 			}
 		}
-	}
 
-	// Finalize last block
-	if currentBlock != "" {
-		blocks = append(blocks, pyBlock{
-			name:      currentBlock,
-			startLine: currentBlockStart,
-			endLine:   len(lines),
-		})
-	}
+		if kind == "call" && currentFunc != "" {
+			funcNode := node.ChildByFieldName("function")
+			if funcNode != nil {
+				callee := ""
 
-	// Update EndLine for nodes
-	for _, b := range blocks {
-		if n, ok := nodes[b.name]; ok {
-			n.EndLine = b.endLine
-		}
-	}
-
-	// Second pass: scan function bodies to extract call edges
-	for _, b := range blocks {
-		for lineNum := b.startLine + 1; lineNum <= b.endLine; lineNum++ {
-			if lineNum > len(lines) {
-				break
-			}
-			line := lines[lineNum-1]
-			trimmed := strings.TrimSpace(line)
-
-			// Skip comments
-			if strings.HasPrefix(trimmed, "#") {
-				continue
-			}
-
-			// Find matches for function calls like foo() or self.bar()
-			calls := pyCallRegex.FindAllStringSubmatch(line, -1)
-			for _, match := range calls {
-				if len(match) > 1 {
-					callee := match[1]
-					// Exclude standard Python control flow/builtins
-					if callee == "def" || callee == "class" || callee == "if" || callee == "elif" || callee == "while" || callee == "for" || callee == "print" {
-						continue
+				if funcNode.Kind() == "identifier" {
+					callee = string(contentBytes[funcNode.StartByte():funcNode.EndByte()])
+				} else if funcNode.Kind() == "attribute" {
+					// Handle self.method() calls inside classes
+					objNode := funcNode.ChildByFieldName("object")
+					attrNode := funcNode.ChildByFieldName("attribute")
+					if objNode != nil && attrNode != nil {
+						objName := string(contentBytes[objNode.StartByte():objNode.EndByte()])
+						attrName := string(contentBytes[attrNode.StartByte():attrNode.EndByte()])
+						if objName == "self" && currentClass != "" {
+							callee = currentClass + "." + attrName
+						} else {
+							callee = attrName
+						}
 					}
-					// If calling a method in same class (e.g. self.foo()), map it to the full class name!
-					if strings.Contains(line, "self."+callee) && strings.Contains(b.name, ".") {
-						classParts := strings.Split(b.name, ".")
-						callee = classParts[0] + "." + callee
+				}
+
+				if callee != "" {
+					// Exclude standard control flows or keywords
+					if callee != "print" && callee != "len" && callee != "range" {
+						*edges = append(*edges, Edge{
+							Caller: currentFunc,
+							Callee: callee,
+						})
 					}
-					*edges = append(*edges, Edge{
-						Caller: b.name,
-						Callee: callee,
-					})
 				}
 			}
 		}
+
+		// Standard child traversal
+		for i := uint(0); i < node.ChildCount(); i++ {
+			traverse(node.Child(i), currentClass, currentFunc)
+		}
 	}
 
+	traverse(root, "", "")
 	return nil
 }

@@ -210,8 +210,7 @@ func TestSplitPythonFile(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	pyCode := `
-class Calculator:
+	pyCode := `class Calculator:
     def __init__(self):
         self.value = 0
 
@@ -233,8 +232,16 @@ def main():
 		t.Fatalf("failed to split Python file: %v", err)
 	}
 
-	// We expect 2 chunks: one for Calculator class, and one for top-level main function!
-	if len(chunks) < 2 {
-		t.Fatalf("expected at least 2 chunks, got %d", len(chunks))
+	// We expect exactly 2 chunks: one for Calculator class, and one for main function!
+	if len(chunks) != 2 {
+		t.Fatalf("expected exactly 2 chunks, got %d: %v", len(chunks), chunks)
+	}
+
+	if chunks[0].StartLine != 1 || chunks[0].EndLine != 6 {
+		t.Errorf("expected chunk 0 (class block) to be 1-6, got %d-%d", chunks[0].StartLine, chunks[0].EndLine)
+	}
+
+	if chunks[1].StartLine != 8 || chunks[1].EndLine != 10 {
+		t.Errorf("expected chunk 1 (function block) to be 8-10, got %d-%d", chunks[1].StartLine, chunks[1].EndLine)
 	}
 }

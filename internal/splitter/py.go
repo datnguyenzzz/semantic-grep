@@ -1,55 +1,93 @@
 package splitter
 
 import (
-	"bufio"
 	"os"
 	"strings"
+
+	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+	tree_sitter_python "github.com/tree-sitter/tree-sitter-python/bindings/go"
 )
 
-// parsePythonFile parses a Python file and splits it into logical AST-guided chunks (classes and functions).
+// parsePythonFile parses a Python file using Tree-sitter and splits it into logical AST-guided chunks.
 func parsePythonFile(filePath string) ([]Chunk, error) {
-	file, err := os.Open(filePath)
+	contentBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
 
+	// 1. Initialize Tree-sitter parser
+	parser := tree_sitter.NewParser()
+	defer parser.Close()
+
+	lang := tree_sitter.NewLanguage(tree_sitter_python.Language())
+	parser.SetLanguage(lang)
+
+	// 2. Parse content into an AST
+	tree := parser.Parse(contentBytes, nil)
+	defer tree.Close()
+
+	root := tree.RootNode()
 	var chunks []Chunk
-	var currentChunk []string
-	startLine := 1
-	currentLine := 1
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
+	// Read lines to help reconstruct arbitrary non-class/non-function blocks safely
+	lines := strings.Split(string(contentBytes), "\n")
 
-		// Identify a new boundary (class or top-level function definition)
-		// Top-level definitions usually have no leading whitespace before 'class ' or 'def '
-		isNewBoundary := (strings.HasPrefix(line, "class ") || strings.HasPrefix(line, "def ")) && trimmed != ""
+	var currentGroup []string
+	groupStart := 1
 
-		if isNewBoundary && len(currentChunk) > 0 {
-			// Save previous chunk
+	for i := uint(0); i < root.ChildCount(); i++ {
+		child := root.Child(i)
+		kind := child.Kind()
+
+		if kind == "class_definition" || kind == "function_definition" {
+			startLine := int(child.StartPosition().Row) + 1
+			endLine := int(child.EndPosition().Row) + 1
+
+			// If we have accumulated preceding global lines, save them as a chunk first
+			if len(currentGroup) > 0 {
+				chunks = append(chunks, Chunk{
+					FilePath:  filePath,
+					Content:   strings.Join(currentGroup, "\n"),
+					StartLine: groupStart,
+					EndLine:   startLine - 1,
+				})
+				currentGroup = nil
+			}
+
+			startByte := child.StartByte()
+			endByte := child.EndByte()
+			content := string(contentBytes[startByte:endByte])
+
 			chunks = append(chunks, Chunk{
 				FilePath:  filePath,
-				Content:   strings.Join(currentChunk, "\n"),
+				Content:   content,
 				StartLine: startLine,
-				EndLine:   currentLine - 1,
+				EndLine:   endLine,
 			})
-			currentChunk = nil
-			startLine = currentLine
+			groupStart = endLine + 1
+		} else {
+			// Accumulate lines for miscellaneous top-level statements (imports, variables, etc.)
+			startRow := child.StartPosition().Row
+			endRow := child.EndPosition().Row
+			for r := startRow; r <= endRow; r++ {
+				if r < uint(len(lines)) {
+					// We only add the line if we haven't already captured it in currentGroup
+					lineStr := lines[r]
+					if len(currentGroup) == 0 || currentGroup[len(currentGroup)-1] != lineStr {
+						currentGroup = append(currentGroup, lineStr)
+					}
+				}
+			}
 		}
-
-		currentChunk = append(currentChunk, line)
-		currentLine++
 	}
 
-	if len(currentChunk) > 0 {
+	// Save any remaining trailing global lines
+	if len(currentGroup) > 0 {
 		chunks = append(chunks, Chunk{
 			FilePath:  filePath,
-			Content:   strings.Join(currentChunk, "\n"),
-			StartLine: startLine,
-			EndLine:   currentLine - 1,
+			Content:   strings.Join(currentGroup, "\n"),
+			StartLine: groupStart,
+			EndLine:   len(lines),
 		})
 	}
 

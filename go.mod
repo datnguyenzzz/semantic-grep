@@ -25,11 +25,14 @@ require (
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.5.4 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/tree-sitter/go-tree-sitter v0.25.0 // indirect
+	github.com/tree-sitter/tree-sitter-python v0.25.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
