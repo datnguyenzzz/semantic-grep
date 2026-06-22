@@ -331,6 +331,68 @@ def main():
 	}
 }
 
+func TestBuildCallGraph_Python_CrossClassCalls(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "callgraph-test-py-cross-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pyCode := `class Database:
+    def query(self, sql):
+        print(sql)
+
+class UserService:
+    def __init__(self, db):
+        self.db = db
+
+    def get_user(self, uid):
+        self.db.query("SELECT * FROM users")
+`
+
+	_ = os.WriteFile(filepath.Join(tmpDir, "app.py"), []byte(pyCode), 0644)
+
+	// Build Call Graph
+	cg, err := BuildCallGraph(tmpDir)
+	if err != nil {
+		t.Fatalf("failed to build call graph: %v", err)
+	}
+
+	// Assert registered nodes
+	expectedNodes := []struct {
+		name      string
+		startLine int
+		endLine   int
+	}{
+		{"Database", 1, 3},
+		{"Database.query", 2, 3},
+		{"UserService", 5, 10},
+		{"UserService.get_user", 9, 10},
+	}
+	for _, expected := range expectedNodes {
+		n, ok := cg.Nodes[expected.name]
+		if !ok {
+			t.Errorf("expected Python node %s to be registered", expected.name)
+			continue
+		}
+		if n.StartLine != expected.startLine || n.EndLine != expected.endLine {
+			t.Errorf("node %s line mismatch: expected %d-%d, got %d-%d", expected.name, expected.startLine, expected.endLine, n.StartLine, n.EndLine)
+		}
+	}
+
+	// Assert cross-class call edge is captured cleanly!
+	foundEdge := false
+	for _, e := range cg.Edges {
+		if e.Caller == "UserService.get_user" && e.Callee == "query" {
+			foundEdge = true
+			break
+		}
+	}
+	if !foundEdge {
+		t.Errorf("expected edge UserService.get_user -> query, got edges: %v", cg.Edges)
+	}
+}
+
 // BuildCallGraph builds a recursive AST call/dependency graph for all files inside the specified root (helper for tests)
 func BuildCallGraph(root string) (*CallGraph, error) {
 	nodes := make(map[string]*Node)

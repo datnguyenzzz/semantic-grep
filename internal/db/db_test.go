@@ -780,4 +780,83 @@ port: 8080`,
 	}
 }
 
+func Test_PythonMemoryMinificationIntegration(t *testing.T) {
+	// 1. Setup temporary home
+	tmpDir, err := os.MkdirTemp("", "db-test-py-integration-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 2. Initialize TurboQuant Index
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() {
+		turboquant.DefaultDimension = originalDim
+	}()
+
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	tqvPath := filepath.Join(tmpDir, "benchmark.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// 3. Save raw python memory with comments
+	pyCode := `
+# This is a python service
+class App:
+    def run(self):
+        print("Running service...") # inline log
+`
+	items := []MemoryBatchItem{
+		{
+			ID:           "doc-py",
+			Content:      "File: app.py (Lines: 1-5)",
+			CWD:          tmpDir,
+			Embedding:    make([]float32, 16),
+			ChunkContent: pyCode,
+		},
+	}
+
+	if err := SaveMemoriesBatch(items, index); err != nil {
+		t.Fatalf("failed to save memories batch: %v", err)
+	}
+	AsyncSaveWG.Wait()
+
+	if err := CreateFTSIndex(); err != nil {
+		t.Fatalf("failed to build FTS index: %v", err)
+	}
+
+	// 4. Retrieve memory via SearchMemories
+	res, err := SearchMemories("run", make([]float32, 16), tmpDir, 5, index)
+	if err != nil {
+		t.Fatalf("failed to search memories: %v", err)
+	}
+
+	if len(res) != 1 {
+		t.Fatalf("expected exactly 1 memory, got %d", len(res))
+	}
+
+	gotContent := res[0].Content
+	expectedMinified := `class App:
+    def run(self):
+        print("Running service...")`
+
+	if strings.TrimSpace(gotContent) != strings.TrimSpace(expectedMinified) {
+		t.Errorf("expected minified python content in DB, got:\n%s\nEXPECTED:\n%s", gotContent, expectedMinified)
+	}
+}
+
 type dummy struct{} // prevent package import issue

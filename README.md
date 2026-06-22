@@ -21,7 +21,7 @@ For the most efficient workflow:
 *   **Blazing-Fast Hybrid Search:** Fuses dense semantic vector search (TurboQuant) with native Okapi BM25 full-text indexing (DuckDB FTS extension) using Reciprocal Rank Fusion (RRF), coupled with candidate-scoped in-memory grep exact-match boosting ($1.5\times$) to deliver extreme retrieval recall and rank elevation.
 *   **AST Call & Dependency Graph:** Extracts call nodes and edges incrementally into DuckDB, allowing fast traversal and ASCII call-tree generation.
 
-> ⚠️ **Note:** Currently, the codebase indexer and call graph builder support indexing `.go`, `.tf`, and `.yaml` / `.yml` files.
+> ⚠️ **Note:** Currently, the codebase indexer and call graph builder support indexing `.go`, `.tf`, `.py` and `.yaml` / `.yml` files.
 
 ---
 

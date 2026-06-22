@@ -245,3 +245,45 @@ def main():
 		t.Errorf("expected chunk 1 (function block) to be 8-10, got %d-%d", chunks[1].StartLine, chunks[1].EndLine)
 	}
 }
+
+func TestSplitPythonFile_WithGlobals(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "splitter-test-py-globals-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	pyCode := `import os
+import sys
+
+DEBUG = True
+
+class Logger:
+    def log(self, msg):
+        if DEBUG:
+            print(msg)
+`
+	filePath := filepath.Join(tmpDir, "logger.py")
+	err = os.WriteFile(filePath, []byte(pyCode), 0644)
+	if err != nil {
+		t.Fatalf("failed to write logger.py: %v", err)
+	}
+
+	chunks, err := SplitFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to split Python file with globals: %v", err)
+	}
+
+	// We expect exactly 2 chunks: one for the global header statements, and one for the Logger class!
+	if len(chunks) != 2 {
+		t.Fatalf("expected exactly 2 chunks, got %d: %v", len(chunks), chunks)
+	}
+
+	if chunks[0].StartLine != 1 || chunks[0].EndLine != 5 {
+		t.Errorf("expected chunk 0 (globals) to be 1-5, got %d-%d", chunks[0].StartLine, chunks[0].EndLine)
+	}
+
+	if chunks[1].StartLine != 6 || chunks[1].EndLine != 9 {
+		t.Errorf("expected chunk 1 (class block) to be 6-9, got %d-%d", chunks[1].StartLine, chunks[1].EndLine)
+	}
+}
