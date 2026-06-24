@@ -273,6 +273,10 @@ func purgeStaleMemories(absPath string, relPaths []string, index *turboquant.Ind
 	}
 }
 
+func formatContent(path string, lineStart, lineEnd int, content string) string {
+	return fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", path, lineStart, lineEnd, content)
+}
+
 func prepareIndexerJobs(absPath string, files []string) []IndexJob {
 	var jobs []IndexJob
 	for _, relPath := range files {
@@ -284,12 +288,11 @@ func prepareIndexerJobs(absPath string, files []string) []IndexJob {
 		}
 
 		for _, chunk := range chunks {
-			formattedContent := fmt.Sprintf("File: %s (Lines: %d-%d)\nContent:\n%s", relPath, chunk.StartLine, chunk.EndLine, chunk.Content)
 			jobs = append(jobs, IndexJob{
 				relPath:          relPath,
 				startLine:        chunk.StartLine,
 				endLine:          chunk.EndLine,
-				formattedContent: formattedContent,
+				formattedContent: formatContent(relPath, chunk.StartLine, chunk.EndLine, chunk.Content),
 			})
 		}
 	}

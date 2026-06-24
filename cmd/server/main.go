@@ -238,7 +238,7 @@ func main() {
 	// 2. Register search_call_graph tool
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "search_call_graph",
-		Description: "Traverses and builds the bidirectional call/dependency graph (callers, callees, or both) of a function or method. Use this to understand code execution flow, sequence, or dependencies up to a custom depth. Do not use this for semantic keyword search; locate function names first via search_memory, then trace their call graph with this tool.",
+		Description: "Traverses and builds the bidirectional call/dependency graph (callers, callees, or both) of a function or method. Use this to understand code execution flow, sequence, or dependencies up to a custom depth. Do not use this for semantic keyword search; if you don't know the function names yet, locate them first via search_memory, then trace their call graph with this tool.",
 	}, func(ctx context.Context, req *mcp.CallToolRequest, args CallGraphArgs) (*mcp.CallToolResult, any, error) {
 		if args.CWD == nil || *args.CWD == "" {
 			return &mcp.CallToolResult{
