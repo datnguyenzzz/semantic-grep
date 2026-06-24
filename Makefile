@@ -13,6 +13,8 @@ build: clean
 	CGO_ENABLED=1 go build -o dist/server cmd/server/main.go
 	@echo "Compiling codebase indexer..."
 	CGO_ENABLED=1 go build -o dist/indexer cmd/indexer/main.go
+	@echo "Compiling ggrep"
+	cd ggrep && go build -o ../dist/ggrep ./...
 	@echo "Compilation completed successfully!"
 
 rebuild: build
@@ -92,6 +94,11 @@ test-effectiveness:
 	@echo "Running Hybrid Search effectiveness benchmarks..."
 	mkdir -p results
 	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=^$$ -bench=Benchmark_HybridSearchEffectiveness -benchtime=1x -count=1 -cpuprofile=pprof/cpu.pprof -memprofile=pprof/mem.pprof -v
+
+bench-ggrep:
+	@echo "Running ggrep literal search benchmarks & generating profiles..."
+	mkdir -p ggrep/pprof
+	cd ggrep && CGO_ENABLED=1 go test -run=^$$ -bench=Benchmark_GgrepLiteral -cpuprofile=pprof/ggrep_cpu.pprof -memprofile=pprof/ggrep_mem.pprof -v
 
 # Clean compiled binaries
 clean:

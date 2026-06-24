@@ -1,0 +1,1106 @@
+{
+  "literal_queries": [
+    {
+      "query": "github.com/stretchr/testify/assert",
+      "order_index": 1,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 222, "time_spent_ms": 39.00 },
+        { "name": "bep/grrep", "total_matched_lines": 222, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 222, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 222, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 222, "time_spent_ms": 195.00 }
+      ]
+    },
+    {
+      "query": "zap.New",
+      "order_index": 2,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 26.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 25.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 127.00 }
+      ]
+    },
+    {
+      "query": "go.opentelemetry.io/collector/component",
+      "order_index": 3,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 27.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 211.00 }
+      ]
+    },
+    {
+      "query": "context.Background()",
+      "order_index": 4,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 173, "time_spent_ms": 29.00 },
+        { "name": "bep/grrep", "total_matched_lines": 173, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 173, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 173, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 173, "time_spent_ms": 221.00 }
+      ]
+    },
+    {
+      "query": "fmt.Errorf",
+      "order_index": 5,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 314, "time_spent_ms": 30.00 },
+        { "name": "bep/grrep", "total_matched_lines": 314, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 314, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 314, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 314, "time_spent_ms": 176.00 }
+      ]
+    },
+    {
+      "query": "ConsumeMetrics",
+      "order_index": 6,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 29.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 152.00 }
+      ]
+    },
+    {
+      "query": "type Config struct",
+      "order_index": 7,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 7, "time_spent_ms": 30.00 },
+        { "name": "bep/grrep", "total_matched_lines": 7, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 7, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 7, "time_spent_ms": 33.00 },
+        { "name": "Native OS grep", "total_matched_lines": 7, "time_spent_ms": 233.00 }
+      ]
+    },
+    {
+      "query": "Shutdown(ctx",
+      "order_index": 8,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 242, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 242, "time_spent_ms": 32.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 242, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 242, "time_spent_ms": 29.00 },
+        { "name": "Native OS grep", "total_matched_lines": 242, "time_spent_ms": 153.00 }
+      ]
+    },
+    {
+      "query": "t.Helper()",
+      "order_index": 9,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 138, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 138, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 138, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 138, "time_spent_ms": 33.00 },
+        { "name": "Native OS grep", "total_matched_lines": 138, "time_spent_ms": 291.00 }
+      ]
+    },
+    {
+      "query": "go.opentelemetry.io/collector/pdata",
+      "order_index": 10,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 5, "time_spent_ms": 30.00 },
+        { "name": "bep/grrep", "total_matched_lines": 5, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 5, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 5, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 5, "time_spent_ms": 196.00 }
+      ]
+    },
+    {
+      "query": "go.opentelemetry.io/otel/trace",
+      "order_index": 11,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 287, "time_spent_ms": 38.00 },
+        { "name": "bep/grrep", "total_matched_lines": 287, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 287, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 287, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 287, "time_spent_ms": 180.00 }
+      ]
+    },
+    {
+      "query": "github.com/spf13/cobra",
+      "order_index": 12,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 3, "time_spent_ms": 30.00 },
+        { "name": "bep/grrep", "total_matched_lines": 3, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 3, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 3, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 3, "time_spent_ms": 173.00 }
+      ]
+    },
+    {
+      "query": "go.uber.org/multierr",
+      "order_index": 13,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 6, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 6, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 6, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 6, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 6, "time_spent_ms": 181.00 }
+      ]
+    },
+    {
+      "query": "net/http",
+      "order_index": 14,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 83, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 83, "time_spent_ms": 38.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 83, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 83, "time_spent_ms": 34.00 },
+        { "name": "Native OS grep", "total_matched_lines": 83, "time_spent_ms": 237.00 }
+      ]
+    },
+    {
+      "query": "component.ID",
+      "order_index": 15,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 43.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 5, "time_spent_ms": 206.00 }
+      ]
+    },
+    {
+      "query": "t.Parallel()",
+      "order_index": 16,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 27, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 27, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 27, "time_spent_ms": 34.00 },
+        { "name": "git-grep", "total_matched_lines": 27, "time_spent_ms": 33.00 },
+        { "name": "Native OS grep", "total_matched_lines": 27, "time_spent_ms": 293.00 }
+      ]
+    },
+    {
+      "query": "require.NoError(t,",
+      "order_index": 17,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 717, "time_spent_ms": 33.00 },
+        { "name": "bep/grrep", "total_matched_lines": 717, "time_spent_ms": 39.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 717, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 717, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 717, "time_spent_ms": 246.00 }
+      ]
+    },
+    {
+      "query": "assert.Equal(t,",
+      "order_index": 18,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1494, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1494, "time_spent_ms": 39.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1494, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 1494, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1494, "time_spent_ms": 232.00 }
+      ]
+    },
+    {
+      "query": "zap.Error(err)",
+      "order_index": 19,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 41.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 139.00 }
+      ]
+    },
+    {
+      "query": "logger.Info(",
+      "order_index": 20,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1, "time_spent_ms": 25.00 },
+        { "name": "git-grep", "total_matched_lines": 1, "time_spent_ms": 43.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1, "time_spent_ms": 190.00 }
+      ]
+    },
+    {
+      "query": "ctx context.Context",
+      "order_index": 21,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 4469, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 4469, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 4469, "time_spent_ms": 47.00 },
+        { "name": "git-grep", "total_matched_lines": 4469, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 4469, "time_spent_ms": 224.00 }
+      ]
+    },
+    {
+      "query": "func New",
+      "order_index": 22,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 2860, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 2860, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 2860, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 2860, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 2860, "time_spent_ms": 173.00 }
+      ]
+    },
+    {
+      "query": "var err error",
+      "order_index": 23,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 83, "time_spent_ms": 29.00 },
+        { "name": "bep/grrep", "total_matched_lines": 83, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 83, "time_spent_ms": 33.00 },
+        { "name": "git-grep", "total_matched_lines": 83, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 83, "time_spent_ms": 164.00 }
+      ]
+    },
+    {
+      "query": "return err",
+      "order_index": 24,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 267, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 267, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 267, "time_spent_ms": 46.00 },
+        { "name": "git-grep", "total_matched_lines": 267, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 267, "time_spent_ms": 239.00 }
+      ]
+    },
+    {
+      "query": "sync.Mutex",
+      "order_index": 25,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 62, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 62, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 62, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 62, "time_spent_ms": 36.00 },
+        { "name": "Native OS grep", "total_matched_lines": 62, "time_spent_ms": 215.00 }
+      ]
+    },
+    {
+      "query": "sync.WaitGroup",
+      "order_index": 26,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 77, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 77, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 77, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 77, "time_spent_ms": 33.00 },
+        { "name": "Native OS grep", "total_matched_lines": 77, "time_spent_ms": 222.00 }
+      ]
+    },
+    {
+      "query": "make(chan ",
+      "order_index": 27,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 120, "time_spent_ms": 74.00 },
+        { "name": "bep/grrep", "total_matched_lines": 120, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 120, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 120, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 120, "time_spent_ms": 209.00 }
+      ]
+    },
+    {
+      "query": "range ",
+      "order_index": 28,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1607, "time_spent_ms": 40.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1607, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1607, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 1607, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1609, "time_spent_ms": 226.00 }
+      ]
+    },
+    {
+      "query": "defer f.Close()",
+      "order_index": 29,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 193.00 }
+      ]
+    },
+    {
+      "query": "os.ReadFile(",
+      "order_index": 30,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 5, "time_spent_ms": 37.00 },
+        { "name": "bep/grrep", "total_matched_lines": 5, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 5, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 5, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 5, "time_spent_ms": 239.00 }
+      ]
+    },
+    {
+      "query": "time.Sleep(",
+      "order_index": 31,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 2, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 2, "time_spent_ms": 36.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 2, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 2, "time_spent_ms": 39.00 },
+        { "name": "Native OS grep", "total_matched_lines": 2, "time_spent_ms": 255.00 }
+      ]
+    },
+    {
+      "query": "yaml.Unmarshal(",
+      "order_index": 32,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 162.00 }
+      ]
+    },
+    {
+      "query": "json.Marshal(",
+      "order_index": 33,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 39, "time_spent_ms": 33.00 },
+        { "name": "bep/grrep", "total_matched_lines": 39, "time_spent_ms": 27.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 39, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 39, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 39, "time_spent_ms": 135.00 }
+      ]
+    },
+    {
+      "query": "http.NewRequest(",
+      "order_index": 34,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 217.00 }
+      ]
+    },
+    {
+      "query": "strings.HasPrefix(",
+      "order_index": 35,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 26, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 26, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 26, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 26, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 26, "time_spent_ms": 257.00 }
+      ]
+    },
+    {
+      "query": "bytes.Buffer",
+      "order_index": 36,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 37, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 37, "time_spent_ms": 32.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 37, "time_spent_ms": 33.00 },
+        { "name": "git-grep", "total_matched_lines": 37, "time_spent_ms": 30.00 },
+        { "name": "Native OS grep", "total_matched_lines": 37, "time_spent_ms": 229.00 }
+      ]
+    },
+    {
+      "query": "strconv.Atoi(",
+      "order_index": 37,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 26, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 26, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 26, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 26, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 26, "time_spent_ms": 247.00 }
+      ]
+    },
+    {
+      "query": "io.EOF",
+      "order_index": 38,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 9, "time_spent_ms": 31.00 },
+        { "name": "bep/grrep", "total_matched_lines": 9, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 9, "time_spent_ms": 34.00 },
+        { "name": "git-grep", "total_matched_lines": 9, "time_spent_ms": 35.00 },
+        { "name": "Native OS grep", "total_matched_lines": 9, "time_spent_ms": 248.00 }
+      ]
+    },
+    {
+      "query": "filepath.Join(",
+      "order_index": 39,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 9, "time_spent_ms": 30.00 },
+        { "name": "bep/grrep", "total_matched_lines": 9, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 9, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 9, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 9, "time_spent_ms": 189.00 }
+      ]
+    },
+    {
+      "query": "url.Parse(",
+      "order_index": 40,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 39, "time_spent_ms": 38.00 },
+        { "name": "bep/grrep", "total_matched_lines": 39, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 39, "time_spent_ms": 24.00 },
+        { "name": "git-grep", "total_matched_lines": 39, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 39, "time_spent_ms": 205.00 }
+      ]
+    },
+    {
+      "query": "regexp.MustCompile(",
+      "order_index": 41,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 14, "time_spent_ms": 41.00 },
+        { "name": "bep/grrep", "total_matched_lines": 14, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 14, "time_spent_ms": 33.00 },
+        { "name": "git-grep", "total_matched_lines": 14, "time_spent_ms": 41.00 },
+        { "name": "Native OS grep", "total_matched_lines": 14, "time_spent_ms": 249.00 }
+      ]
+    },
+    {
+      "query": "math.Max",
+      "order_index": 42,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 21, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 21, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 21, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 21, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 21, "time_spent_ms": 209.00 }
+      ]
+    },
+    {
+      "query": "sort.Slice",
+      "order_index": 43,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1, "time_spent_ms": 38.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 1, "time_spent_ms": 38.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1, "time_spent_ms": 216.00 }
+      ]
+    },
+    {
+      "query": "runtime.NumCPU()",
+      "order_index": 44,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 3, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 3, "time_spent_ms": 36.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 3, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 3, "time_spent_ms": 40.00 },
+        { "name": "Native OS grep", "total_matched_lines": 3, "time_spent_ms": 236.00 }
+      ]
+    },
+    {
+      "query": "atomic.AddInt64",
+      "order_index": 45,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 44.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 255.00 }
+      ]
+    },
+    {
+      "query": "reflect.DeepEqual(",
+      "order_index": 46,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 4, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 4, "time_spent_ms": 38.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 4, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 4, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 4, "time_spent_ms": 248.00 }
+      ]
+    },
+    {
+      "query": "testing.TB",
+      "order_index": 47,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 30, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 30, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 30, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 30, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 30, "time_spent_ms": 266.00 }
+      ]
+    },
+    {
+      "query": "select {",
+      "order_index": 48,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 93, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 93, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 93, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 93, "time_spent_ms": 32.00 },
+        { "name": "Native OS grep", "total_matched_lines": 93, "time_spent_ms": 218.00 }
+      ]
+    },
+    {
+      "query": "panic(",
+      "order_index": 49,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 64, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 64, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 64, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 64, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 64, "time_spent_ms": 189.00 }
+      ]
+    },
+    {
+      "query": "make(map[string]",
+      "order_index": 50,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 37, "time_spent_ms": 33.00 },
+        { "name": "bep/grrep", "total_matched_lines": 37, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 37, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 37, "time_spent_ms": 31.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 208.00 }
+      ]
+    }
+  ],
+  "regex_queries": [
+    {
+      "query": "func \([a-zA-Z0-9_]+ \*[a-zA-Z0-9_]+\) Start\(",
+      "order_index": 1,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 9, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 9, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 9, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 9, "time_spent_ms": 64.00 },
+        { "name": "Native OS grep", "total_matched_lines": 9, "time_spent_ms": 194.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*type[ 	]+[a-zA-Z0-9_]+[ 	]+(struct|interface)",
+      "order_index": 2,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 41.00 },
+        { "name": "bep/grrep", "total_matched_lines": 3656, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 3656, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 3600, "time_spent_ms": 52.00 },
+        { "name": "Native OS grep", "total_matched_lines": 3600, "time_spent_ms": 222.00 }
+      ]
+    },
+    {
+      "query": "(TODO|FIXME|BUG|HACK)",
+      "order_index": 3,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 115, "time_spent_ms": 37.00 },
+        { "name": "bep/grrep", "total_matched_lines": 114, "time_spent_ms": 440.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 114, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 115, "time_spent_ms": 170.00 },
+        { "name": "Native OS grep", "total_matched_lines": 119, "time_spent_ms": 572.00 }
+      ]
+    },
+    {
+      "query": "[0-9]+\.[0-9]+\.[0-9]+",
+      "order_index": 4,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 6605, "time_spent_ms": 40.00 },
+        { "name": "bep/grrep", "total_matched_lines": 6546, "time_spent_ms": 95.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 6546, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 6605, "time_spent_ms": 91.00 },
+        { "name": "Native OS grep", "total_matched_lines": 8605, "time_spent_ms": 386.00 }
+      ]
+    },
+    {
+      "query": "go\.opentelemetry\.io/collector/(component|consumer|processor)",
+      "order_index": 5,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 68.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 225.00 }
+      ]
+    },
+    {
+      "query": "errors\.New\("[a-zA-Z]",
+      "order_index": 6,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 214, "time_spent_ms": 35.00 },
+        { "name": "bep/grrep", "total_matched_lines": 214, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 214, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 214, "time_spent_ms": 71.00 },
+        { "name": "Native OS grep", "total_matched_lines": 214, "time_spent_ms": 282.00 }
+      ]
+    },
+    {
+      "query": "err[ 	]*:=[ 	]*[a-zA-Z0-9_]+\([a-zA-Z0-9_]+, [a-zA-Z0-9_]+\)",
+      "order_index": 7,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 38, "time_spent_ms": 33.00 },
+        { "name": "bep/grrep", "total_matched_lines": 38, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 38, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 38, "time_spent_ms": 65.00 },
+        { "name": "Native OS grep", "total_matched_lines": 38, "time_spent_ms": 296.00 }
+      ]
+    },
+    {
+      "query": "github\.com/[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+",
+      "order_index": 8,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 3245, "time_spent_ms": 39.00 },
+        { "name": "bep/grrep", "total_matched_lines": 3224, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 3224, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 3245, "time_spent_ms": 61.00 },
+        { "name": "Native OS grep", "total_matched_lines": 3249, "time_spent_ms": 191.00 }
+      ]
+    },
+    {
+      "query": "https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}/[a-zA-Z0-9./_-]+",
+      "order_index": 9,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 10619, "time_spent_ms": 46.00 },
+        { "name": "bep/grrep", "total_matched_lines": 10594, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 10594, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 10619, "time_spent_ms": 69.00 },
+        { "name": "Native OS grep", "total_matched_lines": 10624, "time_spent_ms": 198.00 }
+      ]
+    },
+    {
+      "query": "(http|grpc)://[a-zA-Z0-9.-]+",
+      "order_index": 10,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 194, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 191, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 191, "time_spent_ms": 33.00 },
+        { "name": "git-grep", "total_matched_lines": 194, "time_spent_ms": 92.00 },
+        { "name": "Native OS grep", "total_matched_lines": 194, "time_spent_ms": 421.00 }
+      ]
+    },
+    {
+      "query": "func Test[A-Z][a-zA-Z0-9_]*\(",
+      "order_index": 11,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1403, "time_spent_ms": 38.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1403, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1403, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 1403, "time_spent_ms": 69.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1403, "time_spent_ms": 194.00 }
+      ]
+    },
+    {
+      "query": "func \([a-zA-Z0-9_]+ \*[a-zA-Z0-9_]+\) Shutdown\(",
+      "order_index": 12,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 48, "time_spent_ms": 41.00 },
+        { "name": "bep/grrep", "total_matched_lines": 48, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 48, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 48, "time_spent_ms": 75.00 },
+        { "name": "Native OS grep", "total_matched_lines": 48, "time_spent_ms": 204.00 }
+      ]
+    },
+    {
+      "query": "go\.opentelemetry\.io/collector/(receiver|exporter|extension)",
+      "order_index": 13,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 69.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 209.00 }
+      ]
+    },
+    {
+      "query": "for [a-zA-Z0-9_]+, [a-zA-Z0-9_]+ := range",
+      "order_index": 14,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1209, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1209, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1209, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 1209, "time_spent_ms": 64.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1209, "time_spent_ms": 192.00 }
+      ]
+    },
+    {
+      "query": "if err != nil \{[ 	]*return ",
+      "order_index": 15,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 43.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 32.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 88.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 250.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*log(ger)?\.(Info|Warn|Error|Debug)\(",
+      "order_index": 16,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 56.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 220.00 }
+      ]
+    },
+    {
+      "query": "const [a-zA-Z0-9_]+ = ",
+      "order_index": 17,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 360, "time_spent_ms": 42.00 },
+        { "name": "bep/grrep", "total_matched_lines": 360, "time_spent_ms": 32.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 360, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 360, "time_spent_ms": 113.00 },
+        { "name": "Native OS grep", "total_matched_lines": 360, "time_spent_ms": 220.00 }
+      ]
+    },
+    {
+      "query": "yaml:"[a-zA-Z0-9_]+"",
+      "order_index": 18,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 28, "time_spent_ms": 72.00 },
+        { "name": "bep/grrep", "total_matched_lines": 28, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 28, "time_spent_ms": 33.00 },
+        { "name": "git-grep", "total_matched_lines": 28, "time_spent_ms": 71.00 },
+        { "name": "Native OS grep", "total_matched_lines": 28, "time_spent_ms": 163.00 }
+      ]
+    },
+    {
+      "query": "github\.com/stretchr/testify/require",
+      "order_index": 19,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 162, "time_spent_ms": 48.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 162, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 162, "time_spent_ms": 66.00 },
+        { "name": "Native OS grep", "total_matched_lines": 162, "time_spent_ms": 208.00 }
+      ]
+    },
+    {
+      "query": "(tcp|udp|unix)://",
+      "order_index": 20,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 16, "time_spent_ms": 42.00 },
+        { "name": "bep/grrep", "total_matched_lines": 16, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 16, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 16, "time_spent_ms": 112.00 },
+        { "name": "Native OS grep", "total_matched_lines": 16, "time_spent_ms": 490.00 }
+      ]
+    },
+    {
+      "query": "func \([a-zA-Z0-9_]+ \*[a-zA-Z0-9_]+\) ConsumeMetrics\(",
+      "order_index": 21,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 32.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 74.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 202.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*func[ 	]+New[A-Z][a-zA-Z0-9_]*\(",
+      "order_index": 22,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 2841, "time_spent_ms": 32.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 2841, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 2840, "time_spent_ms": 51.00 },
+        { "name": "Native OS grep", "total_matched_lines": 2840, "time_spent_ms": 215.00 }
+      ]
+    },
+    {
+      "query": "go\.opentelemetry\.io/collector/(pdata|pmetric|plog|ptrace)",
+      "order_index": 23,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 5, "time_spent_ms": 48.00 },
+        { "name": "bep/grrep", "total_matched_lines": 5, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 5, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 5, "time_spent_ms": 68.00 },
+        { "name": "Native OS grep", "total_matched_lines": 5, "time_spent_ms": 207.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*t\.Run\("[a-zA-Z0-9_]",
+      "order_index": 24,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 860, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 860, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 47.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 208.00 }
+      ]
+    },
+    {
+      "query": "assert\.(NoError|Nil|NotNil|Equal)\(t, ",
+      "order_index": 25,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 2094, "time_spent_ms": 42.00 },
+        { "name": "bep/grrep", "total_matched_lines": 2094, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 2094, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 2094, "time_spent_ms": 77.00 },
+        { "name": "Native OS grep", "total_matched_lines": 2094, "time_spent_ms": 243.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*if[ 	]+err[ 	]*:=[ 	]*[a-zA-Z0-9_]+\([a-zA-Z0-9_ ]*\);[ 	]*err[ 	]*!=[ 	]*nil",
+      "order_index": 26,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 41.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 47.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 220.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*return[ 	]+nil,[ 	]*err",
+      "order_index": 27,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 114, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 114, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 1, "time_spent_ms": 45.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1, "time_spent_ms": 212.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*var[ 	]+_[ 	]+component\.(Processor|Exporter|Receiver)[ 	]+=[ 	]+\(\*[a-zA-Z]",
+      "order_index": 28,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 38.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 42.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 49.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 234.00 }
+      ]
+    },
+    {
+      "query": "zap\.(String|Int|Bool|Duration|Any|Error)\("[a-zA-Z]",
+      "order_index": 29,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 39.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 59.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 154.00 }
+      ]
+    },
+    {
+      "query": "fmt\.Errorf\("[a-zA-Z0-9_ ]+:[ 	]*%w"",
+      "order_index": 30,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 71, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 71, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 71, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 71, "time_spent_ms": 65.00 },
+        { "name": "Native OS grep", "total_matched_lines": 71, "time_spent_ms": 190.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*func[ 	]+(init|main)\(",
+      "order_index": 31,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 8, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 8, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 7, "time_spent_ms": 47.00 },
+        { "name": "Native OS grep", "total_matched_lines": 7, "time_spent_ms": 216.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*package[ 	]+[a-zA-Z0-9_]+_test",
+      "order_index": 32,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 50.00 },
+        { "name": "bep/grrep", "total_matched_lines": 77, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 77, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 77, "time_spent_ms": 49.00 },
+        { "name": "Native OS grep", "total_matched_lines": 77, "time_spent_ms": 217.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*defer[ 	]+[a-zA-Z0-9_]+\.Close\(",
+      "order_index": 33,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 50.00 },
+        { "name": "bep/grrep", "total_matched_lines": 23, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 23, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 51.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 225.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*if[ 	]+![a-zA-Z0-9_]+\.[a-zA-Z0-9_]+\(",
+      "order_index": 34,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 115, "time_spent_ms": 39.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 115, "time_spent_ms": 35.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 56.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 208.00 }
+      ]
+    },
+    {
+      "query": "yaml|json|mapstructure:"[a-zA-Z0-9_]+"",
+      "order_index": 35,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 1081, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1080, "time_spent_ms": 342.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1080, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 1081, "time_spent_ms": 128.00 },
+        { "name": "Native OS grep", "total_matched_lines": 1089, "time_spent_ms": 539.00 }
+      ]
+    },
+    {
+      "query": "ctx[ 	]*,[ 	]*cancel[ 	]*:=[ 	]*context\.With(Timeout|Cancel)\(",
+      "order_index": 36,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 70, "time_spent_ms": 44.00 },
+        { "name": "bep/grrep", "total_matched_lines": 70, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 70, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 70, "time_spent_ms": 79.00 },
+        { "name": "Native OS grep", "total_matched_lines": 70, "time_spent_ms": 244.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*t\.Parallel\(\)",
+      "order_index": 37,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 27, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 27, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 216.00 }
+      ]
+    },
+    {
+      "query": "make\(map\[[a-zA-Z0-9_]+\][a-zA-Z0-9_]+\)",
+      "order_index": 38,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 29, "time_spent_ms": 33.00 },
+        { "name": "bep/grrep", "total_matched_lines": 29, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 29, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 29, "time_spent_ms": 60.00 },
+        { "name": "Native OS grep", "total_matched_lines": 29, "time_spent_ms": 228.00 }
+      ]
+    },
+    {
+      "query": "make\(chan[ 	]+[a-zA-Z0-9_]+[ 	]*,[ 	]*[0-9]+\)",
+      "order_index": 39,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 27, "time_spent_ms": 37.00 },
+        { "name": "bep/grrep", "total_matched_lines": 27, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 27, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 27, "time_spent_ms": 61.00 },
+        { "name": "Native OS grep", "total_matched_lines": 27, "time_spent_ms": 214.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*switch[ 	]+[a-zA-Z0-9_]+[ 	]*:=[ 	]*[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+\(",
+      "order_index": 40,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 45.00 },
+        { "name": "bep/grrep", "total_matched_lines": 1, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 1, "time_spent_ms": 26.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 43.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 215.00 }
+      ]
+    },
+    {
+      "query": "if[ 	]+errors\.Is\(err[ 	]*,[ 	]*[a-zA-Z0-9_\.]+\)",
+      "order_index": 41,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 15, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 15, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 15, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 15, "time_spent_ms": 70.00 },
+        { "name": "Native OS grep", "total_matched_lines": 15, "time_spent_ms": 270.00 }
+      ]
+    },
+    {
+      "query": "append\([a-zA-Z0-9_]+[ 	]*,[ 	]*[a-zA-Z0-9_]+\)",
+      "order_index": 42,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 92, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 92, "time_spent_ms": 37.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 92, "time_spent_ms": 32.00 },
+        { "name": "git-grep", "total_matched_lines": 92, "time_spent_ms": 75.00 },
+        { "name": "Native OS grep", "total_matched_lines": 92, "time_spent_ms": 250.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*for[ 	]+[a-zA-Z0-9_]+[ 	]*:=[ 	]*0[ 	]*;[ 	]*[a-zA-Z0-9_]+[ 	]*<[ 	]*len",
+      "order_index": 43,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 12, "time_spent_ms": 31.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 12, "time_spent_ms": 30.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 50.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 233.00 }
+      ]
+    },
+    {
+      "query": "strings\.(Split|Join|Replace|Contains)\(",
+      "order_index": 44,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 53, "time_spent_ms": 32.00 },
+        { "name": "bep/grrep", "total_matched_lines": 53, "time_spent_ms": 35.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 53, "time_spent_ms": 39.00 },
+        { "name": "git-grep", "total_matched_lines": 53, "time_spent_ms": 75.00 },
+        { "name": "Native OS grep", "total_matched_lines": 53, "time_spent_ms": 231.00 }
+      ]
+    },
+    {
+      "query": "^[ 	]*time\.(Sleep|After|Tick)\(",
+      "order_index": 45,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 2, "time_spent_ms": 30.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 2, "time_spent_ms": 31.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 47.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 224.00 }
+      ]
+    },
+    {
+      "query": "sync\.(Mutex|RWMutex|Pool)",
+      "order_index": 46,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 515, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 515, "time_spent_ms": 34.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 515, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 515, "time_spent_ms": 66.00 },
+        { "name": "Native OS grep", "total_matched_lines": 515, "time_spent_ms": 229.00 }
+      ]
+    },
+    {
+      "query": "json\.New(Encoder|Decoder)\(",
+      "order_index": 47,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 19, "time_spent_ms": 34.00 },
+        { "name": "bep/grrep", "total_matched_lines": 19, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 19, "time_spent_ms": 27.00 },
+        { "name": "git-grep", "total_matched_lines": 19, "time_spent_ms": 62.00 },
+        { "name": "Native OS grep", "total_matched_lines": 19, "time_spent_ms": 163.00 }
+      ]
+    },
+    {
+      "query": "filepath\.(Base|Dir|Ext|Join)\(",
+      "order_index": 48,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 14, "time_spent_ms": 43.00 },
+        { "name": "bep/grrep", "total_matched_lines": 14, "time_spent_ms": 29.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 14, "time_spent_ms": 29.00 },
+        { "name": "git-grep", "total_matched_lines": 14, "time_spent_ms": 74.00 },
+        { "name": "Native OS grep", "total_matched_lines": 14, "time_spent_ms": 210.00 }
+      ]
+    },
+    {
+      "query": "atomic\.Add(Int64|Uint32)\(",
+      "order_index": 49,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 0, "time_spent_ms": 43.00 },
+        { "name": "bep/grrep", "total_matched_lines": 0, "time_spent_ms": 36.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 0, "time_spent_ms": 28.00 },
+        { "name": "git-grep", "total_matched_lines": 0, "time_spent_ms": 69.00 },
+        { "name": "Native OS grep", "total_matched_lines": 0, "time_spent_ms": 262.00 }
+      ]
+    },
+    {
+      "query": "reflect\.(TypeOf|ValueOf|DeepEqual)\(",
+      "order_index": 50,
+      "engines": [
+        { "name": "Our ggrep", "total_matched_lines": 85, "time_spent_ms": 36.00 },
+        { "name": "bep/grrep", "total_matched_lines": 85, "time_spent_ms": 33.00 },
+        { "name": "burntsushi/rg", "total_matched_lines": 85, "time_spent_ms": 32.00 },
+        { "name": "git-grep", "total_matched_lines": 85, "time_spent_ms": 73.00 },
+        { "name": "Native OS grep", "total_matched_lines": 85, "time_spent_ms": 254.00 }
+      ]
+    }
+  ]
+}

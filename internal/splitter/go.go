@@ -48,7 +48,8 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 				EndLine:   end.Line,
 			})
 		case *ast.GenDecl: // type, var, const blocks
-			if d.Tok == token.TYPE {
+			switch d.Tok {
+			case token.TYPE:
 				for _, spec := range d.Specs {
 					if ts, ok := spec.(*ast.TypeSpec); ok {
 						start := fset.Position(ts.Pos())
@@ -68,7 +69,7 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 						})
 					}
 				}
-			} else if d.Tok == token.CONST || d.Tok == token.VAR {
+			case token.CONST, token.VAR:
 				start := fset.Position(d.Pos())
 				end := fset.Position(d.End())
 				text := string(content[d.Pos()-1 : d.End()-1])
