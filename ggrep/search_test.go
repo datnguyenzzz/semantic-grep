@@ -16,8 +16,7 @@ type SearchResponse struct {
 }
 
 func Benchmark_GgrepLiteral(b *testing.B) {
-	// Standard workspace directory to simulate a real-world scale load
-	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
+	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry/opentelemetry-collector-contrib"
 	pattern := "createMetricsProcessor"
 
 	opt := &SearchOption{
@@ -28,14 +27,12 @@ func Benchmark_GgrepLiteral(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		// Run a full recursive search over the entire workspace directory (with empty dummy closure)
 		_ = Search([]string{workspacePath}, opt, func(path string, line int, text []byte) {})
 	}
 }
 
 func Benchmark_GgrepRegex(b *testing.B) {
-	// Standard workspace directory to simulate a real-world scale load
-	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
+	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry/opentelemetry-collector-contrib"
 	pattern := "(http|grpc)://[a-zA-Z0-9.-]+"
 
 	opt := &SearchOption{

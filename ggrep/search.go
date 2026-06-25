@@ -68,7 +68,6 @@ type fileJob struct {
 	stream bool    // true if file exceeds 1MB and needs streaming directly from disk
 }
 
-// Note: []SearchResponse is non-deterministic
 func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int, text []byte)) int {
 	jobCh := make(chan string, 1024)
 	scanCh := make(chan fileJob, cpuWorkers*4)
@@ -77,10 +76,9 @@ func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int
 	var ioWg sync.WaitGroup
 	var cpuWg sync.WaitGroup
 
-	// Spin up CPU Consumers: They do 100% pure literal and regex scanning with ZERO disk wait times!
+	// Do pure literal and regex scanning with no I/O wait times
 	for range cpuWorkers {
 		cpuWg.Go(func() {
-
 			// Clone and compile a private thread-local CodeSearch regexp per CPU worker!
 			workerOpt := *opt
 			if opt.Kind == Regex {
@@ -108,7 +106,7 @@ func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int
 		})
 	}
 
-	// Spin up I/O Producers: They handle all blocking disk syscalls (os.Open, Read) in parallel!
+	// I/O Producers handle all blocking disk syscalls (os.Open, Read)
 	for range ioWorkers {
 		ioWg.Go(func() {
 			br := readerPool.Get().(*bufio.Reader)
@@ -121,7 +119,7 @@ func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int
 				}
 				size := info.Size()
 				if size == 0 {
-					continue // Skip empty files
+					continue
 				}
 
 				if size > scanBufSize {
@@ -159,7 +157,7 @@ func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int
 		})
 	}
 
-	// Traversal Producer: Pushes file paths asynchronously
+	// Traversal Producer pushes file paths asynchronously
 	go func() {
 		for _, pwd := range pwds {
 			traverseWithGitIgnore(pwd, jobCh)
@@ -325,7 +323,6 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 	var walkWg sync.WaitGroup
 	dirCh := make(chan string, 256)
 
-	// Start the BFS walk with the root directory!
 	walkWg.Add(1)
 	dirCh <- pwd
 
@@ -351,12 +348,14 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 						go func() {
 							dirCh <- path
 						}()
-					} else {
-						if isIgnored(path, ignores) {
-							continue
-						}
-						jobCh <- path
+
+						continue
 					}
+
+					if isIgnored(path, ignores) {
+						continue
+					}
+					jobCh <- path
 				}
 				walkWg.Done()
 			}
