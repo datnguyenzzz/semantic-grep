@@ -4,7 +4,7 @@
 # 🚀 5-Way Multi-Query Literal and Regex Scaling Benchmark (JSON & Gnuplot)
 # ==============================================================================
 # This script executes five search engines recursively across a large codebase
-# using 10 different Literal search queries and 10 different Regex search queries
+# using 50 different Literal search queries and 50 different Regex search queries
 # of varying matching sizes.
 # It exports the results to a structured JSON file and generates beautiful,
 # isolated scaling comparison charts for both categories using Gnuplot.
@@ -12,27 +12,19 @@
 
 set -e
 
-TARGET_DIR="/Users/thanh.nguyen/Documents/dhse/opentelemetry-go"
+TARGET_DIR="/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
 WORKSPACE_DIR="/Users/thanh.nguyen/Documents/My_Code/agent-context"
+
 GGREP_BIN="$WORKSPACE_DIR/dist/ggrep"
+GGREP_STD_BIN="$WORKSPACE_DIR/dist/ggrep-std"
 RESULTS_DIR="$WORKSPACE_DIR/results"
 
 mkdir -p "$RESULTS_DIR"
 
 echo "================================================================================"
-echo "                   🛠  COMPILING GGREP & GRREP BINARIES  🛠"
+echo "                   🛠  COMPILING GGREP DUAL-ENGINES BINARIES  🛠"
 echo "================================================================================"
 make build
-
-# Install/Build bep/grrep dynamically
-if ! command -v grrep &> /dev/null; then
-    echo "📥 Installing bep/grrep dynamically..."
-    go install github.com/bep/grrep@latest
-fi
-GRREP_BIN=$(go env GOPATH)/bin/grrep
-if [ -z "$GRREP_BIN" ] || [ ! -f "$GRREP_BIN" ]; then
-    GRREP_BIN="$HOME/go/bin/grrep"
-fi
 
 # Install/Download ripgrep dynamically
 if ! command -v rg &> /dev/null && [ ! -f "dist/rg" ]; then
@@ -168,19 +160,19 @@ export TIMEFORMAT='%R'
 
 # Define temporary file variables
 GGREP_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_ggrep.dat"
-GRREP_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_grrep.dat"
+GGREP_STD_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_ggrep_std.dat"
 RIP_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_ripgrep.dat"
 GIT_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_gitgrep.dat"
 OS_LIT_DAT="$RESULTS_DIR/ggrep_bench_literal_osgrep.dat"
 
 GGREP_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_ggrep.dat"
-GRREP_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_grrep.dat"
+GGREP_STD_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_ggrep_std.dat"
 RIP_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_ripgrep.dat"
 GIT_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_gitgrep.dat"
 OS_RX_DAT="$RESULTS_DIR/ggrep_bench_regex_osgrep.dat"
 
 # Clear old results files
-rm -f "$GGREP_LIT_DAT" "$GRREP_LIT_DAT" "$RIP_LIT_DAT" "$GIT_LIT_DAT" "$OS_LIT_DAT" "$GGREP_RX_DAT" "$GRREP_RX_DAT" "$RIP_RX_DAT" "$GIT_RX_DAT" "$OS_RX_DAT"
+rm -f "$GGREP_LIT_DAT" "$GGREP_STD_LIT_DAT" "$RIP_LIT_DAT" "$GIT_LIT_DAT" "$OS_LIT_DAT" "$GGREP_RX_DAT" "$GGREP_STD_RX_DAT" "$RIP_RX_DAT" "$GIT_RX_DAT" "$OS_RX_DAT"
 
 # Helper function to execute and return (matches, latency_ms)
 function measure_engine() {
@@ -226,11 +218,11 @@ for idx in "${!QUERIES_LITERAL[@]}"; do
     MS_OS=$(echo "$RES_OS" | cut -d'|' -f2)
     echo "$ORDER_INDEX $MS_OS" >> "$OS_LIT_DAT"
 
-    # 2. bep/grrep
-    RES_GR=$(measure_engine "grrep" "$GRREP_BIN" -F "$Q" "$TARGET_DIR")
-    MATCH_GR=$(echo "$RES_GR" | cut -d'|' -f1)
-    MS_GR=$(echo "$RES_GR" | cut -d'|' -f2)
-    echo "$ORDER_INDEX $MS_GR" >> "$GRREP_LIT_DAT"
+    # 2. Our ggrep-std (Go standard library engine)
+    RES_STD=$(measure_engine "ggrep-std" "$GGREP_STD_BIN" "$Q" "$TARGET_DIR")
+    MATCH_STD=$(echo "$RES_STD" | cut -d'|' -f1)
+    MS_STD=$(echo "$RES_STD" | cut -d'|' -f2)
+    echo "$ORDER_INDEX $MS_STD" >> "$GGREP_STD_LIT_DAT"
 
     # 3. burntsushi/ripgrep
     RES_RG=$(measure_engine "ripgrep" "$RG_BIN" -F "$Q" "$TARGET_DIR")
@@ -244,7 +236,7 @@ for idx in "${!QUERIES_LITERAL[@]}"; do
     MS_GIT=$(echo "$RES_GIT" | cut -d'|' -f2)
     echo "$ORDER_INDEX $MS_GIT" >> "$GIT_LIT_DAT"
 
-    # 5. Our ggrep
+    # 5. Our ggrep (Custom DFA engine)
     RES_GG=$(measure_engine "ggrep" "$GGREP_BIN" "$Q" "$TARGET_DIR")
     MATCH_GG=$(echo "$RES_GG" | cut -d'|' -f1)
     MS_GG=$(echo "$RES_GG" | cut -d'|' -f2)
@@ -255,8 +247,8 @@ for idx in "${!QUERIES_LITERAL[@]}"; do
     JSON_OUTPUT="${JSON_OUTPUT}      \"query\": \"$Q\",\n"
     JSON_OUTPUT="${JSON_OUTPUT}      \"order_index\": $ORDER_INDEX,\n"
     JSON_OUTPUT="${JSON_OUTPUT}      \"engines\": [\n"
-    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Our ggrep\", \"total_matched_lines\": $MATCH_GG, \"time_spent_ms\": $MS_GG },\n"
-    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"bep/grrep\", \"total_matched_lines\": $MATCH_GR, \"time_spent_ms\": $MS_GR },\n"
+    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Our ggrep (DFA)\", \"total_matched_lines\": $MATCH_GG, \"time_spent_ms\": $MS_GG },\n"
+    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"ggrep-std\", \"total_matched_lines\": $MATCH_STD, \"time_spent_ms\": $MS_STD },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"burntsushi/rg\", \"total_matched_lines\": $MATCH_RG, \"time_spent_ms\": $MS_RG },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"git-grep\", \"total_matched_lines\": $MATCH_GIT, \"time_spent_ms\": $MS_GIT },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Native OS grep\", \"total_matched_lines\": $MATCH_OS, \"time_spent_ms\": $MS_OS }\n"
@@ -293,11 +285,11 @@ for idx in "${!QUERIES_REGEX[@]}"; do
     MS_OS=$(echo "$RES_OS" | cut -d'|' -f2)
     echo "$ORDER_INDEX $MS_OS" >> "$OS_RX_DAT"
 
-    # 2. bep/grrep
-    RES_GR=$(measure_engine "grrep" "$GRREP_BIN" "$Q" "$TARGET_DIR")
-    MATCH_GR=$(echo "$RES_GR" | cut -d'|' -f1)
-    MS_GR=$(echo "$RES_GR" | cut -d'|' -f2)
-    echo "$ORDER_INDEX $MS_GR" >> "$GRREP_RX_DAT"
+    # 2. Our ggrep-std (Go standard library engine)
+    RES_STD=$(measure_engine "ggrep-std" "$GGREP_STD_BIN" -r "$Q" "$TARGET_DIR")
+    MATCH_STD=$(echo "$RES_STD" | cut -d'|' -f1)
+    MS_STD=$(echo "$RES_STD" | cut -d'|' -f2)
+    echo "$ORDER_INDEX $MS_STD" >> "$GGREP_STD_RX_DAT"
 
     # 3. burntsushi/ripgrep
     RES_RG=$(measure_engine "ripgrep" "$RG_BIN" "$Q" "$TARGET_DIR")
@@ -311,7 +303,7 @@ for idx in "${!QUERIES_REGEX[@]}"; do
     MS_GIT=$(echo "$RES_GIT" | cut -d'|' -f2)
     echo "$ORDER_INDEX $MS_GIT" >> "$GIT_RX_DAT"
 
-    # 5. Our ggrep
+    # 5. Our ggrep (Custom DFA engine)
     RES_GG=$(measure_engine "ggrep" "$GGREP_BIN" -r "$Q" "$TARGET_DIR")
     MATCH_GG=$(echo "$RES_GG" | cut -d'|' -f1)
     MS_GG=$(echo "$RES_GG" | cut -d'|' -f2)
@@ -322,8 +314,8 @@ for idx in "${!QUERIES_REGEX[@]}"; do
     JSON_OUTPUT="${JSON_OUTPUT}      \"query\": \"$Q\",\n"
     JSON_OUTPUT="${JSON_OUTPUT}      \"order_index\": $ORDER_INDEX,\n"
     JSON_OUTPUT="${JSON_OUTPUT}      \"engines\": [\n"
-    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Our ggrep\", \"total_matched_lines\": $MATCH_GG, \"time_spent_ms\": $MS_GG },\n"
-    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"bep/grrep\", \"total_matched_lines\": $MATCH_GR, \"time_spent_ms\": $MS_GR },\n"
+    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Our ggrep (DFA)\", \"total_matched_lines\": $MATCH_GG, \"time_spent_ms\": $MS_GG },\n"
+    JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"ggrep-std\", \"total_matched_lines\": $MATCH_STD, \"time_spent_ms\": $MS_STD },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"burntsushi/rg\", \"total_matched_lines\": $MATCH_RG, \"time_spent_ms\": $MS_RG },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"git-grep\", \"total_matched_lines\": $MATCH_GIT, \"time_spent_ms\": $MS_GIT },\n"
     JSON_OUTPUT="${JSON_OUTPUT}        { \"name\": \"Native OS grep\", \"total_matched_lines\": $MATCH_OS, \"time_spent_ms\": $MS_OS }\n"

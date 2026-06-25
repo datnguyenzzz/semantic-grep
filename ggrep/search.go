@@ -5,14 +5,11 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
-
-	regexp "github.com/google/codesearch/regexp"
 )
 
 const (
@@ -22,7 +19,11 @@ const (
 )
 
 var (
-	workers = runtime.GOMAXPROCS(-1) * 4
+	cpuWorkers = max(2, runtime.GOMAXPROCS(-1))
+	// ioWorkers is set higher to overlap blocking disk read latencies.
+	ioWorkers = cpuWorkers * 4
+	// walkWorkers scales BFS crawling concurrently across directory structures.
+	walkWorkers = cpuWorkers * 2
 
 	readerPool = sync.Pool{
 		New: func() any {
@@ -47,7 +48,7 @@ const (
 
 type SearchOption struct {
 	Kind    SearchKind
-	Regex   *regexp.Regexp
+	Regex   *Regexp
 	Literal []byte
 	Pattern string
 }
@@ -64,31 +65,52 @@ func trimCR(line []byte) []byte {
 	return line
 }
 
+type fileJob struct {
+	path   string
+	data   []byte
+	bufp   *[]byte // pointer to return to sync.Pool after scanning!
+	stream bool    // true if file exceeds 1MB and needs streaming directly from disk
+}
+
 // Note: []SearchResponse is non-deterministic
 func Search(pwds []string, opt *SearchOption) []SearchResponse {
-	jobCh := make(chan string, workers*4)
+	jobCh := make(chan string, 1024)
+	scanCh := make(chan fileJob, cpuWorkers*4)
 
-	// Create a dedicated, private results slice for each worker
-	workerResults := make([][]SearchResponse, workers)
-	var workerWg sync.WaitGroup
+	workerResults := make([][]SearchResponse, cpuWorkers)
+	var ioWg sync.WaitGroup
+	var cpuWg sync.WaitGroup
 
-	for i := range workers {
-		workerWg.Add(1)
+	// Spin up CPU Consumers: They do 100% pure literal and regex scanning with ZERO disk wait times!
+	for i := range cpuWorkers {
+		cpuWg.Add(1)
 		go func(workerID int) {
-			defer workerWg.Done()
+			defer cpuWg.Done()
+			localResp := make([]SearchResponse, 0, 1024)
 
-			localResp := make([]SearchResponse, 0, 64)
-
-			// Google CodeSearch regex is not thread-safe. Compile a private,
-			// dedicated compiled instance per worker!
+			// Clone and compile a private thread-local CodeSearch regexp per CPU worker!
 			workerOpt := *opt
 			if opt.Kind == Regex {
-				localRe, _ := regexp.Compile(opt.Pattern)
+				localRe, _ := CompileRegex("(?m)" + opt.Pattern)
 				workerOpt.Regex = localRe
 			}
 
-			for path := range jobCh {
-				processFile(path, &workerOpt, &localResp)
+			for job := range scanCh {
+				if job.stream {
+					// Large file streaming bypass: Open and stream directly without using any pool buffer
+					f, err := os.Open(job.path)
+					if err == nil {
+						scanFileStream(job.path, f, &workerOpt, &localResp)
+						f.Close()
+					}
+					continue
+				}
+
+				scanWholeBody(job.path, job.data, &workerOpt, &localResp)
+				// Return buffer back to pool
+				if job.bufp != nil {
+					bufPool.Put(job.bufp)
+				}
 			}
 
 			// Save the worker's private results back to the global array lock-free
@@ -96,6 +118,58 @@ func Search(pwds []string, opt *SearchOption) []SearchResponse {
 		}(i)
 	}
 
+	// Spin up I/O Producers: They handle all blocking disk syscalls (os.Open, Read) in parallel!
+	for range ioWorkers {
+		ioWg.Go(func() {
+			br := readerPool.Get().(*bufio.Reader)
+			defer readerPool.Put(br)
+
+			for path := range jobCh {
+				info, err := os.Stat(path)
+				if err != nil {
+					continue
+				}
+				size := info.Size()
+				if size == 0 {
+					continue // Skip empty files
+				}
+
+				if size > scanBufSize {
+					// File exceeds 1MB! Do NOT allocate/put it into the buffer pool.
+					// Push a direct stream job to the CPU queue instead!
+					scanCh <- fileJob{
+						path:   path,
+						stream: true,
+					}
+					continue
+				}
+
+				// File is small enough to pre-fetch using a pool buffer!
+				f, err := os.Open(path)
+				if err != nil {
+					continue
+				}
+
+				br.Reset(f)
+				bufp := bufPool.Get().(*[]byte)
+				buf := *bufp
+
+				n, err := io.ReadFull(br, buf)
+				if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) || err == nil {
+					scanCh <- fileJob{
+						path: path,
+						data: buf[:n],
+						bufp: bufp,
+					}
+				} else {
+					bufPool.Put(bufp)
+				}
+				f.Close()
+			}
+		})
+	}
+
+	// Traversal Producer: Pushes file paths asynchronously
 	go func() {
 		for _, pwd := range pwds {
 			traverseWithGitIgnore(pwd, jobCh)
@@ -103,9 +177,14 @@ func Search(pwds []string, opt *SearchOption) []SearchResponse {
 		close(jobCh)
 	}()
 
-	workerWg.Wait()
+	// Sequenced Shutdown
+	go func() {
+		ioWg.Wait()
+		close(scanCh)
+	}()
 
-	// Merge the workers' private slices sequentially in the main thread
+	// Wait for all CPU workers to finish scanning, then merge results!
+	cpuWg.Wait()
 	var resp []SearchResponse
 	for _, res := range workerResults {
 		resp = append(resp, res...)
@@ -114,43 +193,10 @@ func Search(pwds []string, opt *SearchOption) []SearchResponse {
 	return resp
 }
 
-func processFile(path string, opt *SearchOption, localResp *[]SearchResponse) {
-	f, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-
-	bufp := bufPool.Get().(*[]byte)
-	defer bufPool.Put(bufp)
-	buf := *bufp
-
-	n, err := io.ReadFull(f, buf)
-	switch {
-	case errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF):
-		// File fit in the buffer (possibly empty).
-		scanWholeBody(path, buf[:n], opt, localResp)
-	case err == nil:
-		var probe [1]byte
-		if m, _ := f.Read(probe[:]); m == 0 {
-			// File was exactly scanBufSize.
-			scanWholeBody(path, buf, opt, localResp)
-			return
-		}
-		// File is larger than the pool buffer (1MB); rewind and stream.
-		if _, e := f.Seek(0, io.SeekStart); e != nil {
-			return
-		}
-		scanFileStream(path, f, opt, localResp)
-	default:
-		return
-	}
-}
-
 // scanWholeBody finds matches by sliding bytes.Index over data. Cheap when a
 // file has no matches at all — one bytes.Index call returns -1 and we're done.
 func scanWholeBody(path string, data []byte, opt *SearchOption, localResp *[]SearchResponse) {
-	// Binary check: Look for NUL byte in the first 8000 bytes
+	// Binary file check: Look for NUL byte in the first 8000 bytes
 	headLimit := min(len(data), peekSize)
 	if bytes.IndexByte(data[:headLimit], 0) >= 0 {
 		return
@@ -204,10 +250,11 @@ func scanWholeRegex(path string, data []byte, opt *SearchOption, localResp *[]Se
 	cursor := 0
 
 	for cursor < len(data) {
-		end := opt.Regex.Match(data[cursor:], cursor == 0, true)
-		if end < 0 {
+		loc := opt.Regex.FindIndex(data[cursor:])
+		if loc == nil {
 			break // No more matches in this file
 		}
+		end := loc[1]
 
 		// The match position relative to the entire file 'data'
 		matchEndPos := cursor + end
@@ -288,31 +335,58 @@ func isIgnored(path string, ignores []string) bool {
 }
 
 func traverseWithGitIgnore(pwd string, jobCh chan string) {
-	ignores := loadGitIgnore(pwd)
-
-	err := filepath.WalkDir(pwd, func(path string, d os.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-
-		if d.IsDir() {
-			if isIgnored(path, ignores) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if isIgnored(path, ignores) {
-			return nil // Skip ignored files
-		}
-
-		jobCh <- path
-		return nil
-	})
-
+	info, err := os.Stat(pwd)
 	if err != nil {
-		log.Printf("error walking directory %s: %s\n", pwd, err)
+		return
 	}
+	if !info.IsDir() {
+		jobCh <- pwd
+		return
+	}
+
+	var walkWg sync.WaitGroup
+	dirCh := make(chan string, 256)
+
+	// Start the BFS walk with the root directory!
+	walkWg.Add(1)
+	dirCh <- pwd
+
+	for range walkWorkers {
+		go func() {
+			for dir := range dirCh {
+				ignores := loadGitIgnore(dir)
+				entries, err := os.ReadDir(dir)
+				if err != nil {
+					walkWg.Done()
+					continue
+				}
+
+				for _, entry := range entries {
+					path := filepath.Join(dir, entry.Name())
+
+					if entry.IsDir() {
+						if isIgnored(path, ignores) {
+							continue
+						}
+						// Spin off to guarantee zero deadlock on channel block
+						walkWg.Add(1)
+						go func() {
+							dirCh <- path
+						}()
+					} else {
+						if isIgnored(path, ignores) {
+							continue
+						}
+						jobCh <- path
+					}
+				}
+				walkWg.Done()
+			}
+		}()
+	}
+
+	walkWg.Wait()
+	close(dirCh)
 }
 
 // scanFileStream handles files exceeding 1MB by streaming them line-by-line via bufio.Reader
@@ -343,7 +417,7 @@ func scanFileStream(path string, f *os.File, opt *SearchOption, localResp *[]Sea
 			if opt.Kind == Literal {
 				matched = bytes.Contains(line, opt.Literal)
 			} else {
-				matched = opt.Regex.Match(line, true, true) >= 0
+				matched = opt.Regex.Match(line)
 			}
 
 			if matched {
