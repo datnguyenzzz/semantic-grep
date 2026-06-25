@@ -10,6 +10,11 @@ import (
 	"testing"
 )
 
+type SearchResponse struct {
+	Path, Text string
+	Line       int
+}
+
 func Benchmark_GgrepLiteral(b *testing.B) {
 	// Standard workspace directory to simulate a real-world scale load
 	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
@@ -23,8 +28,8 @@ func Benchmark_GgrepLiteral(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		// Run a full recursive search over the entire workspace directory
-		_ = Search([]string{workspacePath}, opt)
+		// Run a full recursive search over the entire workspace directory (with empty dummy closure)
+		_ = Search([]string{workspacePath}, opt, func(path string, line int, text []byte) {})
 	}
 }
 
@@ -41,8 +46,8 @@ func Benchmark_GgrepRegex(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		// Run a full recursive search over the entire workspace directory
-		_ = Search([]string{workspacePath}, opt)
+		// Run a full recursive search over the entire workspace directory (with empty dummy closure)
+		_ = Search([]string{workspacePath}, opt, func(path string, line int, text []byte) {})
 	}
 }
 
@@ -98,10 +103,17 @@ dist/
 			Literal: []byte("implement"),
 		}
 
-		results := Search([]string{tmpDir}, opt)
+		var results []SearchResponse
+		count := Search([]string{tmpDir}, opt, func(path string, line int, text []byte) {
+			results = append(results, SearchResponse{
+				Path: path,
+				Line: line,
+				Text: string(text),
+			})
+		})
 
-		if len(results) != 1 {
-			t.Fatalf("expected exactly 1 literal match, got %d: %v", len(results), results)
+		if count != 1 || len(results) != 1 {
+			t.Fatalf("expected exactly 1 literal match, got %d", count)
 		}
 
 		res := results[0]
@@ -132,10 +144,17 @@ dist/
 			Pattern: `func [a-zA-Z]+\(`,
 		}
 
-		results := Search([]string{tmpDir}, opt)
+		var results []SearchResponse
+		count := Search([]string{tmpDir}, opt, func(path string, line int, text []byte) {
+			results = append(results, SearchResponse{
+				Path: path,
+				Line: line,
+				Text: string(text),
+			})
+		})
 
-		if len(results) != 2 {
-			t.Fatalf("expected exactly 2 regex matches, got %d: %v", len(results), results)
+		if count != 2 || len(results) != 2 {
+			t.Fatalf("expected exactly 2 regex matches, got %d", count)
 		}
 
 		matchedMain := false
@@ -168,12 +187,12 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 	t.Run("Literal Matching Parity", func(t *testing.T) {
 		pattern := "Benchmark_GgrepLiteral"
 
-		// Run ggrep
+		// Run ggrep (with empty dummy onMatch closure)
 		opt := &SearchOption{
 			Kind:    Literal,
 			Literal: []byte(pattern),
 		}
-		ggrepResults := Search([]string{targetFile}, opt)
+		ggrepCount := Search([]string{targetFile}, opt, func(path string, line int, text []byte) {})
 
 		// Run OS grep
 		cmd := exec.Command("grep", "-n", "-I", pattern, targetFile)
@@ -189,8 +208,8 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 			}
 		}
 
-		if len(ggrepResults) != grepCount {
-			t.Fatalf("Literal matching deviation too high! ggrep found %d, OS grep found %d", len(ggrepResults), grepCount)
+		if ggrepCount != grepCount {
+			t.Fatalf("Literal matching deviation too high! ggrep found %d, OS grep found %d", ggrepCount, grepCount)
 		}
 		t.Logf("✓ Literal parity verified! Both found exactly %d matches.", grepCount)
 	})
@@ -212,7 +231,7 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 
 		for idx, pattern := range patterns {
 			t.Run(fmt.Sprintf("Pattern_%d", idx+1), func(t *testing.T) {
-				// Run ggrep (with multiline (?m) prepended)
+				// Run ggrep (with multiline (?m) prepended and empty dummy closure)
 				compiledRegex, err := CompileRegex("(?m)" + pattern)
 				if err != nil {
 					t.Fatalf("failed to compile regex %q: %v", pattern, err)
@@ -222,7 +241,7 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 					Regex:   compiledRegex,
 					Pattern: pattern,
 				}
-				ggrepResults := Search([]string{targetFile}, opt)
+				ggrepCount := Search([]string{targetFile}, opt, func(path string, line int, text []byte) {})
 
 				// Run OS grep (POSIX ERE mode)
 				cmd := exec.Command("grep", "-E", "-n", "-I", pattern, targetFile)
@@ -232,14 +251,14 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 
 				// Parse OS grep lines
 				var grepCount int
-				for line := range strings.SplitSeq(out.String(), "\n") {
+				for _, line := range strings.Split(out.String(), "\n") {
 					if strings.TrimSpace(line) != "" {
 						grepCount++
 					}
 				}
 
-				if len(ggrepResults) != grepCount {
-					t.Fatalf("Parity deviation too high for pattern %q! ggrep found %d, OS grep found %d", pattern, len(ggrepResults), grepCount)
+				if ggrepCount != grepCount {
+					t.Fatalf("Parity deviation too high for pattern %q! ggrep found %d, OS grep found %d", pattern, ggrepCount, grepCount)
 				}
 				t.Logf("✓ Parity verified for %q! Both found exactly %d matches.", pattern, grepCount)
 			})

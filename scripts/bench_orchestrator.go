@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	targetDir    = "/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
+	targetDir    = "/Users/thanh.nguyen/Documents/dhse/opentelemetry/opentelemetry-collector-contrib"
 	workspaceDir = "/Users/thanh.nguyen/Documents/My_Code/agent-context"
 	resultsDir   = "/Users/thanh.nguyen/Documents/My_Code/agent-context/results"
 )

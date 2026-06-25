@@ -7,27 +7,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1679,
-          "time_spent_ms": 85.6327578
+          "time_spent_ms": 83.14285039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1679,
-          "time_spent_ms": 97.8005164
+          "time_spent_ms": 76.5337504
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1679,
+          "time_spent_ms": 94.5688246
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1679,
-          "time_spent_ms": 153.3171916
+          "time_spent_ms": 156.5274332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1679,
-          "time_spent_ms": 865.5392588
+          "time_spent_ms": 868.8044082
         }
       ]
     },
@@ -38,27 +38,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1452,
-          "time_spent_ms": 80.59729979999999
+          "time_spent_ms": 77.43647539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1452,
-          "time_spent_ms": 95.59255739999999
+          "time_spent_ms": 75.1666664
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1452,
+          "time_spent_ms": 90.88532459999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1452,
-          "time_spent_ms": 154.96877460000002
+          "time_spent_ms": 157.0991412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1452,
-          "time_spent_ms": 665.1487997999999
+          "time_spent_ms": 638.6407412
         }
       ]
     },
@@ -69,27 +69,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 5057,
-          "time_spent_ms": 82.47467479999999
+          "time_spent_ms": 79.86860039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 5057,
-          "time_spent_ms": 99.41226640000001
+          "time_spent_ms": 77.91379139999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 5056,
+          "time_spent_ms": 97.3101586
         },
         {
           "name": "git-grep",
           "total_matched_lines": 5057,
-          "time_spent_ms": 151.8567746
+          "time_spent_ms": 156.9936422
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 5057,
-          "time_spent_ms": 869.8444668
+          "time_spent_ms": 873.4866162000001
         }
       ]
     },
@@ -100,27 +100,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 2492,
-          "time_spent_ms": 80.98621579999998
+          "time_spent_ms": 77.33880939999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 2492,
-          "time_spent_ms": 98.03672439999998
+          "time_spent_ms": 76.49641639999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 2492,
+          "time_spent_ms": 99.15286660000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 2491,
-          "time_spent_ms": 162.2018576
+          "time_spent_ms": 155.8439332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 2492,
-          "time_spent_ms": 931.3557588
+          "time_spent_ms": 931.4079912
         }
       ]
     },
@@ -131,27 +131,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 3874,
-          "time_spent_ms": 88.0467158
+          "time_spent_ms": 78.62872539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 3874,
-          "time_spent_ms": 98.5885994
+          "time_spent_ms": 74.7949174
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 3872,
+          "time_spent_ms": 92.36686660000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 3874,
-          "time_spent_ms": 149.0140246
+          "time_spent_ms": 163.2733082
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 3874,
-          "time_spent_ms": 880.1909248
+          "time_spent_ms": 823.4078672
         }
       ]
     },
@@ -162,27 +162,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 426,
-          "time_spent_ms": 81.5160498
+          "time_spent_ms": 79.1547674
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 426,
-          "time_spent_ms": 96.7668494
+          "time_spent_ms": 78.2905834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 426,
+          "time_spent_ms": 91.2416996
         },
         {
           "name": "git-grep",
           "total_matched_lines": 426,
-          "time_spent_ms": 240.21989960000002
+          "time_spent_ms": 155.2388922
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 426,
-          "time_spent_ms": 769.3172998
+          "time_spent_ms": 715.0836582000001
         }
       ]
     },
@@ -193,27 +193,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 356,
-          "time_spent_ms": 79.86921679999999
+          "time_spent_ms": 82.37968339999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 356,
-          "time_spent_ms": 98.42622439999998
+          "time_spent_ms": 77.2172914
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 356,
+          "time_spent_ms": 89.8693246
         },
         {
           "name": "git-grep",
           "total_matched_lines": 356,
-          "time_spent_ms": 158.4991086
+          "time_spent_ms": 165.8445162
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 356,
-          "time_spent_ms": 921.4181328
+          "time_spent_ms": 918.1496162
         }
       ]
     },
@@ -224,27 +224,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 329,
-          "time_spent_ms": 80.32275779999999
+          "time_spent_ms": 79.87076639999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 329,
-          "time_spent_ms": 94.3338494
+          "time_spent_ms": 92.29033339999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 329,
+          "time_spent_ms": 92.4170746
         },
         {
           "name": "git-grep",
           "total_matched_lines": 329,
-          "time_spent_ms": 154.1374006
+          "time_spent_ms": 168.3130582
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 329,
-          "time_spent_ms": 738.2927997999999
+          "time_spent_ms": 736.7332002
         }
       ]
     },
@@ -255,27 +255,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 138,
-          "time_spent_ms": 74.4274668
+          "time_spent_ms": 82.83505839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 138,
-          "time_spent_ms": 98.88734939999999
+          "time_spent_ms": 80.3971244
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.38207460000000004
+          "total_matched_lines": 138,
+          "time_spent_ms": 92.93832459999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 138,
-          "time_spent_ms": 155.0914836
+          "time_spent_ms": 158.0982252
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 138,
-          "time_spent_ms": 1129.2214668000001
+          "time_spent_ms": 1079.1336992
         }
       ]
     },
@@ -286,27 +286,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 6122,
-          "time_spent_ms": 78.14513379999998
+          "time_spent_ms": 81.95097539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 6122,
-          "time_spent_ms": 102.9318914
+          "time_spent_ms": 79.26566739999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 6120,
+          "time_spent_ms": 97.1512836
         },
         {
           "name": "git-grep",
           "total_matched_lines": 6120,
-          "time_spent_ms": 158.1371076
+          "time_spent_ms": 156.4803082
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 6122,
-          "time_spent_ms": 872.0455498
+          "time_spent_ms": 858.2440742
         }
       ]
     },
@@ -317,27 +317,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1030,
-          "time_spent_ms": 78.8829668
+          "time_spent_ms": 82.38405939999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1030,
-          "time_spent_ms": 95.5121004
+          "time_spent_ms": 79.6445424
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1030,
+          "time_spent_ms": 94.5441166
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1030,
-          "time_spent_ms": 152.7588996
+          "time_spent_ms": 155.7693492
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1030,
-          "time_spent_ms": 898.2870918
+          "time_spent_ms": 839.3636582
         }
       ]
     },
@@ -348,27 +348,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 85,
-          "time_spent_ms": 84.6157578
+          "time_spent_ms": 86.67739239999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 85,
-          "time_spent_ms": 103.51093339999998
+          "time_spent_ms": 77.5780834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 85,
+          "time_spent_ms": 92.8831586
         },
         {
           "name": "git-grep",
           "total_matched_lines": 85,
-          "time_spent_ms": 157.7741076
+          "time_spent_ms": 160.0971832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 85,
-          "time_spent_ms": 951.5674657999999
+          "time_spent_ms": 855.9411162
         }
       ]
     },
@@ -379,27 +379,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1136,
-          "time_spent_ms": 90.5124248
+          "time_spent_ms": 80.18143439999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1136,
-          "time_spent_ms": 104.7162244
+          "time_spent_ms": 78.75937539999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1135,
+          "time_spent_ms": 95.33328359999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1136,
-          "time_spent_ms": 166.4573166
+          "time_spent_ms": 156.84410019999999
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1136,
-          "time_spent_ms": 940.6135078
+          "time_spent_ms": 824.8754082
         }
       ]
     },
@@ -410,27 +410,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 980,
-          "time_spent_ms": 130.7620918
+          "time_spent_ms": 80.82564239999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 980,
-          "time_spent_ms": 172.2162664
+          "time_spent_ms": 78.2918334
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 2.9121585999999997
+          "total_matched_lines": 980,
+          "time_spent_ms": 94.00890860000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 980,
-          "time_spent_ms": 173.5524416
+          "time_spent_ms": 159.3706832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 980,
-          "time_spent_ms": 1075.8027578
+          "time_spent_ms": 863.0997412
         }
       ]
     },
@@ -441,27 +441,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 708,
-          "time_spent_ms": 77.03509079999999
+          "time_spent_ms": 79.4534334
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 708,
-          "time_spent_ms": 107.1620994
+          "time_spent_ms": 79.63841639999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.5529916
+          "total_matched_lines": 708,
+          "time_spent_ms": 91.12724159999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 708,
-          "time_spent_ms": 157.8686916
+          "time_spent_ms": 158.2208502
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 721,
-          "time_spent_ms": 976.1572997999999
+          "time_spent_ms": 902.6844922
         }
       ]
     },
@@ -472,27 +472,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 646,
-          "time_spent_ms": 74.4342588
+          "time_spent_ms": 79.21405839999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 646,
-          "time_spent_ms": 238.6141414
+          "time_spent_ms": 81.1604164
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.49870059999999994
+          "total_matched_lines": 646,
+          "time_spent_ms": 92.92644960000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 646,
-          "time_spent_ms": 159.46289960000001
+          "time_spent_ms": 157.5519742
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 646,
-          "time_spent_ms": 1152.6007998
+          "time_spent_ms": 1087.1945331999998
         }
       ]
     },
@@ -503,27 +503,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 13827,
-          "time_spent_ms": 85.1957168
+          "time_spent_ms": 82.73139239999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 13827,
-          "time_spent_ms": 104.3538914
+          "time_spent_ms": 79.7764584
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 13827,
+          "time_spent_ms": 93.27482459999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 13827,
-          "time_spent_ms": 157.1508586
+          "time_spent_ms": 156.3647662
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 13827,
-          "time_spent_ms": 962.5562167999999
+          "time_spent_ms": 935.9874912
         }
       ]
     },
@@ -534,27 +534,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 22266,
-          "time_spent_ms": 94.52750779999998
+          "time_spent_ms": 82.74518339999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 22266,
-          "time_spent_ms": 111.43322539999998
+          "time_spent_ms": 79.9200414
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 22266,
+          "time_spent_ms": 99.44515860000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 22266,
-          "time_spent_ms": 160.2986086
+          "time_spent_ms": 155.6101832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 22266,
-          "time_spent_ms": 968.5958407999999
+          "time_spent_ms": 952.8483252
         }
       ]
     },
@@ -565,27 +565,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 967,
-          "time_spent_ms": 75.0857998
+          "time_spent_ms": 82.20718339999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 967,
-          "time_spent_ms": 94.7149754
+          "time_spent_ms": 78.97704139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 967,
+          "time_spent_ms": 92.2847836
         },
         {
           "name": "git-grep",
           "total_matched_lines": 967,
-          "time_spent_ms": 154.2348996
+          "time_spent_ms": 158.0277672
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 967,
-          "time_spent_ms": 729.3854247999999
+          "time_spent_ms": 681.0386582
         }
       ]
     },
@@ -596,27 +596,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 246,
-          "time_spent_ms": 78.79429979999999
+          "time_spent_ms": 81.65689239999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 246,
-          "time_spent_ms": 95.5058494
+          "time_spent_ms": 78.64654139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 246,
+          "time_spent_ms": 91.24032460000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 246,
-          "time_spent_ms": 153.0460256
+          "time_spent_ms": 163.9869332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 246,
-          "time_spent_ms": 873.9760077999999
+          "time_spent_ms": 829.8568242
         }
       ]
     },
@@ -627,27 +627,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 3394,
-          "time_spent_ms": 136.09534079999997
+          "time_spent_ms": 82.33410039999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 3394,
-          "time_spent_ms": 109.4497664
+          "time_spent_ms": 77.0645834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 3394,
+          "time_spent_ms": 97.8091996
         },
         {
           "name": "git-grep",
           "total_matched_lines": 3393,
-          "time_spent_ms": 275.02714960000003
+          "time_spent_ms": 157.7281832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 3394,
-          "time_spent_ms": 947.4751748
+          "time_spent_ms": 931.5275742
         }
       ]
     },
@@ -658,27 +658,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1337,
-          "time_spent_ms": 81.74613279999998
+          "time_spent_ms": 82.44664139999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1337,
-          "time_spent_ms": 97.16439139999999
+          "time_spent_ms": 79.40166639999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1337,
+          "time_spent_ms": 94.5614086
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1337,
-          "time_spent_ms": 152.2256916
+          "time_spent_ms": 159.6163912
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1337,
-          "time_spent_ms": 862.2605907999999
+          "time_spent_ms": 827.1709912
         }
       ]
     },
@@ -689,27 +689,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 462,
-          "time_spent_ms": 83.77821579999998
+          "time_spent_ms": 81.80085039999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 462,
-          "time_spent_ms": 97.1069744
+          "time_spent_ms": 77.9552914
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 462,
+          "time_spent_ms": 94.23061659999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 462,
-          "time_spent_ms": 154.2181916
+          "time_spent_ms": 172.4364752
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 462,
-          "time_spent_ms": 766.7142997999999
+          "time_spent_ms": 747.9541582
         }
       ]
     },
@@ -720,27 +720,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 2976,
-          "time_spent_ms": 79.3855918
+          "time_spent_ms": 80.9092254
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 2976,
-          "time_spent_ms": 96.5786414
+          "time_spent_ms": 78.04762539999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 2976,
+          "time_spent_ms": 96.6522836
         },
         {
           "name": "git-grep",
           "total_matched_lines": 2976,
-          "time_spent_ms": 151.1544416
+          "time_spent_ms": 158.2324332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 2976,
-          "time_spent_ms": 938.5025918
+          "time_spent_ms": 917.9709912000001
         }
       ]
     },
@@ -751,27 +751,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 202,
-          "time_spent_ms": 76.07704979999998
+          "time_spent_ms": 82.61310039999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 202,
-          "time_spent_ms": 97.8289744
+          "time_spent_ms": 80.5027924
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 202,
+          "time_spent_ms": 98.0545746
         },
         {
           "name": "git-grep",
           "total_matched_lines": 202,
-          "time_spent_ms": 151.4184416
+          "time_spent_ms": 168.3385582
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 202,
-          "time_spent_ms": 913.3838417999999
+          "time_spent_ms": 887.1631162
         }
       ]
     },
@@ -782,27 +782,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 328,
-          "time_spent_ms": 82.0221748
+          "time_spent_ms": 79.56380839999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 328,
-          "time_spent_ms": 99.43922539999998
+          "time_spent_ms": 77.2788334
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 328,
+          "time_spent_ms": 102.75778360000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 328,
-          "time_spent_ms": 153.4901916
+          "time_spent_ms": 156.9764332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 328,
-          "time_spent_ms": 910.4916747999999
+          "time_spent_ms": 892.6146172
         }
       ]
     },
@@ -813,27 +813,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 542,
-          "time_spent_ms": 84.2972998
+          "time_spent_ms": 79.54493339999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 542,
-          "time_spent_ms": 97.14626639999999
+          "time_spent_ms": 79.80445839999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 542,
+          "time_spent_ms": 93.0240746
         },
         {
           "name": "git-grep",
           "total_matched_lines": 542,
-          "time_spent_ms": 152.4032746
+          "time_spent_ms": 232.7859332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 542,
-          "time_spent_ms": 876.0999668
+          "time_spent_ms": 904.1227002
         }
       ]
     },
@@ -844,27 +844,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 9730,
-          "time_spent_ms": 87.7225078
+          "time_spent_ms": 80.3266424
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 9730,
-          "time_spent_ms": 101.58768239999999
+          "time_spent_ms": 82.5525834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 9718,
+          "time_spent_ms": 97.89244959999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 9728,
-          "time_spent_ms": 153.79202460000002
+          "time_spent_ms": 156.4088502
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 9732,
-          "time_spent_ms": 920.1649248
+          "time_spent_ms": 955.8394492
         }
       ]
     },
@@ -875,27 +875,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 9,
-          "time_spent_ms": 77.75775879999999
+          "time_spent_ms": 82.54122539999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 9,
-          "time_spent_ms": 96.87143339999999
+          "time_spent_ms": 82.20829140000001
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 9,
+          "time_spent_ms": 96.10294959999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 9,
-          "time_spent_ms": 150.4031916
+          "time_spent_ms": 158.5358502
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 9,
-          "time_spent_ms": 923.2703418
+          "time_spent_ms": 866.1989492
         }
       ]
     },
@@ -906,27 +906,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 289,
-          "time_spent_ms": 76.6799658
+          "time_spent_ms": 80.2113924
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 289,
-          "time_spent_ms": 102.25355739999999
+          "time_spent_ms": 79.75799939999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 289,
+          "time_spent_ms": 95.66765760000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 288,
-          "time_spent_ms": 157.1650256
+          "time_spent_ms": 157.3393922
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 289,
-          "time_spent_ms": 948.7321747999999
+          "time_spent_ms": 934.7403672
         }
       ]
     },
@@ -937,27 +937,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 325,
-          "time_spent_ms": 83.15500779999998
+          "time_spent_ms": 80.45055839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 325,
-          "time_spent_ms": 98.21614139999998
+          "time_spent_ms": 77.45750039999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.22478359999999997
+          "total_matched_lines": 325,
+          "time_spent_ms": 94.3585756
         },
         {
           "name": "git-grep",
           "total_matched_lines": 325,
-          "time_spent_ms": 160.9759836
+          "time_spent_ms": 157.87618319999999
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 325,
-          "time_spent_ms": 999.1209247999999
+          "time_spent_ms": 918.6721172
         }
       ]
     },
@@ -968,27 +968,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 32,
-          "time_spent_ms": 78.7205078
+          "time_spent_ms": 79.69026739999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 32,
-          "time_spent_ms": 94.5885994
+          "time_spent_ms": 83.93737439999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 32,
+          "time_spent_ms": 91.4017006
         },
         {
           "name": "git-grep",
           "total_matched_lines": 32,
-          "time_spent_ms": 150.9445246
+          "time_spent_ms": 158.3691002
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 32,
-          "time_spent_ms": 794.1309248
+          "time_spent_ms": 764.2572832
         }
       ]
     },
@@ -999,27 +999,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 261,
-          "time_spent_ms": 86.4066328
+          "time_spent_ms": 81.98685039999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 261,
-          "time_spent_ms": 94.4275994
+          "time_spent_ms": 77.1525834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 261,
+          "time_spent_ms": 90.45745059999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 261,
-          "time_spent_ms": 152.4458586
+          "time_spent_ms": 158.0971412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 261,
-          "time_spent_ms": 806.8021748
+          "time_spent_ms": 704.0994502
         }
       ]
     },
@@ -1030,27 +1030,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 81,
-          "time_spent_ms": 86.59434079999998
+          "time_spent_ms": 81.18693439999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 81,
-          "time_spent_ms": 94.8346414
+          "time_spent_ms": 77.5112504
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 81,
+          "time_spent_ms": 92.4085336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 81,
-          "time_spent_ms": 154.3461086
+          "time_spent_ms": 159.3123082
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 81,
-          "time_spent_ms": 816.3778417999999
+          "time_spent_ms": 811.5439082
         }
       ]
     },
@@ -1061,27 +1061,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 256,
-          "time_spent_ms": 83.56338379999998
+          "time_spent_ms": 83.03635039999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 256,
-          "time_spent_ms": 97.69455839999999
+          "time_spent_ms": 77.64695839999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 256,
+          "time_spent_ms": 94.5694076
         },
         {
           "name": "git-grep",
           "total_matched_lines": 256,
-          "time_spent_ms": 154.80165060000002
+          "time_spent_ms": 156.3743082
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 256,
-          "time_spent_ms": 929.7538827999999
+          "time_spent_ms": 869.6869082000001
         }
       ]
     },
@@ -1092,27 +1092,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 283,
-          "time_spent_ms": 78.68309079999999
+          "time_spent_ms": 83.00585039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 283,
-          "time_spent_ms": 94.4896414
+          "time_spent_ms": 78.95358339999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 283,
+          "time_spent_ms": 92.94574159999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 283,
-          "time_spent_ms": 154.0488166
+          "time_spent_ms": 161.4852242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 284,
-          "time_spent_ms": 813.0745078
+          "time_spent_ms": 808.7095332
         }
       ]
     },
@@ -1123,27 +1123,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 62,
-          "time_spent_ms": 77.23913279999998
+          "time_spent_ms": 78.74910039999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 62,
-          "time_spent_ms": 94.98347439999999
+          "time_spent_ms": 78.79904239999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 62,
+          "time_spent_ms": 93.9583666
         },
         {
           "name": "git-grep",
           "total_matched_lines": 62,
-          "time_spent_ms": 153.4457326
+          "time_spent_ms": 157.5460162
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 62,
-          "time_spent_ms": 900.0077997999999
+          "time_spent_ms": 877.7306582
         }
       ]
     },
@@ -1154,27 +1154,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 72,
-          "time_spent_ms": 75.61413279999998
+          "time_spent_ms": 81.61501639999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 72,
-          "time_spent_ms": 95.0426834
+          "time_spent_ms": 78.68641739999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 72,
+          "time_spent_ms": 93.6663666
         },
         {
           "name": "git-grep",
           "total_matched_lines": 72,
-          "time_spent_ms": 160.5121086
+          "time_spent_ms": 159.1920992
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 73,
-          "time_spent_ms": 942.1592998
+          "time_spent_ms": 914.8771172
         }
       ]
     },
@@ -1185,27 +1185,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1548,
-          "time_spent_ms": 77.26509179999998
+          "time_spent_ms": 81.86476739999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1548,
-          "time_spent_ms": 95.60860039999999
+          "time_spent_ms": 78.64975039999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1548,
+          "time_spent_ms": 92.6384496
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1546,
-          "time_spent_ms": 154.1151496
+          "time_spent_ms": 160.0574752
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1548,
-          "time_spent_ms": 877.4434657999999
+          "time_spent_ms": 866.7240742
         }
       ]
     },
@@ -1216,27 +1216,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 142,
-          "time_spent_ms": 88.20554979999999
+          "time_spent_ms": 82.37576739999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 142,
-          "time_spent_ms": 96.29243239999998
+          "time_spent_ms": 77.75741639999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 142,
+          "time_spent_ms": 90.70157460000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 142,
-          "time_spent_ms": 152.6002746
+          "time_spent_ms": 167.4139332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 142,
-          "time_spent_ms": 858.2254667999999
+          "time_spent_ms": 829.6790752
         }
       ]
     },
@@ -1247,27 +1247,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 257,
-          "time_spent_ms": 78.04859179999998
+          "time_spent_ms": 82.56022539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 257,
-          "time_spent_ms": 98.49514139999998
+          "time_spent_ms": 81.60233339999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 257,
+          "time_spent_ms": 96.2617836
         },
         {
           "name": "git-grep",
           "total_matched_lines": 257,
-          "time_spent_ms": 163.4945246
+          "time_spent_ms": 160.16955819999998
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 257,
-          "time_spent_ms": 920.2371327999999
+          "time_spent_ms": 944.3762422
         }
       ]
     },
@@ -1278,27 +1278,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 82,
-          "time_spent_ms": 74.6780078
+          "time_spent_ms": 80.74735039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 82,
-          "time_spent_ms": 92.61930839999998
+          "time_spent_ms": 77.55375039999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 82,
+          "time_spent_ms": 96.9600336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 82,
-          "time_spent_ms": 152.4684416
+          "time_spent_ms": 158.6732242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 82,
-          "time_spent_ms": 877.6655907999999
+          "time_spent_ms": 844.9368242
         }
       ]
     },
@@ -1309,27 +1309,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 42,
-          "time_spent_ms": 79.9370918
+          "time_spent_ms": 81.04993439999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 42,
-          "time_spent_ms": 93.0485164
+          "time_spent_ms": 78.47479139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 42,
+          "time_spent_ms": 93.29728259999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 42,
-          "time_spent_ms": 152.8838996
+          "time_spent_ms": 157.5920172
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 42,
-          "time_spent_ms": 878.1891747999999
+          "time_spent_ms": 873.4490332
         }
       ]
     },
@@ -1340,27 +1340,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 13,
-          "time_spent_ms": 80.9377588
+          "time_spent_ms": 83.59164139999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 13,
-          "time_spent_ms": 94.44355839999999
+          "time_spent_ms": 77.88745839999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 13,
+          "time_spent_ms": 92.84607460000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 13,
-          "time_spent_ms": 157.3509836
+          "time_spent_ms": 156.4239752
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 13,
-          "time_spent_ms": 945.6786328
+          "time_spent_ms": 933.5208672
         }
       ]
     },
@@ -1371,27 +1371,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 16,
-          "time_spent_ms": 77.7095498
+          "time_spent_ms": 81.95439239999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 16,
-          "time_spent_ms": 94.6266824
+          "time_spent_ms": 78.91845839999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 16,
+          "time_spent_ms": 93.54644959999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 16,
-          "time_spent_ms": 153.1908166
+          "time_spent_ms": 156.3242242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 16,
-          "time_spent_ms": 946.2256328
+          "time_spent_ms": 944.8316582
         }
       ]
     },
@@ -1402,27 +1402,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 71,
-          "time_spent_ms": 74.32317479999999
+          "time_spent_ms": 82.28935039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 71,
-          "time_spent_ms": 98.40309939999999
+          "time_spent_ms": 79.00545839999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.32753259999999995
+          "total_matched_lines": 71,
+          "time_spent_ms": 93.6154496
         },
         {
           "name": "git-grep",
           "total_matched_lines": 71,
-          "time_spent_ms": 155.4400256
+          "time_spent_ms": 161.0596832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 71,
-          "time_spent_ms": 927.1976748
+          "time_spent_ms": 937.1887412
         }
       ]
     },
@@ -1433,27 +1433,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 133,
-          "time_spent_ms": 75.9052578
+          "time_spent_ms": 79.26397539999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 133,
-          "time_spent_ms": 93.40939139999999
+          "time_spent_ms": 76.54137539999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 133,
+          "time_spent_ms": 93.22057459999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 133,
-          "time_spent_ms": 162.4174006
+          "time_spent_ms": 265.1566412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 133,
-          "time_spent_ms": 933.5277577999999
+          "time_spent_ms": 945.4308242
         }
       ]
     },
@@ -1464,27 +1464,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 456,
-          "time_spent_ms": 86.0673828
+          "time_spent_ms": 89.6106844
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 456,
-          "time_spent_ms": 94.1285994
+          "time_spent_ms": 90.4454584
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 456,
+          "time_spent_ms": 93.34707560000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 456,
-          "time_spent_ms": 156.7388166
+          "time_spent_ms": 163.5927242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 456,
-          "time_spent_ms": 853.6778407999999
+          "time_spent_ms": 839.2584912
         }
       ]
     },
@@ -1495,27 +1495,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 218,
-          "time_spent_ms": 79.29750779999999
+          "time_spent_ms": 81.5751004
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 218,
-          "time_spent_ms": 95.8685584
+          "time_spent_ms": 79.8611244
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 218,
+          "time_spent_ms": 91.81111659999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 218,
-          "time_spent_ms": 149.7809416
+          "time_spent_ms": 158.1829332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 218,
-          "time_spent_ms": 861.9651748
+          "time_spent_ms": 847.7080332
         }
       ]
     },
@@ -1526,27 +1526,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 964,
-          "time_spent_ms": 80.68304979999998
+          "time_spent_ms": 79.56443439999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 964,
-          "time_spent_ms": 98.38205839999999
+          "time_spent_ms": 77.7014584
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 964,
+          "time_spent_ms": 243.7693666
         },
         {
           "name": "git-grep",
           "total_matched_lines": 964,
-          "time_spent_ms": 156.7567746
+          "time_spent_ms": 156.0252252
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 879.7448827999999
+          "time_spent_ms": 846.8354082
         }
       ]
     }
@@ -1559,27 +1559,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 227,
-          "time_spent_ms": 83.42042479999999
+          "time_spent_ms": 82.27405839999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 227,
-          "time_spent_ms": 98.84964139999998
+          "time_spent_ms": 101.70637439999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 227,
+          "time_spent_ms": 100.72665860000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 227,
-          "time_spent_ms": 231.1198166
+          "time_spent_ms": 214.8086832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 227,
-          "time_spent_ms": 983.5296337999999
+          "time_spent_ms": 920.9078252
         }
       ]
     },
@@ -1590,27 +1590,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 7735,
-          "time_spent_ms": 96.8028408
+          "time_spent_ms": 85.14155839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 7735,
-          "time_spent_ms": 222.97976639999996
+          "time_spent_ms": 166.5883754
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.45836659999999985
+          "total_matched_lines": 7735,
+          "time_spent_ms": 107.2115756
         },
         {
           "name": "git-grep",
           "total_matched_lines": 7734,
-          "time_spent_ms": 237.6320666
+          "time_spent_ms": 202.4624332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 7735,
-          "time_spent_ms": 1087.1554658
+          "time_spent_ms": 1033.4812001999999
         }
       ]
     },
@@ -1621,27 +1621,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 536,
-          "time_spent_ms": 91.4585498
+          "time_spent_ms": 85.5165174
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 536,
-          "time_spent_ms": 508.80697439999994
+          "time_spent_ms": 458.9235834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.34099159999999984
+          "total_matched_lines": 529,
+          "time_spent_ms": 95.9362006
         },
         {
           "name": "git-grep",
           "total_matched_lines": 536,
-          "time_spent_ms": 446.5243996
+          "time_spent_ms": 410.6221412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 540,
-          "time_spent_ms": 2090.7698408
+          "time_spent_ms": 1972.7134912
         }
       ]
     },
@@ -1652,27 +1652,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 113649,
-          "time_spent_ms": 180.63242480000002
+          "time_spent_ms": 177.4197664
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 113649,
-          "time_spent_ms": 324.12230839999995
+          "time_spent_ms": 327.46637439999995
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.9665335999999999
+          "total_matched_lines": 113869,
+          "time_spent_ms": 106.6752826
         },
         {
           "name": "git-grep",
           "total_matched_lines": 113946,
-          "time_spent_ms": 272.2636916
+          "time_spent_ms": 283.9471002
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 146790,
-          "time_spent_ms": 1479.3024668
+          "time_spent_ms": 1457.2183671999999
         }
       ]
     },
@@ -1683,27 +1683,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 9709,
-          "time_spent_ms": 90.5214658
+          "time_spent_ms": 82.15547539999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 9709,
-          "time_spent_ms": 103.2945164
+          "time_spent_ms": 81.9158754
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 9712,
+          "time_spent_ms": 97.55870060000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 9713,
-          "time_spent_ms": 223.13019160000002
+          "time_spent_ms": 220.4211422
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 9713,
-          "time_spent_ms": 983.4879668
+          "time_spent_ms": 923.2957002
         }
       ]
     },
@@ -1714,27 +1714,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 2435,
-          "time_spent_ms": 81.63159179999998
+          "time_spent_ms": 88.15255939999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 2435,
-          "time_spent_ms": 103.6940164
+          "time_spent_ms": 78.34837539999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.10857459999999997
+          "total_matched_lines": 2435,
+          "time_spent_ms": 92.70224160000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 2435,
-          "time_spent_ms": 221.1922336
+          "time_spent_ms": 214.8291832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 2435,
-          "time_spent_ms": 1048.1627168
+          "time_spent_ms": 1047.1567002
         }
       ]
     },
@@ -1745,27 +1745,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 470,
-          "time_spent_ms": 82.1241748
+          "time_spent_ms": 85.51785039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 470,
-          "time_spent_ms": 95.96151640000001
+          "time_spent_ms": 86.8070414
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 470,
+          "time_spent_ms": 113.6130326
         },
         {
           "name": "git-grep",
           "total_matched_lines": 470,
-          "time_spent_ms": 246.32564960000002
+          "time_spent_ms": 225.5098922
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 470,
-          "time_spent_ms": 1065.9164658
+          "time_spent_ms": 1129.5097412
         }
       ]
     },
@@ -1776,27 +1776,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 73799,
-          "time_spent_ms": 137.39925879999998
+          "time_spent_ms": 110.01276739999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 73799,
-          "time_spent_ms": 166.3886834
+          "time_spent_ms": 149.9886664
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 73985,
+          "time_spent_ms": 117.49453360000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 74071,
-          "time_spent_ms": 240.2726496
+          "time_spent_ms": 278.5356832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 74079,
-          "time_spent_ms": 855.2830918
+          "time_spent_ms": 824.2578662
         }
       ]
     },
@@ -1807,27 +1807,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 6108,
-          "time_spent_ms": 88.60275779999999
+          "time_spent_ms": 82.71226739999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 6108,
-          "time_spent_ms": 106.97534939999998
+          "time_spent_ms": 81.52712539999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.3413246
+          "total_matched_lines": 6012,
+          "time_spent_ms": 99.66640860000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 6111,
-          "time_spent_ms": 219.48202560000001
+          "time_spent_ms": 216.8586832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 6118,
-          "time_spent_ms": 834.8945077999999
+          "time_spent_ms": 800.1900332
         }
       ]
     },
@@ -1838,27 +1838,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1039,
-          "time_spent_ms": 81.64292479999999
+          "time_spent_ms": 81.90368339999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1039,
-          "time_spent_ms": 255.9720994
+          "time_spent_ms": 261.38820839999994
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1039,
+          "time_spent_ms": 105.13799159999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1039,
-          "time_spent_ms": 288.4821916
+          "time_spent_ms": 268.6291002
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1039,
-          "time_spent_ms": 1496.2389668
+          "time_spent_ms": 1462.0439081999998
         }
       ]
     },
@@ -1869,27 +1869,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 9220,
-          "time_spent_ms": 87.1093408
+          "time_spent_ms": 82.58097539999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 9220,
-          "time_spent_ms": 112.1451824
+          "time_spent_ms": 82.2711664
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.5901165999999999
+          "total_matched_lines": 9220,
+          "time_spent_ms": 98.16128259999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 9220,
-          "time_spent_ms": 213.1178586
+          "time_spent_ms": 239.3436412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 9220,
-          "time_spent_ms": 849.2184248
+          "time_spent_ms": 854.9831992000001
         }
       ]
     },
@@ -1900,27 +1900,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 212,
-          "time_spent_ms": 88.96588279999999
+          "time_spent_ms": 84.13897539999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 212,
-          "time_spent_ms": 103.16939139999998
+          "time_spent_ms": 87.9527084
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 212,
+          "time_spent_ms": 91.3805336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 212,
-          "time_spent_ms": 211.8772336
+          "time_spent_ms": 211.29734919999999
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 212,
-          "time_spent_ms": 861.5272997999999
+          "time_spent_ms": 850.5527412
         }
       ]
     },
@@ -1931,27 +1931,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 7464,
-          "time_spent_ms": 93.66300779999999
+          "time_spent_ms": 85.6488914
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 7464,
-          "time_spent_ms": 110.6863914
+          "time_spent_ms": 81.96337539999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.3102416
+          "total_matched_lines": 7476,
+          "time_spent_ms": 95.4634916
         },
         {
           "name": "git-grep",
           "total_matched_lines": 7476,
-          "time_spent_ms": 227.71485760000002
+          "time_spent_ms": 221.4813912
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 7476,
-          "time_spent_ms": 981.3197577999999
+          "time_spent_ms": 933.6454922
         }
       ]
     },
@@ -1962,27 +1962,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 8052,
-          "time_spent_ms": 87.5818838
+          "time_spent_ms": 81.90605839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 8052,
-          "time_spent_ms": 104.2149744
+          "time_spent_ms": 82.58304139999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 8052,
+          "time_spent_ms": 98.2443246
         },
         {
           "name": "git-grep",
           "total_matched_lines": 8050,
-          "time_spent_ms": 210.5415246
+          "time_spent_ms": 221.17039119999998
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 8052,
-          "time_spent_ms": 953.9715497999999
+          "time_spent_ms": 900.9910752000001
         }
       ]
     },
@@ -1993,27 +1993,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 81.2074668
+          "time_spent_ms": 86.17368439999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 101.35593339999998
+          "time_spent_ms": 86.49337539999999
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 100.6346586
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 240.0250246
+          "time_spent_ms": 237.1111412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 987.2177158
+          "time_spent_ms": 926.9358252000001
         }
       ]
     },
@@ -2024,27 +2024,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 80.47675779999999
+          "time_spent_ms": 81.63672539999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 197.02697539999997
+          "time_spent_ms": 176.75675040000002
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 101.4043666
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 196.59181660000002
+          "time_spent_ms": 187.2684332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1024.9670498
+          "time_spent_ms": 1040.7916991999998
         }
       ]
     },
@@ -2055,27 +2055,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 705,
-          "time_spent_ms": 77.93004979999999
+          "time_spent_ms": 82.8603924
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 705,
-          "time_spent_ms": 101.2415994
+          "time_spent_ms": 83.01304139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 629,
+          "time_spent_ms": 95.37278359999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 705,
-          "time_spent_ms": 223.95398360000002
+          "time_spent_ms": 226.9007252
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 705,
-          "time_spent_ms": 930.8800497999999
+          "time_spent_ms": 954.8987412
         }
       ]
     },
@@ -2086,27 +2086,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 77,
-          "time_spent_ms": 80.08054979999999
+          "time_spent_ms": 84.0840174
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 77,
-          "time_spent_ms": 103.9938494
+          "time_spent_ms": 78.19216739999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 77,
+          "time_spent_ms": 90.25653360000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 77,
-          "time_spent_ms": 191.4081506
+          "time_spent_ms": 209.1415992
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 77,
-          "time_spent_ms": 714.8837577999999
+          "time_spent_ms": 737.9977412000001
         }
       ]
     },
@@ -2117,27 +2117,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 2050,
-          "time_spent_ms": 85.7395498
+          "time_spent_ms": 87.8542674
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 2050,
-          "time_spent_ms": 96.28705839999999
+          "time_spent_ms": 79.8433334
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 2050,
+          "time_spent_ms": 100.7856586
         },
         {
           "name": "git-grep",
           "total_matched_lines": 2050,
-          "time_spent_ms": 210.2598996
+          "time_spent_ms": 217.0976412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 2050,
-          "time_spent_ms": 915.0303838
+          "time_spent_ms": 896.8202002
         }
       ]
     },
@@ -2148,27 +2148,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 192,
-          "time_spent_ms": 84.20684179999999
+          "time_spent_ms": 80.99422539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 192,
-          "time_spent_ms": 268.4070994
+          "time_spent_ms": 263.2657084
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 192,
+          "time_spent_ms": 100.0177416
         },
         {
           "name": "git-grep",
           "total_matched_lines": 192,
-          "time_spent_ms": 301.5054416
+          "time_spent_ms": 339.2314752
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 192,
-          "time_spent_ms": 1675.4688408
+          "time_spent_ms": 1678.6214082
         }
       ]
     },
@@ -2179,27 +2179,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 39,
-          "time_spent_ms": 75.0480088
+          "time_spent_ms": 84.53814139999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 39,
-          "time_spent_ms": 95.7307244
+          "time_spent_ms": 79.8584994
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 39,
+          "time_spent_ms": 93.9545746
         },
         {
           "name": "git-grep",
           "total_matched_lines": 39,
-          "time_spent_ms": 282.3623586
+          "time_spent_ms": 215.9821412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 39,
-          "time_spent_ms": 933.2138408
+          "time_spent_ms": 903.5968252
         }
       ]
     },
@@ -2210,27 +2210,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1175,
-          "time_spent_ms": 83.0637168
+          "time_spent_ms": 90.14047539999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1175,
-          "time_spent_ms": 177.5714334
+          "time_spent_ms": 162.7131254
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1175,
+          "time_spent_ms": 97.63882459999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1175,
-          "time_spent_ms": 188.8127336
+          "time_spent_ms": 190.94830819999999
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1175,
-          "time_spent_ms": 1006.9253408
+          "time_spent_ms": 1030.0545332
         }
       ]
     },
@@ -2241,27 +2241,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 6122,
-          "time_spent_ms": 81.59084079999998
+          "time_spent_ms": 86.29443339999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 6122,
-          "time_spent_ms": 99.8923084
+          "time_spent_ms": 82.5026244
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 6120,
+          "time_spent_ms": 97.89424159999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 6120,
-          "time_spent_ms": 222.48427560000002
+          "time_spent_ms": 227.1932242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 6122,
-          "time_spent_ms": 945.5076327999999
+          "time_spent_ms": 921.2854082
         }
       ]
     },
@@ -2272,27 +2272,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1160,
-          "time_spent_ms": 130.6015918
+          "time_spent_ms": 80.44680839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1160,
-          "time_spent_ms": 215.8987244
+          "time_spent_ms": 157.4940834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1160,
+          "time_spent_ms": 98.4930746
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1160,
-          "time_spent_ms": 185.5660666
+          "time_spent_ms": 187.0734752
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1160,
-          "time_spent_ms": 1006.3167578
+          "time_spent_ms": 976.1129912
         }
       ]
     },
@@ -2303,27 +2303,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 27514,
-          "time_spent_ms": 106.5536748
+          "time_spent_ms": 86.45989239999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 27514,
-          "time_spent_ms": 137.14647539999999
+          "time_spent_ms": 82.95704139999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.5251165999999999
+          "total_matched_lines": 27514,
+          "time_spent_ms": 97.1691586
         },
         {
           "name": "git-grep",
           "total_matched_lines": 27514,
-          "time_spent_ms": 256.2798586
+          "time_spent_ms": 225.8412662
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 27514,
-          "time_spent_ms": 995.1260497999999
+          "time_spent_ms": 991.4959082
         }
       ]
     },
@@ -2334,27 +2334,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 36,
-          "time_spent_ms": 101.00450779999998
+          "time_spent_ms": 88.91447539999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 36,
-          "time_spent_ms": 233.6869754
+          "time_spent_ms": 162.7835834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.13865760000000005
+          "total_matched_lines": 36,
+          "time_spent_ms": 99.00195060000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 36,
-          "time_spent_ms": 198.1451916
+          "time_spent_ms": 195.1821002
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 36,
-          "time_spent_ms": 1072.3029248
+          "time_spent_ms": 1029.0212001999998
         }
       ]
     },
@@ -2365,27 +2365,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 2020,
-          "time_spent_ms": 85.57450779999998
+          "time_spent_ms": 87.10339239999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 2020,
-          "time_spent_ms": 233.13772439999997
+          "time_spent_ms": 171.8611674
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 2020,
+          "time_spent_ms": 107.07911659999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 2020,
-          "time_spent_ms": 203.81377460000002
+          "time_spent_ms": 186.4024332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 2020,
-          "time_spent_ms": 1002.5086328
+          "time_spent_ms": 988.7929082
         }
       ]
     },
@@ -2396,27 +2396,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 83.7810918
+          "time_spent_ms": 93.33980839999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 264.92564139999996
+          "time_spent_ms": 253.7960004
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.37028359999999994
+          "time_spent_ms": 102.1151166
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 199.71794160000002
+          "time_spent_ms": 194.0604332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1162.1728828
+          "time_spent_ms": 1075.9877832
         }
       ]
     },
@@ -2427,27 +2427,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1251,
-          "time_spent_ms": 81.1267998
+          "time_spent_ms": 81.54039139999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1251,
-          "time_spent_ms": 101.12018339999999
+          "time_spent_ms": 81.5825414
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 1251,
+          "time_spent_ms": 97.9531996
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1251,
-          "time_spent_ms": 233.6397326
+          "time_spent_ms": 196.5577242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1251,
-          "time_spent_ms": 735.2937168
+          "time_spent_ms": 763.0861162
         }
       ]
     },
@@ -2458,27 +2458,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 1293,
-          "time_spent_ms": 91.91059079999998
+          "time_spent_ms": 85.7910584
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 1293,
-          "time_spent_ms": 106.11597539999998
+          "time_spent_ms": 79.2055004
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.7627415999999999
+          "total_matched_lines": 1293,
+          "time_spent_ms": 211.94824160000002
         },
         {
           "name": "git-grep",
           "total_matched_lines": 1293,
-          "time_spent_ms": 217.9630256
+          "time_spent_ms": 258.6678082
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 1293,
-          "time_spent_ms": 954.1478407999999
+          "time_spent_ms": 911.2277002000001
         }
       ]
     },
@@ -2489,27 +2489,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 80,
-          "time_spent_ms": 80.1544248
+          "time_spent_ms": 85.15064239999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 80,
-          "time_spent_ms": 235.80876639999997
+          "time_spent_ms": 169.9995834
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.2509916
+          "total_matched_lines": 80,
+          "time_spent_ms": 104.8757416
         },
         {
           "name": "git-grep",
           "total_matched_lines": 80,
-          "time_spent_ms": 202.4816916
+          "time_spent_ms": 194.5242252
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 80,
-          "time_spent_ms": 1059.8557158
+          "time_spent_ms": 1008.2419922
         }
       ]
     },
@@ -2520,27 +2520,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 39,
-          "time_spent_ms": 85.16396679999998
+          "time_spent_ms": 86.52551739999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 39,
-          "time_spent_ms": 249.9126824
+          "time_spent_ms": 154.71529239999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 39,
+          "time_spent_ms": 99.76215859999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 39,
-          "time_spent_ms": 204.06223260000002
+          "time_spent_ms": 201.4566412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 39,
-          "time_spent_ms": 1041.8247158000001
+          "time_spent_ms": 998.1464082
         }
       ]
     },
@@ -2551,27 +2551,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 582,
-          "time_spent_ms": 90.80821679999998
+          "time_spent_ms": 85.46422539999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 582,
-          "time_spent_ms": 224.8418084
+          "time_spent_ms": 184.45154139999997
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.2796586
+          "total_matched_lines": 582,
+          "time_spent_ms": 100.46257460000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 582,
-          "time_spent_ms": 186.3572326
+          "time_spent_ms": 184.0212242
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 582,
-          "time_spent_ms": 1031.5276328
+          "time_spent_ms": 1030.6154921999998
         }
       ]
     },
@@ -2582,27 +2582,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 87.36696679999999
+          "time_spent_ms": 85.92730839999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 183.60147539999997
+          "time_spent_ms": 175.9710004
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 102.5190336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 186.9708586
+          "time_spent_ms": 185.2467662
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 998.9779248
+          "time_spent_ms": 993.8703662
         }
       ]
     },
@@ -2613,27 +2613,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 18306,
-          "time_spent_ms": 101.54092479999998
+          "time_spent_ms": 83.72460039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 18306,
-          "time_spent_ms": 400.06909939999997
+          "time_spent_ms": 322.70850040000005
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.20940860000000006
+          "total_matched_lines": 18187,
+          "time_spent_ms": 105.44728359999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 18311,
-          "time_spent_ms": 331.1348996
+          "time_spent_ms": 333.0081002
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 18541,
-          "time_spent_ms": 1747.4124248
+          "time_spent_ms": 1682.5045332
         }
       ]
     },
@@ -2644,27 +2644,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 75.29804979999999
+          "time_spent_ms": 86.4533084
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 99.6707664
+          "time_spent_ms": 80.6735424
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.15565859999999987
+          "time_spent_ms": 101.4479916
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 218.1456496
+          "time_spent_ms": 219.0671422
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1037.4756338
+          "time_spent_ms": 999.7615752
         }
       ]
     },
@@ -2675,27 +2675,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 646,
-          "time_spent_ms": 131.3699658
+          "time_spent_ms": 92.26643439999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 646,
-          "time_spent_ms": 202.7938914
+          "time_spent_ms": 151.1278744
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 646,
+          "time_spent_ms": 97.74624159999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 646,
-          "time_spent_ms": 209.6847756
+          "time_spent_ms": 205.8059332
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 646,
-          "time_spent_ms": 980.8897998
+          "time_spent_ms": 992.6659912
         }
       ]
     },
@@ -2706,27 +2706,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 510,
-          "time_spent_ms": 86.6400498
+          "time_spent_ms": 84.9464754
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 510,
-          "time_spent_ms": 101.77909939999999
+          "time_spent_ms": 81.55029139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 510,
+          "time_spent_ms": 97.3009496
         },
         {
           "name": "git-grep",
           "total_matched_lines": 510,
-          "time_spent_ms": 241.7763166
+          "time_spent_ms": 218.1523492
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 510,
-          "time_spent_ms": 921.5998837999999
+          "time_spent_ms": 862.4534082
         }
       ]
     },
@@ -2737,27 +2737,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 40,
-          "time_spent_ms": 81.6362578
+          "time_spent_ms": 83.15693339999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 40,
-          "time_spent_ms": 110.0259334
+          "time_spent_ms": 83.25783339999998
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 40,
+          "time_spent_ms": 92.5713666
         },
         {
           "name": "git-grep",
           "total_matched_lines": 40,
-          "time_spent_ms": 278.3066076
+          "time_spent_ms": 219.5758492
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 40,
-          "time_spent_ms": 913.0548418
+          "time_spent_ms": 865.2688252
         }
       ]
     },
@@ -2768,27 +2768,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 86.80279979999999
+          "time_spent_ms": 88.07493439999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 237.83214139999995
+          "time_spent_ms": 176.99508339999997
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.24419959999999985
+          "time_spent_ms": 102.08715760000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 219.8607756
+          "time_spent_ms": 216.7395162
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1060.9294668
+          "time_spent_ms": 1024.2463252
         }
       ]
     },
@@ -2799,27 +2799,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 85,
-          "time_spent_ms": 86.70429979999999
+          "time_spent_ms": 82.8688924
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 85,
-          "time_spent_ms": 103.8603494
+          "time_spent_ms": 77.88204139999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 85,
+          "time_spent_ms": 92.15540859999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 85,
-          "time_spent_ms": 250.84856660000003
+          "time_spent_ms": 217.3286832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 85,
-          "time_spent_ms": 1014.2147997999999
+          "time_spent_ms": 986.6176162
         }
       ]
     },
@@ -2830,27 +2830,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 820,
-          "time_spent_ms": 88.9863418
+          "time_spent_ms": 86.11476739999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 820,
-          "time_spent_ms": 108.7492664
+          "time_spent_ms": 89.6513754
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.2765745999999999
+          "total_matched_lines": 820,
+          "time_spent_ms": 103.60365859999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 819,
-          "time_spent_ms": 243.86669160000002
+          "time_spent_ms": 216.0053912
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 820,
-          "time_spent_ms": 998.7513828
+          "time_spent_ms": 990.7780332
         }
       ]
     },
@@ -2861,27 +2861,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 102,
-          "time_spent_ms": 85.1895498
+          "time_spent_ms": 83.12430839999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 102,
-          "time_spent_ms": 242.0915584
+          "time_spent_ms": 179.65437540000002
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.46078359999999996
+          "total_matched_lines": 102,
+          "time_spent_ms": 98.20928359999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 102,
-          "time_spent_ms": 207.77110860000002
+          "time_spent_ms": 197.8310582
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 102,
-          "time_spent_ms": 1060.2004248
+          "time_spent_ms": 1035.5107412
         }
       ]
     },
@@ -2892,27 +2892,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 88.02309179999999
+          "time_spent_ms": 83.26810039999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 101.76230839999998
+          "time_spent_ms": 80.38566639999999
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 97.9606996
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 237.5176496
+          "time_spent_ms": 231.5281422
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 960.7176327999999
+          "time_spent_ms": 916.5917002
         }
       ]
     },
@@ -2923,27 +2923,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 91.4451328
+          "time_spent_ms": 90.20110039999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 216.06018339999997
+          "time_spent_ms": 174.3629584
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.18165759999999997
+          "time_spent_ms": 111.53403359999999
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 187.9960666
+          "time_spent_ms": 213.7600162
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1398.1768828000002
+          "time_spent_ms": 1052.4144491999998
         }
       ]
     },
@@ -2954,27 +2954,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 356,
-          "time_spent_ms": 79.16338279999998
+          "time_spent_ms": 89.27914239999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 356,
-          "time_spent_ms": 96.2040994
+          "time_spent_ms": 77.16845839999999
         },
         {
           "name": "ripgrep",
-          "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "total_matched_lines": 356,
+          "time_spent_ms": 90.4072836
         },
         {
           "name": "git-grep",
           "total_matched_lines": 356,
-          "time_spent_ms": 228.9903166
+          "time_spent_ms": 226.1745172
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 356,
-          "time_spent_ms": 978.8057587999999
+          "time_spent_ms": 908.2519502
         }
       ]
     },
@@ -2985,27 +2985,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 80.7223418
+          "time_spent_ms": 86.61135039999999
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 107.7761004
+          "time_spent_ms": 253.54920839999997
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 105.58199160000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 218.76231660000002
+          "time_spent_ms": 199.1591412
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 738.5260088
+          "time_spent_ms": 754.0942422
         }
       ]
     },
@@ -3016,27 +3016,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 79.20288379999998
+          "time_spent_ms": 85.56789239999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 96.83405839999999
+          "time_spent_ms": 85.2509164
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 94.21090860000001
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 226.5654836
+          "time_spent_ms": 221.22997519999998
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 945.0143417999999
+          "time_spent_ms": 886.4253242
         }
       ]
     },
@@ -3047,27 +3047,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 85.5979248
+          "time_spent_ms": 98.40051739999998
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 96.75914139999999
+          "time_spent_ms": 104.7722914
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.10499159999999985
+          "time_spent_ms": 98.6850336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 218.6860666
+          "time_spent_ms": 260.5426832
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 963.9131748
+          "time_spent_ms": 1037.1899082
         }
       ]
     },
@@ -3078,27 +3078,27 @@
         {
           "name": "ggrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 86.73317479999999
+          "time_spent_ms": 82.55643339999997
         },
         {
           "name": "ggrep-std",
           "total_matched_lines": 0,
-          "time_spent_ms": 97.01401639999999
+          "time_spent_ms": 82.70162539999998
         },
         {
           "name": "ripgrep",
           "total_matched_lines": 0,
-          "time_spent_ms": 0.05
+          "time_spent_ms": 91.4710336
         },
         {
           "name": "git-grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 206.93710860000002
+          "time_spent_ms": 226.9785582
         },
         {
           "name": "OS Grep",
           "total_matched_lines": 0,
-          "time_spent_ms": 1040.1918408000001
+          "time_spent_ms": 1003.6763252000001
         }
       ]
     }

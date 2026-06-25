@@ -4,7 +4,30 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 )
+
+// writeMatch formats and writes a match directly and atomically to os.Stdout
+// using a stack-allocated buffer (no heap allocations or line interleaving!).
+func writeMatch(path string, lineNum int, text []byte) {
+	var buf [512]byte
+	needed := len(path) + 1 + 20 + 1 + len(text) + 1
+	var b []byte
+	if needed <= len(buf) {
+		b = buf[:0]
+	} else {
+		b = make([]byte, 0, needed) // fallback for long lines
+	}
+
+	b = append(b, path...)
+	b = append(b, ':')
+	b = strconv.AppendInt(b, int64(lineNum), 10)
+	b = append(b, ':')
+	b = append(b, text...)
+	b = append(b, '\n')
+
+	_, _ = os.Stdout.Write(b)
+}
 
 func main() {
 	// Define CLI flags
@@ -38,11 +61,6 @@ func main() {
 		opt.Literal = []byte(pattern)
 	}
 
-	// Execute high-speed parallel search
-	results := Search(paths, opt)
-
-	// Print results elegantly (matching standard grep format)
-	for _, res := range results {
-		fmt.Printf("%s:%d:%s\n", res.Path, res.Line, res.Text)
-	}
+	// Execute high-speed parallel search (writes directly and atomically to os.Stdout)
+	Search(paths, opt, writeMatch)
 }

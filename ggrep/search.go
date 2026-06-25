@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -53,11 +54,6 @@ type SearchOption struct {
 	Pattern string
 }
 
-type SearchResponse struct {
-	Path, Text string
-	Line       int
-}
-
 func trimCR(line []byte) []byte {
 	if n := len(line); n > 0 && line[n-1] == '\r' {
 		return line[:n-1]
@@ -73,20 +69,17 @@ type fileJob struct {
 }
 
 // Note: []SearchResponse is non-deterministic
-func Search(pwds []string, opt *SearchOption) []SearchResponse {
+func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int, text []byte)) int {
 	jobCh := make(chan string, 1024)
 	scanCh := make(chan fileJob, cpuWorkers*4)
 
-	workerResults := make([][]SearchResponse, cpuWorkers)
+	var totalMatches int64
 	var ioWg sync.WaitGroup
 	var cpuWg sync.WaitGroup
 
 	// Spin up CPU Consumers: They do 100% pure literal and regex scanning with ZERO disk wait times!
-	for i := range cpuWorkers {
-		cpuWg.Add(1)
-		go func(workerID int) {
-			defer cpuWg.Done()
-			localResp := make([]SearchResponse, 0, 1024)
+	for range cpuWorkers {
+		cpuWg.Go(func() {
 
 			// Clone and compile a private thread-local CodeSearch regexp per CPU worker!
 			workerOpt := *opt
@@ -100,22 +93,19 @@ func Search(pwds []string, opt *SearchOption) []SearchResponse {
 					// Large file streaming bypass: Open and stream directly without using any pool buffer
 					f, err := os.Open(job.path)
 					if err == nil {
-						scanFileStream(job.path, f, &workerOpt, &localResp)
+						scanFileStream(job.path, f, &workerOpt, &totalMatches, onMatch)
 						f.Close()
 					}
 					continue
 				}
 
-				scanWholeBody(job.path, job.data, &workerOpt, &localResp)
+				scanBody(job.path, job.data, &workerOpt, &totalMatches, onMatch)
 				// Return buffer back to pool
 				if job.bufp != nil {
 					bufPool.Put(job.bufp)
 				}
 			}
-
-			// Save the worker's private results back to the global array lock-free
-			workerResults[workerID] = localResp
-		}(i)
+		})
 	}
 
 	// Spin up I/O Producers: They handle all blocking disk syscalls (os.Open, Read) in parallel!
@@ -183,19 +173,13 @@ func Search(pwds []string, opt *SearchOption) []SearchResponse {
 		close(scanCh)
 	}()
 
-	// Wait for all CPU workers to finish scanning, then merge results!
 	cpuWg.Wait()
-	var resp []SearchResponse
-	for _, res := range workerResults {
-		resp = append(resp, res...)
-	}
-
-	return resp
+	return int(totalMatches)
 }
 
-// scanWholeBody finds matches by sliding bytes.Index over data. Cheap when a
+// scanBody finds matches by sliding bytes.Index over data. Cheap when a
 // file has no matches at all — one bytes.Index call returns -1 and we're done.
-func scanWholeBody(path string, data []byte, opt *SearchOption, localResp *[]SearchResponse) {
+func scanBody(path string, data []byte, opt *SearchOption, totalMatches *int64, onMatch func(path string, line int, text []byte)) {
 	// Binary file check: Look for NUL byte in the first 8000 bytes
 	headLimit := min(len(data), peekSize)
 	if bytes.IndexByte(data[:headLimit], 0) >= 0 {
@@ -203,7 +187,7 @@ func scanWholeBody(path string, data []byte, opt *SearchOption, localResp *[]Sea
 	}
 
 	if opt.Kind == Regex {
-		scanWholeRegex(path, data, opt, localResp)
+		scanRegex(path, data, opt, totalMatches, onMatch)
 		return
 	}
 
@@ -230,11 +214,8 @@ func scanWholeBody(path string, data []byte, opt *SearchOption, localResp *[]Sea
 		}
 
 		line := trimCR(data[lineStart:lineEnd])
-		*localResp = append(*localResp, SearchResponse{
-			Path: path,
-			Line: lineNum,
-			Text: string(line),
-		})
+		onMatch(path, lineNum, line)
+		atomic.AddInt64(totalMatches, 1)
 
 		// Advance past this line so we don't re-match on it
 		cursor = lineEnd
@@ -245,7 +226,7 @@ func scanWholeBody(path string, data []byte, opt *SearchOption, localResp *[]Sea
 	}
 }
 
-func scanWholeRegex(path string, data []byte, opt *SearchOption, localResp *[]SearchResponse) {
+func scanRegex(path string, data []byte, opt *SearchOption, totalMatches *int64, onMatch func(path string, line int, text []byte)) {
 	lineNum := 1
 	cursor := 0
 
@@ -275,11 +256,8 @@ func scanWholeRegex(path string, data []byte, opt *SearchOption, localResp *[]Se
 		// Count newlines from the cursor to lineStart to update lineNum accurately
 		lineNum += bytes.Count(data[cursor:lineStart], []byte{'\n'})
 
-		*localResp = append(*localResp, SearchResponse{
-			Path: path,
-			Line: lineNum,
-			Text: string(line),
-		})
+		onMatch(path, lineNum, line)
+		atomic.AddInt64(totalMatches, 1)
 
 		// Advance past this line so we don't re-match on it
 		cursor = lineEnd
@@ -390,7 +368,7 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 }
 
 // scanFileStream handles files exceeding 1MB by streaming them line-by-line via bufio.Reader
-func scanFileStream(path string, f *os.File, opt *SearchOption, localResp *[]SearchResponse) {
+func scanFileStream(path string, f *os.File, opt *SearchOption, totalMatches *int64, onMatch func(path string, line int, text []byte)) {
 	br := readerPool.Get().(*bufio.Reader)
 	defer readerPool.Put(br)
 	br.Reset(f)
@@ -421,11 +399,8 @@ func scanFileStream(path string, f *os.File, opt *SearchOption, localResp *[]Sea
 			}
 
 			if matched {
-				*localResp = append(*localResp, SearchResponse{
-					Path: path,
-					Line: lineNum,
-					Text: string(line), // allocates string to unpin large buffer slice
-				})
+				onMatch(path, lineNum, line)
+				atomic.AddInt64(totalMatches, 1)
 			}
 		}
 		if err != nil {
