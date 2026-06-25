@@ -207,11 +207,14 @@ func main() {
 		orderIndex := idx + 1
 		log.Printf("👉 [%d/%d] Processing Literal: %q", orderIndex, len(queriesLiteral), q)
 
-		osMetrics := measure("OS Grep", baseOS, exec.Command("grep", "-r", "-I", q, targetDir))
+		osMetrics := measure("OS Grep", baseOS, exec.Command("grep", "-r", "-I", "--exclude-dir=.git", q, targetDir))
 		stdMetrics := measure("ggrep-std", baseStd, exec.Command(ggrepStdBin, q, targetDir))
 		rgMetrics := measure("ripgrep", baseRG, exec.Command(rgBin, "-F", q, targetDir))
 		gitMetrics := measure("git-grep", baseGit, exec.Command("git", "-C", targetDir, "grep", "-n", "-I", "-F", q))
 		ggMetrics := measure("ggrep", baseGG, exec.Command(ggrepBin, q, targetDir))
+
+		// Correctness Parity Check: Verify matches count against Ripgrep ground-truth!
+		verifyParity(q, rgMetrics, ggMetrics, stdMetrics, gitMetrics, osMetrics)
 
 		fmt.Fprintf(literalDat["osgrep"], "%d %.2f\n", orderIndex, osMetrics.TimeSpentMs)
 		fmt.Fprintf(literalDat["ggrep-std"], "%d %.2f\n", orderIndex, stdMetrics.TimeSpentMs)
@@ -250,11 +253,14 @@ func main() {
 		orderIndex := idx + 1
 		log.Printf("👉 [%d/%d] Processing Regex: %q", orderIndex, len(queriesRegex), q)
 
-		osMetrics := measure("OS Grep", baseOS, exec.Command("grep", "-r", "-E", "-I", q, targetDir))
+		osMetrics := measure("OS Grep", baseOS, exec.Command("grep", "-r", "-E", "-I", "--exclude-dir=.git", q, targetDir))
 		stdMetrics := measure("ggrep-std", baseStd, exec.Command(ggrepStdBin, "-r", q, targetDir))
 		rgMetrics := measure("ripgrep", baseRG, exec.Command(rgBin, q, targetDir))
 		gitMetrics := measure("git-grep", baseGit, exec.Command("git", "-C", targetDir, "grep", "-n", "-I", "-E", q))
 		ggMetrics := measure("ggrep", baseGG, exec.Command(ggrepBin, "-r", q, targetDir))
+
+		// Correctness Parity Check: Verify matches count against Ripgrep ground-truth!
+		verifyParity(q, rgMetrics, ggMetrics, stdMetrics, gitMetrics, osMetrics)
 
 		fmt.Fprintf(regexDat["osgrep"], "%d %.2f\n", orderIndex, osMetrics.TimeSpentMs)
 		fmt.Fprintf(regexDat["ggrep-std"], "%d %.2f\n", orderIndex, stdMetrics.TimeSpentMs)
@@ -376,4 +382,34 @@ func measure(name string, baseMs float64, cmd *exec.Cmd) EngineMetric {
 func writeDatFile(filename string, buf *bytes.Buffer) {
 	path := filepath.Join(resultsDir, filename)
 	_ = os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+func verifyParity(query string, base EngineMetric, others ...EngineMetric) {
+	baseCount := base.TotalMatchedLines
+	for _, engine := range others {
+		count := engine.TotalMatchedLines
+		if baseCount == 0 {
+			if count > 0 {
+				log.Printf("❌ ERROR: Deviation too high for query %q! Engine %q found %d matches, but ground-truth %q found %d matches (deviation: Infinite%%)!", query, engine.Name, count, base.Name, baseCount)
+				os.Exit(1)
+			}
+			continue
+		}
+
+		diff := count - baseCount
+		if diff < 0 {
+			diff = -diff
+		}
+
+		deviation := (float64(diff) / float64(baseCount)) * 100.0
+		if deviation > 15.0 {
+			// Skip OS grep from crashing the run due to .gitignore limitations, but log it!
+			if engine.Name == "OS Grep" {
+				log.Printf("⚠️ Warning: OS Grep deviated by %.2f%% on %q (found %d, base %d) due to lack of .gitignore support.", deviation, query, count, baseCount)
+				continue
+			}
+			log.Printf("❌ ERROR: Match count deviation too high for query %q! Engine %q found %d matches, but ground-truth %q found %d matches (deviation: %.2f%%)!", query, engine.Name, count, base.Name, baseCount, deviation)
+			os.Exit(1)
+		}
+	}
 }
