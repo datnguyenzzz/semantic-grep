@@ -101,7 +101,7 @@ test-effectiveness:
 bench-ggrep:
 	@echo "Running ggrep (Custom DFA Engine) benchmarks & generating profiles..."
 	mkdir -p ggrep/pprof
-	cd ggrep && CGO_ENABLED=1 go test -run=^$$ -bench=Benchmark_GgrepLiteral -cpuprofile=pprof/ggrep_cpu.pprof -memprofile=pprof/ggrep_mem.pprof -v
+	cd ggrep && CGO_ENABLED=1 go test -run=^$$ -bench=Benchmark_GgrepRegex -cpuprofile=pprof/ggrep_cpu.pprof -memprofile=pprof/ggrep_mem.pprof -v
 
 bench-ggrep-std:
 	@echo "Running ggrep (Go Standard Library Engine) benchmarks & generating profiles..."

@@ -28,6 +28,24 @@ func Benchmark_GgrepLiteral(b *testing.B) {
 	}
 }
 
+func Benchmark_GgrepRegex(b *testing.B) {
+	// Standard workspace directory to simulate a real-world scale load
+	workspacePath := "/Users/thanh.nguyen/Documents/dhse/opentelemetry-collector-contrib"
+	pattern := "(http|grpc)://[a-zA-Z0-9.-]+"
+
+	opt := &SearchOption{
+		Kind:    Regex,
+		Pattern: pattern,
+	}
+
+	b.ReportAllocs()
+
+	for b.Loop() {
+		// Run a full recursive search over the entire workspace directory
+		_ = Search([]string{workspacePath}, opt)
+	}
+}
+
 func Test_GgrepRealFiles(t *testing.T) {
 	// 1. Setup a temporary directory
 	tmpDir, err := os.MkdirTemp("", "ggrep-test-*")
