@@ -13,8 +13,10 @@ build: clean
 	CGO_ENABLED=1 go build -o dist/server cmd/server/main.go
 	@echo "Compiling codebase indexer..."
 	CGO_ENABLED=1 go build -o dist/indexer cmd/indexer/main.go
-	@echo "Compiling ggrep"
-	cd ggrep && go build -o ../dist/ggrep ./...
+	@echo "Compiling ggrep (Custom DFA Engine)"
+	cd ggrep && go build -o ../dist/ggrep .
+	@echo "Compiling ggrep-std (Go Standard Library Engine)"
+	cd ggrep && go build -tags stdregexp -o ../dist/ggrep-std .
 	@echo "Compilation completed successfully!"
 
 rebuild: build
@@ -70,6 +72,7 @@ test:
 	go clean -testcache
 	@echo "Running package unit tests..."
 	CGO_ENABLED=1 go test ./... -v
+	cd ggrep && go test -v ./...
 
 test-integration:
 	@echo "Running end-to-end integration tests..."
@@ -96,9 +99,14 @@ test-effectiveness:
 	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=^$$ -bench=Benchmark_HybridSearchEffectiveness -benchtime=1x -count=1 -cpuprofile=pprof/cpu.pprof -memprofile=pprof/mem.pprof -v
 
 bench-ggrep:
-	@echo "Running ggrep literal search benchmarks & generating profiles..."
+	@echo "Running ggrep (Custom DFA Engine) benchmarks & generating profiles..."
 	mkdir -p ggrep/pprof
 	cd ggrep && CGO_ENABLED=1 go test -run=^$$ -bench=Benchmark_GgrepLiteral -cpuprofile=pprof/ggrep_cpu.pprof -memprofile=pprof/ggrep_mem.pprof -v
+
+bench-ggrep-std:
+	@echo "Running ggrep (Go Standard Library Engine) benchmarks & generating profiles..."
+	mkdir -p ggrep/pprof
+	cd ggrep && CGO_ENABLED=1 go test -tags stdregexp -run=^$$ -bench=Benchmark_GgrepLiteral -cpuprofile=pprof/ggrep_std_cpu.pprof -memprofile=pprof/ggrep_std_mem.pprof -v
 
 # Clean compiled binaries
 clean:

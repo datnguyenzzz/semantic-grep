@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	regexp "github.com/google/codesearch/regexp"
 )
 
 func Benchmark_GgrepLiteral(b *testing.B) {
@@ -103,7 +104,7 @@ dist/
 	// and "func isTest(" in utils.go (line 3).
 	// =========================================================================
 	t.Run("Regex Search", func(t *testing.T) {
-		importRegexp, err := regexp.Compile(`func [a-zA-Z]+\(`)
+		importRegexp, err := CompileRegex("(?m)" + `func [a-zA-Z]+\(`)
 		if err != nil {
 			t.Fatalf("failed to compile regex: %v", err)
 		}
@@ -138,6 +139,92 @@ dist/
 
 		if !matchedMain || !matchedUtils {
 			t.Errorf("missing expected regex matches. main.go: %v, utils.go: %v", matchedMain, matchedUtils)
+		}
+	})
+}
+
+func Test_GgrepVsOSGrep(t *testing.T) {
+	targetFile := "search_test.go"
+
+	// 1. LITERAL COMPARISON
+	t.Run("Literal Matching Parity", func(t *testing.T) {
+		pattern := "Benchmark_GgrepLiteral"
+
+		// Run ggrep
+		opt := &SearchOption{
+			Kind:    Literal,
+			Literal: []byte(pattern),
+		}
+		ggrepResults := Search([]string{targetFile}, opt)
+
+		// Run OS grep
+		cmd := exec.Command("grep", "-n", "-I", pattern, targetFile)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		_ = cmd.Run() // grep exits with 1 if 0 matches, so we ignore exit code
+
+		// Parse OS grep lines
+		var grepCount int
+		for _, line := range strings.Split(out.String(), "\n") {
+			if strings.TrimSpace(line) != "" {
+				grepCount++
+			}
+		}
+
+		if len(ggrepResults) != grepCount {
+			t.Fatalf("Literal matching deviation too high! ggrep found %d, OS grep found %d", len(ggrepResults), grepCount)
+		}
+		t.Logf("✓ Literal parity verified! Both found exactly %d matches.", grepCount)
+	})
+
+	// 2. REGEX COMPARISON (Multi-pattern Conformance Suite)
+	t.Run("Regex Matching Parity", func(t *testing.T) {
+		patterns := []string{
+			"func Test_[a-zA-Z0-9_]+\\(",            // 1. Standard word/char classes and grouping
+			"Benchmark_(Ggrep|Grrep)[a-zA-Z]*",      // 2. Group alternation and repetition
+			"^[ \t]*targetFile[ \t]*:=",             // 3. Line anchors and tab character classes
+			"✓ [a-zA-Z]+ parity",                    // 4. UTF-8 unicode matching with ✓ symbol
+			"grepCount\\+\\+",                       // 5. Backslash escapes of operator metacharacters
+			"matched(Main|Utils)",                   // 6. Parenthesis alternation groupings
+			"expected exactly [0-9]+ regex matches", // 7. Numeric character classes
+			"\"[a-zA-Z0-9_ ]+parity verified!\"",    // 8. Quoted string literals
+			"opt[ \t]*:=[ \t]*&SearchOption",        // 9. Structure pointers and address escape matching
+			"grep -E -n -I",                         // 10. Standard CLI execution flag strings
+		}
+
+		for idx, pattern := range patterns {
+			t.Run(fmt.Sprintf("Pattern_%d", idx+1), func(t *testing.T) {
+				// Run ggrep (with multiline (?m) prepended)
+				compiledRegex, err := CompileRegex("(?m)" + pattern)
+				if err != nil {
+					t.Fatalf("failed to compile regex %q: %v", pattern, err)
+				}
+				opt := &SearchOption{
+					Kind:    Regex,
+					Regex:   compiledRegex,
+					Pattern: pattern,
+				}
+				ggrepResults := Search([]string{targetFile}, opt)
+
+				// Run OS grep (POSIX ERE mode)
+				cmd := exec.Command("grep", "-E", "-n", "-I", pattern, targetFile)
+				var out bytes.Buffer
+				cmd.Stdout = &out
+				_ = cmd.Run()
+
+				// Parse OS grep lines
+				var grepCount int
+				for line := range strings.SplitSeq(out.String(), "\n") {
+					if strings.TrimSpace(line) != "" {
+						grepCount++
+					}
+				}
+
+				if len(ggrepResults) != grepCount {
+					t.Fatalf("Parity deviation too high for pattern %q! ggrep found %d, OS grep found %d", pattern, len(ggrepResults), grepCount)
+				}
+				t.Logf("✓ Parity verified for %q! Both found exactly %d matches.", pattern, grepCount)
+			})
 		}
 	})
 }
