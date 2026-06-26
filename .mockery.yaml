@@ -22,6 +22,6 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/datnguyenzzz/agent-context/internal/llm:
+  github.com/datnguyenzzz/semantic-grep/internal/llm:
     config:
       all: true

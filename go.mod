@@ -1,11 +1,11 @@
-module github.com/datnguyenzzz/agent-context
+module github.com/datnguyenzzz/semantic-grep
 
 go 1.26.3
 
-replace github.com/datnguyenzzz/agent-context/ggrep => ./ggrep
+replace github.com/datnguyenzzz/semantic-grep/ggrep => ./ggrep
 
 require (
-	github.com/datnguyenzzz/agent-context/ggrep v0.0.0
+	github.com/datnguyenzzz/semantic-grep/ggrep v0.0.0
 	github.com/duckdb/duckdb-go/v2 v2.10504.0
 	github.com/google/uuid v1.6.0
 	github.com/klauspost/compress v1.18.3

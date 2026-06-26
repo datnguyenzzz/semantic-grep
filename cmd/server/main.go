@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/internal/callgraph"
-	"github.com/datnguyenzzz/agent-context/internal/db"
-	"github.com/datnguyenzzz/agent-context/internal/llm"
-	"github.com/datnguyenzzz/agent-context/internal/merkle"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/callgraph"
+	"github.com/datnguyenzzz/semantic-grep/internal/db"
+	"github.com/datnguyenzzz/semantic-grep/internal/llm"
+	"github.com/datnguyenzzz/semantic-grep/internal/merkle"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -183,7 +183,7 @@ func main() {
 	}()
 
 	server := mcp.NewServer(&mcp.Implementation{
-		Name:    "agent-context",
+		Name:    "semantic-grep",
 		Version: "1.0.0",
 	}, nil)
 

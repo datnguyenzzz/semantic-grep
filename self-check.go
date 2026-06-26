@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/datnguyenzzz/agent-context/internal/db"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/db"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 func main() {

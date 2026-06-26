@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 const (
@@ -69,7 +69,7 @@ func readNpyFile(path string, shape []int, limit int) ([]float32, error) {
 }
 
 func loadOpenAI(dim int) ([][]float32, [][]float32, error) {
-	path := "/Users/thanh.nguyen/Documents/My_Code/agent-context/data/" + fmt.Sprintf("openai-%d.npy", dim)
+	path := "/Users/thanh.nguyen/Documents/My_Code/semantic-grep/data/" + fmt.Sprintf("openai-%d.npy", dim)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		panic("Warning: Benchmark dataset openai-%d.npy not found. Run scripts/download_data.py first.")
 	}
@@ -226,7 +226,7 @@ func Test_Recall_TurboQuant(t *testing.T) {
 			tqRecalls[fmt.Sprintf("%d", kv)] = math.Round(recalls[kv]*10000) / 10000
 		}
 
-		resultsDir := "/Users/thanh.nguyen/Documents/My_Code/agent-context/results"
+		resultsDir := "/Users/thanh.nguyen/Documents/My_Code/semantic-grep/results"
 		_ = os.MkdirAll(resultsDir, 0755)
 		outPath := filepath.Join(resultsDir, fmt.Sprintf("tq_recall_d%d_4bit.json", dim))
 

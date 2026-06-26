@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/ggrep"
-	"github.com/datnguyenzzz/agent-context/internal/callgraph"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/ggrep"
+	"github.com/datnguyenzzz/semantic-grep/internal/callgraph"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )

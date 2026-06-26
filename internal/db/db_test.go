@@ -9,8 +9,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/datnguyenzzz/agent-context/internal/callgraph"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/callgraph"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 func TestDBCallGraphPersistence(t *testing.T) {
@@ -652,13 +652,13 @@ func Test_ContainsFoldASCII(t *testing.T) {
 
 func Test_SearchMemoriesPreFusionFiltering(t *testing.T) {
 	// Verify that the pre-fusion filters cleanly discard low-confidence noise.
-	
+
 	// Case 1: Semantic similarity below the 0.55 cutoff
 	semResults := []turboquant.SearchResult{
 		{ID: "noise-1", Similarity: 0.45}, // should be pruned!
 		{ID: "good-1", Similarity: 0.75},  // should be kept!
 	}
-	
+
 	var filteredSem []turboquant.SearchResult
 	for _, res := range semResults {
 		if res.Similarity >= 0.55 {
@@ -672,10 +672,10 @@ func Test_SearchMemoriesPreFusionFiltering(t *testing.T) {
 	// Case 2: Lexical BM25 score below 10% of the max BM25 score
 	lexResults := []LexMatch{
 		{ID: "lex-top", Score: 100.0},
-		{ID: "lex-ok", Score: 15.0},  // 15% of max -> should be kept!
+		{ID: "lex-ok", Score: 15.0},   // 15% of max -> should be kept!
 		{ID: "lex-noise", Score: 5.0}, // 5% of max -> should be pruned!
 	}
-	
+
 	var filteredLex []LexMatch
 	if len(lexResults) > 0 {
 		maxBM25 := lexResults[0].Score

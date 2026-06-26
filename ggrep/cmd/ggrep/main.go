@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/datnguyenzzz/agent-context/ggrep"
+	"github.com/datnguyenzzz/semantic-grep/ggrep"
 )
 
 // writeMatch formats and writes a match directly and atomically to os.Stdout

@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/internal/db"
-	"github.com/datnguyenzzz/agent-context/internal/llm"
-	mockllm "github.com/datnguyenzzz/agent-context/internal/llm/mocks"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/db"
+	"github.com/datnguyenzzz/semantic-grep/internal/llm"
+	mockllm "github.com/datnguyenzzz/semantic-grep/internal/llm/mocks"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 	"github.com/stretchr/testify/mock"
 )
 

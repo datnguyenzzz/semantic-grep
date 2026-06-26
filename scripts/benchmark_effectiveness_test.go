@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/internal/db"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/db"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 type DBpediaTextRecord struct {
@@ -81,7 +81,7 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	}
 
 	// Resolve the dataset directory
-	datasetDir := "/Users/thanh.nguyen/Documents/My_Code/agent-context/data"
+	datasetDir := "/Users/thanh.nguyen/Documents/My_Code/semantic-grep/data"
 
 	// 2. Resolve dataset paths
 	textPath := filepath.Join(datasetDir, fmt.Sprintf("dbpedia_text_d%d.json", dim))
@@ -471,7 +471,7 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	fmt.Println("================================================================================")
 
 	// 9. Output as separate JSON files inside results/ for later plotting as requested!
-	resultsDir := "/Users/thanh.nguyen/Documents/My_Code/agent-context/results"
+	resultsDir := "/Users/thanh.nguyen/Documents/My_Code/semantic-grep/results"
 	_ = os.MkdirAll(resultsDir, 0755)
 
 	outPath := filepath.Join(resultsDir, fmt.Sprintf("hybrid_recall_comparison_d%d_4bit.json", dim))

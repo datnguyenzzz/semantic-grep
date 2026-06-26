@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/datnguyenzzz/agent-context/internal/db"
-	"github.com/datnguyenzzz/agent-context/internal/llm"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/db"
+	"github.com/datnguyenzzz/semantic-grep/internal/llm"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 // Test_QuerySearch use for manually searching from the indexed codebase with the given query

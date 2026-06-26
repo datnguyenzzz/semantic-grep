@@ -2,7 +2,7 @@
 
 package ggrep
 
-import regexp "github.com/datnguyenzzz/agent-context/ggrep/regexp"
+import regexp "github.com/datnguyenzzz/semantic-grep/ggrep/regexp"
 
 // Regexp is the representation of our compiled custom DFA codesearch regular expression.
 type Regexp = regexp.Regexp

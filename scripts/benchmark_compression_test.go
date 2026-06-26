@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/datnguyenzzz/agent-context/internal/splitter"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/splitter"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 // targetExtensions checks if a file is indexable

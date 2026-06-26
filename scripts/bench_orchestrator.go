@@ -16,8 +16,8 @@ import (
 
 const (
 	targetDir    = "/Users/thanh.nguyen/Documents/dhse/opentelemetry/opentelemetry-collector-contrib"
-	workspaceDir = "/Users/thanh.nguyen/Documents/My_Code/agent-context"
-	resultsDir   = "/Users/thanh.nguyen/Documents/My_Code/agent-context/results"
+	workspaceDir = "/Users/thanh.nguyen/Documents/My_Code/semantic-grep"
+	resultsDir   = "/Users/thanh.nguyen/Documents/My_Code/semantic-grep/results"
 )
 
 // Define our 50 highly complex, 100% diverse production-grade Literal Queries

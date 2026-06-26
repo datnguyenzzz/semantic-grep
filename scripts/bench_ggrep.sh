@@ -11,7 +11,7 @@
 
 set -e
 
-WORKSPACE_DIR="/Users/thanh.nguyen/Documents/My_Code/agent-context"
+WORKSPACE_DIR="/Users/thanh.nguyen/Documents/My_Code/semantic-grep"
 
 echo "================================================================================"
 echo "                   🛠  COMPILING GGREP DUAL-ENGINES BINARIES  🛠"

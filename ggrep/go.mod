@@ -1,4 +1,4 @@
-module github.com/datnguyenzzz/agent-context/ggrep
+module github.com/datnguyenzzz/semantic-grep/ggrep
 
 go 1.26.3
 

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datnguyenzzz/agent-context/internal/llm"
-	"github.com/datnguyenzzz/agent-context/internal/turboquant"
+	"github.com/datnguyenzzz/semantic-grep/internal/llm"
+	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
 
 func Test_TurboQuant(t *testing.T) {

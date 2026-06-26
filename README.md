@@ -1,4 +1,4 @@
-## agent-context
+## semantic-grep
 
 A model-agnostic, local-first MCP server and indexer in **Go** that helps AI coding assistants search and navigate your codebase without wasting context tokens. By employing a **zero-storage, privacy-first design**, it never duplicates or replicates your source code inside a database. Instead, it indexes only lightweight symbol metadata, executing blazingly fast semantic and regex searches to stream exact, matching code functions **on-the-fly directly from your local disk**. This completely resolves the token-bloat and data privacy issues of raw file ingestion, delivering precise retrieval without requiring a heavy RAG system
 
@@ -6,7 +6,7 @@ A model-agnostic, local-first MCP server and indexer in **Go** that helps AI cod
 
 ## 💡 Motivation: Semantic Grep
 
-In modern agentic harness workflows, `grep` is incredibly powerful—and often [is all you need](https://arxiv.org/pdf/2605.15184). However, raw `grep` alone is highly token-inefficient because it returns un-scoped matching lines and massive boilerplate noise, forcing the agent to ingest everything into its context window, driving up API costs. `agent-context` resolves this by introducing `Semantic Grep`. By running the grep command on your codebase and filtering the results on-the-fly using semantic meaning, we locate, extract, and load only the exact, containing AST functions. This delivers 100% precise retrieval with ~0 token waste
+In modern agentic harness workflows, `grep` is incredibly powerful—and often [is all you need](https://arxiv.org/pdf/2605.15184). However, raw `grep` alone is highly token-inefficient because it returns un-scoped matching lines and massive boilerplate noise, forcing the agent to ingest everything into its context window, driving up API costs. With an attempt to resolve this, we are introducing `Semantic Grep`. By running the grep command on your codebase and filtering the results on-the-fly using semantic meaning, we locate, extract, and load only the exact, containing AST functions. This delivers 100% precise retrieval with ~0 token waste
 
 The agent can also trace their execution paths bidirectionally using our lightweight AST Call Graph. Instead of forcing the agent to read and piece together dozens of separate files, this relational graph lets the assistant query callers and callees on-demand, explaining complex execution flows with minimal context usage.
 
@@ -77,7 +77,7 @@ flowchart TD
     end
 
     %% Core Components
-    subgraph Core ["agent-context Core Engine & Server"]
+    subgraph Core ["semantic-grep Core Engine & Server"]
         merkle[Merkle Sync<br/>internal/merkle]
         splitter[Splitter<br/>internal/splitter]
         llm[LLM Client<br/>internal/llm]
@@ -92,7 +92,7 @@ flowchart TD
     %% Shared Environment & Databases
     subgraph Storage ["Shared Environment & Storage"]
         duckdb_file[(DuckDB<br/> Codebases Metadata)]
-        tqv_file[(agent-context.tqv<br/>Quantized Vectors)]
+        tqv_file[(semantic-grep.tqv<br/>Quantized Vectors)]
     end
 
     %% User's Environment
@@ -143,23 +143,23 @@ flowchart TD
 ### 📐 Core Technical Pillars & Decisions
 
 1. **Cryptographic Merkle Trees for Incremental Syncs:**
-   To prevent expensive, redundant re-indexing of unaltered codebases, `agent-context` recursively structures directory states as SHA-256 cryptographic Merkle Trees. During subsequent indexing sweeps, it diffs node hashes in milliseconds to isolate only the **filesystem delta (added, modified, or deleted files)**. Only the delta is processed and embedded, drastically reducing API token costs and sweep times.
+   To prevent expensive, redundant re-indexing of unaltered codebases, `semantic-grep` recursively structures directory states as SHA-256 cryptographic Merkle Trees. During subsequent indexing sweeps, it diffs node hashes in milliseconds to isolate only the **filesystem delta (added, modified, or deleted files)**. Only the delta is processed and embedded, drastically reducing API token costs and sweep times.
 
 2. **DuckDB for Relational Metadata and Call Graphs:**
    We utilize **[DuckDB](https://github.com/duckdb/duckdb)** as our metadata and relational store. DuckDB is a highly performant, serverless, in-process analytical (OLAP) database engine that excels at complex queries and joins. It provides complete transactional safety (ACID), runs entirely locally with zero daemon processes, and is optimized for querying dense AST call graph nodes, edges, and function scopes (`function_name`, `cwd`, `line_start`, `line_end`) with **zero raw source code stored in-database**
 
 3. **TurboQuant for In-Process Vector Quantization:**
-   Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `agent-context` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
+   Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `semantic-grep` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
 
 4. **Zero-Storage Metadata-Guided Hybrid Search with RRF & ggrep:**
-   To guarantee absolute retrieval accuracy without code footprint replication, `agent-context` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** using **[Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. 
+   To guarantee absolute retrieval accuracy without code footprint replication, `semantic-grep` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** using **[Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. 
    Our custom, ultra-fast `ggrep` library is linked natively within the server process, running high-speed multi-threaded Regex scans directly on the local codebase. When lines match, the engine performs an **inverted query in DuckDB** to map matched lines to their containing logical AST functions on-the-fly (`line_start <= matched_line <= line_end`). Raw code contents of top-scoring candidates are streamed from the local filesystem on-the-fly, achieving sub-millisecond search latencies and a pure zero-copy storage footprint!
 
 ---
 
 ## 📊 TurboQuant Vector Compression Benchmark
 
-> See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_compression_test.go) 
+> See [script](https://github.com/datnguyenzzz/semantic-grep/blob/main/scripts/benchmark_compression_test.go) 
 
 ```
 ================================================================================
@@ -192,7 +192,7 @@ flowchart TD
 
 To evaluate the mathematical accuracy of our quantized TurboQuant local vector index compared to industry-standard Product Quantization (FAISS), we measure **Recall-1-@k**—the frequency with which the absolute true nearest neighbor (ground-truth unquantized top-1) is captured within the top-$k$ quantized results. 
 
-> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/bench_turboquant_test.go)
+> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/semantic-grep/blob/main/scripts/bench_turboquant_test.go)
 
 *   **1536 dimensions**
 
@@ -208,7 +208,7 @@ To evaluate the mathematical accuracy of our quantized TurboQuant local vector i
 
 To evaluate real-world retrieval effectiveness under realistic search conditions, we measure how frequently each search pipeline captures the correct document under **deterministic query-vector perturbation** (15% noise factor, representing the discrepancy between a developer's concise query and the author's target document embedding). Running the benchmarks outputs a comprehensive comparative dashboard summarizing **Recall-1-@k** and **Mean Reciprocal Rank (MRR)**. 
 
-> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/agent-context/blob/main/scripts/benchmark_effectiveness_test.go) 
+> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/semantic-grep/blob/main/scripts/benchmark_effectiveness_test.go) 
 
 *   **1536 Dimensions (100,000 documents):**
 

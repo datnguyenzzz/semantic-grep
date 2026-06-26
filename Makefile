@@ -38,9 +38,9 @@ install: build
 	@make install-claude
 
 install-gemini: build
-	@echo "Uninstalling existing agent-context extension in Gemini CLI if any..."
-	-gemini extensions uninstall agent-context 2>/dev/null || true
-	-rm -rf ~/.gemini/extensions/agent-context 2>/dev/null || true
+	@echo "Uninstalling existing semantic-grep extension in Gemini CLI if any..."
+	-gemini extensions uninstall semantic-grep 2>/dev/null || true
+	-rm -rf ~/.gemini/extensions/semantic-grep 2>/dev/null || true
 	@echo "Installing and linking the compiled Go-based extension to Gemini CLI..."
 	-gemini extensions link . --consent || true
 	@echo "Gemini CLI installation steps completed!"

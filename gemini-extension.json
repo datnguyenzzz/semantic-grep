@@ -1,5 +1,5 @@
 {
-  "name": "agent-context",
+  "name": "semantic-grep",
   "version": "1.0.0",
   "description": "Codebase Indexer and Searcher with Persistent Memory",
   "mcpServers": {
