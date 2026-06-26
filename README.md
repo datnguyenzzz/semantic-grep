@@ -1,4 +1,6 @@
-A model-agnostic, local-first MCP server and indexer in **Go** that helps AI coding assistants search and navigate your codebase without wasting context tokens. By employing a **zero-storage, privacy-first design**, it never duplicates or replicates your source code inside a database. Instead, it indexes only lightweight symbol metadata, executing blazingly fast semantic and regex searches to stream exact, matching code functions **on-the-fly directly from your local disk**. This completely resolves the token-bloat and data privacy issues of raw file ingestion, delivering precise retrieval without requiring a heavy RAG
+## agent-context
+
+A model-agnostic, local-first MCP server and indexer in **Go** that helps AI coding assistants search and navigate your codebase without wasting context tokens. By employing a **zero-storage, privacy-first design**, it never duplicates or replicates your source code inside a database. Instead, it indexes only lightweight symbol metadata, executing blazingly fast semantic and regex searches to stream exact, matching code functions **on-the-fly directly from your local disk**. This completely resolves the token-bloat and data privacy issues of raw file ingestion, delivering precise retrieval without requiring a heavy RAG system
 
 ---
 
