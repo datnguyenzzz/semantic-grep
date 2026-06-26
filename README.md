@@ -1,21 +1,12 @@
-<div align="center">
-    <img width="800" height="400" alt="Gemini_Generated_Image_nm6bednm6bednm6b" src="https://github.com/user-attachments/assets/9a83682a-7ac7-4f9f-bf27-1deda1891a43" />
-</div>
-
 # Codebase Indexer & Persistent Memory Extension (agent-context)
 
-A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Operating **entirely on your local machine**, `agent-context` combines high-performance, natively indexed local analytical storage (DuckDB) and highly compressed vector quantization (TurboQuant) to deliver fast, cost-effective hybrid search (Semantic + Native FTS Lexical + Scoped Grep re-ranking) without requiring expensive, resource-heavy external vector databases.
+A model-agnostic, local-first MCP server and indexer written in **Go** providing local codebase indexing, multi-retrieval hybrid search, and call graph navigation for developer assistant CLIs. Operating **entirely on your local machine with a pure zero-copy storage footprint**, `agent-context` **never stores, indexes, or replicates your raw source code text inside the database**. Instead, DuckDB is utilized purely as an ultra-lightweight relational index for AST symbol metadata (symbol names, line boundaries, and file paths), while the actual code content is read and streamed dynamically **on-the-fly directly from your local codebase files on disk**. Combining this privacy-first, zero-storage design with highly compressed vector quantization (TurboQuant), it delivers blazingly fast and cost-effective hybrid search (Semantic + lock-free ggrep Regex search) with a 99% database size reduction.
 
 ---
 
-## 💡 Motivation & Tool Selection Guidelines
+## 💡 Motivation
 
-Traditional `grep` searches across large codebases are highly token-inefficient, loading unnecessary matches and noise into the agent's context window—slowing down execution and driving up API costs. This extension provides semantic local indexing to help agents locate relevant code **faster and cheaper**.
-
-For the most efficient workflow:
-*   Use **`search_memory`** (Semantic Search) to explore code conceptually (e.g., finding where "storage cleanup" is handled or searching for an architectural concept).
-*   Use **`search_call_graph`** to trace dependencies and understand function/resource execution flows.
-*   Use standard **`grep`** only when you "Know the exact identifier" (e.g., a specific variable name, system property, or unique error string) or strictly "Need ALL matches".
+In modern agentic harness workflows, `grep` is incredibly powerful—and often [is all you need](https://arxiv.org/pdf/2605.15184). However, raw `grep` alone is highly token-inefficient because it returns un-scoped matching lines and massive boilerplate noise, forcing the agent to ingest everything into its context window, driving up API costs. `agent-context` resolves this by introducing **Grep AI**. By running our lock-free, ultra-fast `ggrep` Regex engine and filtering the results on-the-fly using semantic meaning (vector similarity), we locate, extract, and load only the exact, containing AST functions. This delivers 100% precise retrieval with ~0 token waste
 
 ---
 
