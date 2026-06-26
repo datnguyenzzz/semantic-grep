@@ -46,10 +46,11 @@ func parsePythonFile(filePath string) ([]Chunk, error) {
 			// If we have accumulated preceding global lines, save them as a chunk first
 			if len(currentGroup) > 0 {
 				chunks = append(chunks, Chunk{
-					FilePath:  filePath,
-					Content:   strings.Join(currentGroup, "\n"),
-					StartLine: groupStart,
-					EndLine:   startLine - 1,
+					FilePath:   filePath,
+					Content:    strings.Join(currentGroup, "\n"),
+					StartLine:  groupStart,
+					EndLine:    startLine - 1,
+					SymbolName: "",
 				})
 				currentGroup = nil
 			}
@@ -58,11 +59,19 @@ func parsePythonFile(filePath string) ([]Chunk, error) {
 			endByte := child.EndByte()
 			content := string(contentBytes[startByte:endByte])
 
+			// Extract the class or function name using Tree-sitter ChildByFieldName
+			var funcName string
+			nameNode := child.ChildByFieldName("name")
+			if nameNode != nil {
+				funcName = string(contentBytes[nameNode.StartByte():nameNode.EndByte()])
+			}
+
 			chunks = append(chunks, Chunk{
-				FilePath:  filePath,
-				Content:   content,
-				StartLine: startLine,
-				EndLine:   endLine,
+				FilePath:   filePath,
+				Content:    content,
+				StartLine:  startLine,
+				EndLine:    endLine,
+				SymbolName: funcName,
 			})
 			groupStart = endLine + 1
 		} else {
@@ -84,10 +93,11 @@ func parsePythonFile(filePath string) ([]Chunk, error) {
 	// Save any remaining trailing global lines
 	if len(currentGroup) > 0 {
 		chunks = append(chunks, Chunk{
-			FilePath:  filePath,
-			Content:   strings.Join(currentGroup, "\n"),
-			StartLine: groupStart,
-			EndLine:   len(lines),
+			FilePath:   filePath,
+			Content:    strings.Join(currentGroup, "\n"),
+			StartLine:  groupStart,
+			EndLine:    len(lines),
+			SymbolName: "",
 		})
 	}
 

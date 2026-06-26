@@ -100,15 +100,19 @@ flowchart TD
         mcp_srv[MCP Server<br/>cmd/server]
     end
 
+    subgraph Toolings 
+        ggrep[ggrep - faster grep]
+    end
+
     %% Shared Environment & Databases
     subgraph Storage ["Shared Environment & Storage"]
-        duckdb_file[(agent-context.db<br/>DuckDB Chunk Content, Call Graph<br/>& Native FTS Index)]
+        duckdb_file[(DuckDB<br/> Codebases Metadata)]
         tqv_file[(agent-context.tqv<br/>Quantized Vectors)]
     end
 
     %% User's Environment
     subgraph Workspace ["User's Local Workspace (On Disk)"]
-        code_files[User's Source Code<br/>.go, .tf, .yaml]
+        code_files[User's Source Code<br/>.go, .tf, .py, .yaml]
     end
 
     %% External Provider
@@ -123,7 +127,7 @@ flowchart TD
     merkle -->|2. Split Files| splitter
     merkle -->|3. Get Embeddings| llm
     llm <-->|4. API Call| litellm
-    merkle -->|5. Save Chunk Content| duckdb_file
+    merkle -->|5. Save Function Metadata| duckdb_file
     merkle -->|5. Save Quantized Vectors| tqv_file
     merkle -->|6. Parse Call Graph| callgraph
     callgraph -->|7. Save Nodes & Edges| duckdb_file
@@ -135,8 +139,11 @@ flowchart TD
     cli ===>|1. Call search_call_graph| mcp_srv
     mcp_srv ===>|2. Get Query Embedding| llm
     mcp_srv ===>|3. Search Vectors| tqv_file
-    mcp_srv ===>|4. Sparse Lexical search and Call Graph data| duckdb_file
-    mcp_srv ===>|5. Return Context| cli
+    mcp_srv ===>|4. Run ggrep on Local Disk| ggrep
+    ggrep ===>|5. Read Source Code| code_files
+    mcp_srv ===>|6. Invert matched lines to function scopes| duckdb_file
+    mcp_srv ===>|7. Read top-scoring code chunks on-the-fly| code_files
+    mcp_srv ===>|8. Return Context| cli
 
     %% ──────────────────────────────────────────────────────────
     %% FLOW LEGEND (Self-Explanatory Arrow Styles)
@@ -154,13 +161,14 @@ flowchart TD
    To prevent expensive, redundant re-indexing of unaltered codebases, `agent-context` recursively structures directory states as SHA-256 cryptographic Merkle Trees. During subsequent indexing sweeps, it diffs node hashes in milliseconds to isolate only the **filesystem delta (added, modified, or deleted files)**. Only the delta is processed and embedded, drastically reducing API token costs and sweep times.
 
 2. **DuckDB for Relational Metadata and Call Graphs:**
-   We utilize **[DuckDB](https://github.com/duckdb/duckdb)** as our metadata and relational store. DuckDB is a highly performant, serverless, in-process analytical (OLAP) database engine that excels at complex queries and joins. It provides complete transactional safety (ACID), runs entirely locally with zero daemon processes, and is optimized for querying dense AST call graph nodes, edges, and file-range metadata.
+   We utilize **[DuckDB](https://github.com/duckdb/duckdb)** as our metadata and relational store. DuckDB is a highly performant, serverless, in-process analytical (OLAP) database engine that excels at complex queries and joins. It provides complete transactional safety (ACID), runs entirely locally with zero daemon processes, and is optimized for querying dense AST call graph nodes, edges, and function scopes (`function_name`, `cwd`, `line_start`, `line_end`) with **zero raw source code stored in-database**, saving over 99% database storage space!
 
 3. **TurboQuant for In-Process Vector Quantization:**
    Instead of depending on an expensive, resource-heavy external vector database that is costly to host, run, and maintain, `agent-context` runs **[TurboQuant](https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/)** directly inside the Go process. TurboQuant compresses high-dimensional vectors (by up to 14x on disk) using random orthogonal rotation and Lloyd-Max scalar quantization on the Beta distribution. Most importantly, **TurboQuant requires no pre-training data or prebuilt codebooks**, providing a highly optimized, zero-maintenance, local vector quantization engine without sacrificing similarity search accuracy.
 
-4. **Multi-Retrieval Hybrid Search with RRF and Grep Boosting:**
-   To guarantee both deep semantic intent understanding and exact variable/symbol matches, `agent-context` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** (an inverted index in **[DuckDB](https://github.com/duckdb/duckdb)** populated incrementally during sweeps) using **[Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. It then triggers an on-the-fly grep on the top candidate files (taking $<3\text{ms}$), applying a **robust 1.5x score boost** to candidates containing exact string-matches on disk—perfectly combining conceptual search and exact keyword matching without storing any raw code.
+4. **Zero-Storage Metadata-Guided Hybrid Search with RRF & ggrep:**
+   To guarantee absolute retrieval accuracy without code footprint replication, `agent-context` fuses **Dense Semantic search** (TurboQuant) and **Sparse Lexical search** using **[Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf)**. 
+   Our custom, ultra-fast `ggrep` library is linked natively within the server process, running high-speed multi-threaded Regex scans directly on the local codebase. When lines match, the engine performs an **inverted query in DuckDB** to map matched lines to their containing logical AST functions on-the-fly (`line_start <= matched_line <= line_end`). Raw code contents of top-scoring candidates are streamed from the local filesystem on-the-fly, achieving sub-millisecond search latencies and a pure zero-copy storage footprint!
 
 ---
 

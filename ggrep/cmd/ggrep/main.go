@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/datnguyenzzz/agent-context/ggrep"
 )
 
 // writeMatch formats and writes a match directly and atomically to os.Stdout
@@ -49,18 +51,18 @@ func main() {
 	paths := args[1:]
 
 	// Initialize search options
-	opt := &SearchOption{
+	opt := &ggrep.SearchOption{
 		Pattern: pattern,
 	}
 
 	if *useRegex {
-		opt.Kind = Regex
+		opt.Kind = ggrep.Regex
 		// the regex will be compiled later
 	} else {
-		opt.Kind = Literal
+		opt.Kind = ggrep.Literal
 		opt.Literal = []byte(pattern)
 	}
 
 	// Execute high-speed parallel search (writes directly and atomically to os.Stdout)
-	Search(paths, opt, writeMatch)
+	ggrep.Search(paths, opt, writeMatch)
 }

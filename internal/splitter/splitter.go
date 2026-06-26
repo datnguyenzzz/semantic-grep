@@ -10,10 +10,11 @@ import (
 )
 
 type Chunk struct {
-	FilePath  string `json:"file_path"`
-	Content   string `json:"content"`
-	StartLine int    `json:"start_line"`
-	EndLine   int    `json:"end_line"`
+	FilePath     string `json:"file_path"`
+	Content      string `json:"content"`
+	StartLine    int    `json:"start_line"`
+	EndLine      int    `json:"end_line"`
+	SymbolName   string `json:"symbol_name"`
 }
 
 // Default chunking sizes with environment overrides

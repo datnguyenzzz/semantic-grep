@@ -49,10 +49,11 @@ func parseTerraformFile(filePath string) ([]Chunk, error) {
 
 			if depth <= 0 {
 				chunks = append(chunks, Chunk{
-					FilePath:  filePath,
-					Content:   strings.Join(currentBlock, "\n"),
-					StartLine: blockStartLine,
-					EndLine:   i + 1,
+					FilePath:   filePath,
+					Content:    strings.Join(currentBlock, "\n"),
+					StartLine:  blockStartLine,
+					EndLine:    i + 1,
+					SymbolName: "",
 				})
 				inBlock = false
 			}
@@ -62,10 +63,11 @@ func parseTerraformFile(filePath string) ([]Chunk, error) {
 	// Fallback if no blocks found
 	if len(chunks) == 0 {
 		chunks = append(chunks, Chunk{
-			FilePath:  filePath,
-			Content:   string(contentBytes),
-			StartLine: 1,
-			EndLine:   len(lines),
+			FilePath:   filePath,
+			Content:    string(contentBytes),
+			StartLine:  1,
+			EndLine:    len(lines),
+			SymbolName: "",
 		})
 	}
 

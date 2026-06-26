@@ -1,6 +1,6 @@
 //go:build !stdregexp
 
-package main
+package ggrep
 
 import regexp "github.com/datnguyenzzz/agent-context/ggrep/regexp"
 

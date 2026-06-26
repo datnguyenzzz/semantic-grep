@@ -221,6 +221,7 @@ type IndexJob struct {
 	startLine        int
 	endLine          int
 	formattedContent string
+	symbolName       string
 }
 
 type IndexResult struct {
@@ -228,6 +229,7 @@ type IndexResult struct {
 	startLine        int
 	endLine          int
 	formattedContent string
+	symbolName       string
 	embedding        []float32
 	err              error
 }
@@ -293,6 +295,7 @@ func prepareIndexerJobs(absPath string, files []string) []IndexJob {
 				startLine:        chunk.StartLine,
 				endLine:          chunk.EndLine,
 				formattedContent: formatContent(relPath, chunk.StartLine, chunk.EndLine, chunk.Content),
+				symbolName:       chunk.SymbolName,
 			})
 		}
 	}
@@ -322,6 +325,7 @@ func generateEmbeddings(jobs []IndexJob) []IndexResult {
 				startLine:        j.startLine,
 				endLine:          j.endLine,
 				formattedContent: j.formattedContent,
+				symbolName:       j.symbolName,
 				embedding:        embedding,
 				err:              err,
 			}
@@ -346,14 +350,14 @@ func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboq
 			continue
 		}
 
-		metadataHeader := fmt.Sprintf("File: %s (Lines: %d-%d)", res.relPath, res.startLine, res.endLine)
 		id := uuid.New().String()
 		batchItems = append(batchItems, db.MemoryBatchItem{
-			ID:           id,
-			Content:      metadataHeader,
-			CWD:          absPath,
-			Embedding:    res.embedding,
-			ChunkContent: res.formattedContent,
+			ID:         id,
+			SymbolName: res.symbolName,
+			CWD:        res.relPath,
+			LineStart:  res.startLine,
+			LineEnd:    res.endLine,
+			Embedding:  res.embedding,
 		})
 		savedCount++
 	}
@@ -364,8 +368,6 @@ func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboq
 			defer db.AsyncSaveWG.Done()
 			if err := db.SaveMemoriesBatch(items, index); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Background async index save failed: %v\n", err)
-			} else {
-				_ = db.CreateFTSIndex()
 			}
 		}(batchItems)
 	}

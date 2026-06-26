@@ -14,9 +14,9 @@ build: clean
 	@echo "Compiling codebase indexer..."
 	CGO_ENABLED=1 go build -o dist/indexer cmd/indexer/main.go
 	@echo "Compiling ggrep (Custom DFA Engine)"
-	cd ggrep && go build -o ../dist/ggrep .
+	CGO_ENABLED=1 go build -o dist/ggrep ggrep/cmd/ggrep/main.go
 	@echo "Compiling ggrep-std (Go Standard Library Engine)"
-	cd ggrep && go build -tags stdregexp -o ../dist/ggrep-std .
+	CGO_ENABLED=1 go build -tags stdregexp -o dist/ggrep-std ggrep/cmd/ggrep/main.go
 	@echo "Compilation completed successfully!"
 
 rebuild: build

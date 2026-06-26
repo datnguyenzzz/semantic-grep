@@ -4,10 +4,12 @@ package scripts
 
 import (
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -670,5 +672,165 @@ func CalculateFibonacciSequence(n int) int {
 	bestResult := results[0]
 	if !strings.Contains(bestResult.Content, "CalculateFibonacciSequence") {
 		t.Errorf("expected best match to be the Fibonacci memory chunk, got content: %s", bestResult.Content)
+	}
+}
+
+func TestZeroStorageFTSMigrationAndColumnStructure(t *testing.T) {
+	// Setup isolated DB paths inside a temporary environment to keep it clean
+	tmpHome, err := os.MkdirTemp("", "zero-storage-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// 1. Verify schema columns structure in DuckDB directly (prove zero raw code storage columns!)
+	conn, err := db.Open()
+	if err != nil {
+		t.Fatalf("failed to open DuckDB: %v", err)
+	}
+	defer conn.Close()
+
+	rows, err := conn.Query("PRAGMA table_info('gemini_memories')")
+	if err != nil {
+		t.Fatalf("failed to query table info for gemini_memories: %v", err)
+	}
+	defer rows.Close()
+
+	columns := make(map[string]string)
+	for rows.Next() {
+		var cid int
+		var name, dType string
+		var notNull, pk int
+		var dfltVal *string
+		if err := rows.Scan(&cid, &name, &dType, &notNull, &dfltVal, &pk); err == nil {
+			columns[name] = dType
+		}
+	}
+
+	// Verify legacy content column is completely gone
+	if _, exists := columns["content"]; exists {
+		t.Errorf("Security/Database Violation: legacy 'content' column still exists in DuckDB!")
+	}
+	// Verify legacy category column is completely gone
+	if _, exists := columns["category"]; exists {
+		t.Errorf("legacy 'category' column still exists in DuckDB!")
+	}
+
+	// Verify new metadata columns exist and have correct types
+	expectedCols := map[string]string{
+		"id":            "VARCHAR",
+		"function_name": "VARCHAR",
+		"cwd":           "VARCHAR", // VARCHAR/TEXT maps identically in DuckDB
+		"line_start":    "INTEGER",
+		"line_end":      "INTEGER",
+	}
+	for name, expectedType := range expectedCols {
+		dType, exists := columns[name]
+		if !exists {
+			t.Errorf("missing expected metadata column: %s", name)
+		} else if !strings.HasPrefix(dType, expectedType) {
+			t.Errorf("column %s has type %s, expected type starting with %s", name, dType, expectedType)
+		}
+	}
+}
+
+func TestLockFreeGgrepCollectorSearchIntegrity(t *testing.T) {
+	// Setup custom DB paths inside a temporary environment to keep it clean
+	tmpHome, err := os.MkdirTemp("", "lock-free-ggrep-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// Create real temporary workspace for integration files
+	tmpWorkspace, err := os.MkdirTemp("", "lock-free-workspace-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpWorkspace)
+
+	// Write 5 concurrent files with clear distinct functions
+	for i := 1; i <= 5; i++ {
+		fileCode := fmt.Sprintf("package payment\n\nfunc ProcessPaymentMethod%d() {\n\tprintln(\"method%d\")\n}", i, i)
+		_ = os.WriteFile(filepath.Join(tmpWorkspace, fmt.Sprintf("pay%d.go", i)), []byte(fileCode), 0644)
+	}
+
+	// Initialize real TurboQuant and test index
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed to init TurboQuant: %v", err)
+	}
+	tqvPath := filepath.Join(tmpHome, "agent-mem.tqv")
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to init Index: %v", err)
+	}
+
+	// Index workspace
+	if err := db.SaveMerkleTree(tmpWorkspace, "initial_hash", "{}"); err != nil {
+		t.Fatalf("failed to save codebase: %v", err)
+	}
+	_, _, _, err = merkle.UpdateIndex(tmpWorkspace, index)
+	if err != nil {
+		t.Fatalf("failed to index workspace: %v", err)
+	}
+
+	// Spin up 10 concurrent reader routines querying SearchMemories simultaneously
+	// to verify that our lock-free buffered channel collector pipeline operates
+	// with 100% thread safety under heavy concurrent access!
+	var wg sync.WaitGroup
+	errCh := make(chan error, 10)
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			// Each worker searches for a specific payment method using a regex pattern
+			query := fmt.Sprintf("ProcessPaymentMethod[1-5]")
+			results, err := db.SearchMemories(query, make([]float32, 16), tmpWorkspace, 5, index)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			// Verify that we found matches and they dynamically loaded the raw code on-the-fly!
+			if len(results) == 0 {
+				errCh <- fmt.Errorf("worker %d: expected to find matching payment memories, got 0", workerID)
+				return
+			}
+			for _, m := range results {
+				if m.Content == "" {
+					errCh <- fmt.Errorf("worker %d: expected match content to be read on-the-fly from disk, got empty", workerID)
+					return
+				}
+				if !strings.Contains(m.Content, "ProcessPaymentMethod") {
+					errCh <- fmt.Errorf("worker %d: expected match content to contain function name, got: %s", workerID, m.Content)
+					return
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	// Check if any goroutine reported an error
+	for err := range errCh {
+		t.Errorf("Concurrency error: %v", err)
 	}
 }

@@ -34,10 +34,11 @@ func parseYamlFile(filePath string) ([]Chunk, error) {
 
 		if trimmedDoc != "" {
 			chunks = append(chunks, Chunk{
-				FilePath:  filePath,
-				Content:   trimmedDoc,
-				StartLine: currentLine,
-				EndLine:   currentLine + linesCount - 1,
+				FilePath:   filePath,
+				Content:    trimmedDoc,
+				StartLine:  currentLine,
+				EndLine:    currentLine + linesCount - 1,
+				SymbolName: "",
 			})
 		}
 
@@ -51,10 +52,11 @@ func parseYamlFile(filePath string) ([]Chunk, error) {
 	if len(chunks) == 0 {
 		lines := strings.Split(content, "\n")
 		chunks = append(chunks, Chunk{
-			FilePath:  filePath,
-			Content:   content,
-			StartLine: 1,
-			EndLine:   len(lines),
+			FilePath:   filePath,
+			Content:    content,
+			StartLine:  1,
+			EndLine:    len(lines),
+			SymbolName: "",
 		})
 	}
 

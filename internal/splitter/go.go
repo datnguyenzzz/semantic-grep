@@ -42,10 +42,11 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 			end := fset.Position(d.End())
 			text := string(content[pos-1 : d.End()-1])
 			chunks = append(chunks, Chunk{
-				FilePath:  filePath,
-				Content:   text,
-				StartLine: start.Line,
-				EndLine:   end.Line,
+				FilePath:   filePath,
+				Content:    text,
+				StartLine:  start.Line,
+				EndLine:    end.Line,
+				SymbolName: d.Name.Name,
 			})
 		case *ast.GenDecl: // type, var, const blocks
 			switch d.Tok {
@@ -62,10 +63,11 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 
 						text := string(content[pos-1 : ts.End()-1])
 						chunks = append(chunks, Chunk{
-							FilePath:  filePath,
-							Content:   text,
-							StartLine: start.Line,
-							EndLine:   end.Line,
+							FilePath:   filePath,
+							Content:    text,
+							StartLine:  start.Line,
+							EndLine:    end.Line,
+							SymbolName: ts.Name.Name,
 						})
 					}
 				}
@@ -74,10 +76,11 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 				end := fset.Position(d.End())
 				text := string(content[d.Pos()-1 : d.End()-1])
 				chunks = append(chunks, Chunk{
-					FilePath:  filePath,
-					Content:   text,
-					StartLine: start.Line,
-					EndLine:   end.Line,
+					FilePath:   filePath,
+					Content:    text,
+					StartLine:  start.Line,
+					EndLine:    end.Line,
+					SymbolName: "",
 				})
 			}
 		}
@@ -87,10 +90,11 @@ func parseGoFile(filePath string) ([]Chunk, error) {
 	if len(chunks) == 0 {
 		lines := strings.Split(string(content), "\n")
 		chunks = append(chunks, Chunk{
-			FilePath:  filePath,
-			Content:   string(content),
-			StartLine: 1,
-			EndLine:   len(lines),
+			FilePath:   filePath,
+			Content:    string(content),
+			StartLine:  1,
+			EndLine:    len(lines),
+			SymbolName: "",
 		})
 	}
 

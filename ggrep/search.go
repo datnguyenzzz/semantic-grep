@@ -1,4 +1,4 @@
-package main
+package ggrep
 
 import (
 	"bufio"
@@ -67,6 +67,11 @@ type fileJob struct {
 	bufp   *[]byte // pointer to return to sync.Pool after scanning!
 	stream bool    // true if file exceeds 1MB and needs streaming directly from disk
 }
+
+// Learnt stuffs when working with files
+//. 1, I/O syscalls like os.Open, os.Read, ... are heavy and blocking
+//. 2, Load the whole file contents to memory is expensive and eats a lot of memory
+//     Only load to the memory an acceptable ammounts.
 
 func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int, text []byte)) int {
 	jobCh := make(chan string, 1024)

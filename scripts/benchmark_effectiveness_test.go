@@ -147,13 +147,18 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 		rec := records[i]
 		vec := rawVecs[i*dim : (i+1)*dim]
 
-		metadataHeader := fmt.Sprintf("File: doc_%d.txt (Lines: 1-10)", i)
+		// Write the document text natively to disk so on-the-fly retrieval works!
+		docRelPath := fmt.Sprintf("doc_%d.txt", i)
+		docPath := filepath.Join(datasetDir, docRelPath)
+		_ = os.WriteFile(docPath, []byte(rec.Title+" "+rec.Text), 0644)
+
 		batchItems[i] = db.MemoryBatchItem{
-			ID:           rec.ID,
-			Content:      metadataHeader,
-			CWD:          datasetDir,
-			Embedding:    vec,
-			ChunkContent: rec.Title + " " + rec.Text,
+			ID:         rec.ID,
+			SymbolName: rec.Title,
+			CWD:        docRelPath,
+			LineStart:  1,
+			LineEnd:    10,
+			Embedding:  vec,
 		}
 
 		if (i+1)%2000 == 0 || i+1 == numDocs {

@@ -89,14 +89,14 @@ func main() {
 	mockEmbed2[0] = -0.5
 
 	// Save memories (all automatically mapped as project category)
-	err = db.SaveMemory("test-g1", "Project uses React for frontend", "project", "/Users/thanh.nguyen/test-project", mockEmbed1, index, "Project uses React for frontend")
+	err = db.SaveMemory("test-g1", "React", "app.js", 1, 1, mockEmbed1, index)
 	if err != nil {
 		fmt.Printf("✗ Failed to save project memory 1: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("✓ Saved project memory 1.")
 
-	err = db.SaveMemory("test-g2", "Project uses DuckDB Node 'Neo' client", "project", "/Users/thanh.nguyen/test-project", mockEmbed2, index, "Project uses DuckDB Node 'Neo' client")
+	err = db.SaveMemory("test-g2", "DuckDB", "db.js", 1, 1, mockEmbed2, index)
 	if err != nil {
 		fmt.Printf("✗ Failed to save project memory 2: %v\n", err)
 		os.Exit(1)

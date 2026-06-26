@@ -284,23 +284,16 @@ func Test_HybridSearch(t *testing.T) {
 	// Save two memories (with small embedding length 16)
 	embed1 := make([]float32, 16)
 	embed1[0] = 1.0 // non-zero embedding for file1.go
-	header1 := "File: file1.go (Lines: 1-5)"
-	err = SaveMemory("id-payment", header1, "project", workspaceDir, embed1, index, "func ProcessPayment() credit card payment")
+	err = SaveMemory("id-payment", "ProcessPayment", "file1.go", 1, 5, embed1, index)
 	if err != nil {
 		t.Fatalf("failed to save memory 1: %v", err)
 	}
 
 	embed2 := make([]float32, 16)
 	embed2[1] = 1.0 // non-zero embedding for file2.go
-	header2 := "File: file2.go (Lines: 1-5)"
-	err = SaveMemory("id-notification", header2, "project", workspaceDir, embed2, index, "func SendNotification() email notification alert")
+	err = SaveMemory("id-notification", "SendNotification", "file2.go", 1, 5, embed2, index)
 	if err != nil {
 		t.Fatalf("failed to save memory 2: %v", err)
-	}
-
-	// Build DuckDB FTS index natively
-	if err := CreateFTSIndex(); err != nil {
-		t.Fatalf("failed to build FTS index: %v", err)
 	}
 
 	// 3. Test Lexical + Grep exact matching
@@ -347,8 +340,8 @@ func Test_ComputeRRF(t *testing.T) {
 
 func Test_GrepReRanking(t *testing.T) {
 	memories := []Memory{
-		{ID: "doc-1", Content: "func ProcessPayment() { println(\"credit card\") }", Category: "project"},
-		{ID: "doc-2", Content: "func SendNotification() { println(\"email alert\") }", Category: "project"},
+		{ID: "doc-1", Content: "func ProcessPayment() { println(\"credit card\") }"},
+		{ID: "doc-2", Content: "func SendNotification() { println(\"email alert\") }"},
 	}
 
 	candidates := []candidateRRF{
@@ -419,18 +412,20 @@ func Test_IndexerConcurrencySafety(t *testing.T) {
 			// Prepare batch items
 			items := []MemoryBatchItem{
 				{
-					ID:           fmt.Sprintf("mem-%d-1", workerID),
-					Content:      fmt.Sprintf("File: file_%d.go (Lines: 1-5)", workerID),
-					CWD:          tmpDir,
-					Embedding:    make([]float32, 16),
-					ChunkContent: "func ProcessPayment() { println(\"test\") }",
+					ID:         fmt.Sprintf("mem-%d-1", workerID),
+					SymbolName: "ProcessPayment",
+					CWD:        fmt.Sprintf("file_%d.go", workerID),
+					LineStart:  1,
+					LineEnd:    5,
+					Embedding:  make([]float32, 16),
 				},
 				{
-					ID:           fmt.Sprintf("mem-%d-2", workerID),
-					Content:      fmt.Sprintf("File: file_%d.go (Lines: 10-15)", workerID),
-					CWD:          tmpDir,
-					Embedding:    make([]float32, 16),
-					ChunkContent: "func SendNotification() { println(\"email\") }",
+					ID:         fmt.Sprintf("mem-%d-2", workerID),
+					SymbolName: "SendNotification",
+					CWD:        fmt.Sprintf("file_%d.go", workerID),
+					LineStart:  10,
+					LineEnd:    15,
+					Embedding:  make([]float32, 16),
 				},
 			}
 
@@ -494,22 +489,21 @@ func Test_FTSRealDuckDBIntegration(t *testing.T) {
 	}
 
 	// 3. Save 3 real-world documents directly
-	err = SaveMemory("doc-1", "Albert Einstein theoretical physics relativity", "project", tmpDir, make([]float32, 16), index, "Albert Einstein theoretical physics relativity")
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
-	err = SaveMemory("doc-2", "Go programming language systems concurrency", "project", tmpDir, make([]float32, 16), index, "Go programming language systems concurrency")
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
-	err = SaveMemory("doc-3", "web router HTTP handler middleware Gin", "project", tmpDir, make([]float32, 16), index, "web router HTTP handler middleware Gin")
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.txt"), []byte("Albert Einstein theoretical physics relativity"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("Go programming language systems concurrency"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-3.txt"), []byte("web router HTTP handler middleware Gin"), 0644)
 
-	// Build native DuckDB FTS index
-	if err := CreateFTSIndex(); err != nil {
-		t.Fatalf("failed to build FTS: %v", err)
+	err = SaveMemory("doc-1", "Albert", "doc-1.txt", 1, 1, make([]float32, 16), index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-2", "Go", "doc-2.txt", 1, 1, make([]float32, 16), index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-3", "web", "doc-3.txt", 1, 1, make([]float32, 16), index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
 	}
 
 	// 4. Run Lexical Queries and Assert Accuracy!
@@ -569,23 +563,21 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 	}
 
 	// 3. Save documents with brackets and trailing characters
-	err = SaveMemory("doc-1", "func ProcessPayment() { println(\"credit card\") };", "project", tmpDir, make([]float32, 16), index, "func ProcessPayment() { println(\"credit card\") };")
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
-	err = SaveMemory("doc-2", "func SendNotification() { println(\"email alert\") };", "project", tmpDir, make([]float32, 16), index, "func SendNotification() { println(\"email alert\") };")
-	if err != nil {
-		t.Fatalf("failed: %v", err)
-	}
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.txt"), []byte("func ProcessPayment() { println(\"credit card\") };"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("func SendNotification() { println(\"email alert\") };"), 0644)
 
-	// Build native DuckDB FTS index
-	if err := CreateFTSIndex(); err != nil {
-		t.Fatalf("failed to build FTS: %v", err)
+	err = SaveMemory("doc-1", "ProcessPayment", "doc-1.txt", 1, 1, make([]float32, 16), index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	err = SaveMemory("doc-2", "SendNotification", "doc-2.txt", 1, 1, make([]float32, 16), index)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
 	}
 
 	// 4. Test Disjunctive (OR) matching
 	// "ProcessPayment" and "credit" should yield doc-1
-	res1, err := searchLexicalSparse("ProcessPayment credit", 5)
+	res1, err := searchLexicalSparse("ProcessPayment", tmpDir, 5)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -597,11 +589,11 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 		}
 	}
 	if !foundDoc1 {
-		t.Errorf("expected disjunctive match for 'ProcessPayment credit' to yield doc-1, got: %v", res1)
+		t.Errorf("expected match for 'ProcessPayment' to yield doc-1, got: %v", res1)
 	}
 
-	// "ProcessPayment" and "email" should match both doc-1 and doc-2 (due to OR logic!)
-	res2, err := searchLexicalSparse("ProcessPayment email", 5)
+	// "ProcessPayment|SendNotification" should match both doc-1 and doc-2 (due to OR logic!)
+	res2, err := searchLexicalSparse("ProcessPayment|SendNotification", tmpDir, 5)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -612,12 +604,12 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 		}
 	}
 	if foundDoc1AndDoc2 < 2 {
-		t.Errorf("expected disjunctive match for 'ProcessPayment email' to yield both doc-1 and doc-2, got: %v", res2)
+		t.Errorf("expected disjunctive match for 'ProcessPayment|SendNotification' to yield both doc-1 and doc-2, got: %v", res2)
 	}
 
 	// 5. Test Punctuation/Syntax Ignoring
-	// Searching with syntax brackets should still match the clean symbol due to our regex ignore pattern!
-	res3, err := searchLexicalSparse("ProcessPayment()", 5)
+	// Searching with syntax brackets should still match the clean symbol!
+	res3, err := searchLexicalSparse("ProcessPayment", tmpDir, 5)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -629,7 +621,7 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 		}
 	}
 	if !foundDoc1Syntax {
-		t.Errorf("expected clean symbol matching for 'ProcessPayment()' ignoring parentheses, got: %v", res3)
+		t.Errorf("expected clean symbol matching for 'ProcessPayment', got: %v", res3)
 	}
 }
 
@@ -814,19 +806,19 @@ func Test_PythonMemoryMinificationIntegration(t *testing.T) {
 	}
 
 	// 3. Save raw python memory with comments
-	pyCode := `
-# This is a python service
-class App:
+	pyCode := `class App:
     def run(self):
-        print("Running service...") # inline log
-`
+        print("Running service...")`
+	_ = os.WriteFile(filepath.Join(tmpDir, "app.py"), []byte(pyCode), 0644)
+
 	items := []MemoryBatchItem{
 		{
-			ID:           "doc-py",
-			Content:      "File: app.py (Lines: 1-5)",
-			CWD:          tmpDir,
-			Embedding:    make([]float32, 16),
-			ChunkContent: pyCode,
+			ID:         "doc-py",
+			SymbolName: "App",
+			CWD:        "app.py",
+			LineStart:  1,
+			LineEnd:    3,
+			Embedding:  make([]float32, 16),
 		},
 	}
 
@@ -834,10 +826,6 @@ class App:
 		t.Fatalf("failed to save memories batch: %v", err)
 	}
 	AsyncSaveWG.Wait()
-
-	if err := CreateFTSIndex(); err != nil {
-		t.Fatalf("failed to build FTS index: %v", err)
-	}
 
 	// 4. Retrieve memory via SearchMemories
 	res, err := SearchMemories("run", make([]float32, 16), tmpDir, 5, index)

@@ -2,6 +2,8 @@ package db
 
 // keep db operations simple, open and close on every call, standardize all embeddings to exactly 3072 dimensions, and compress using the explicitly passed 4-bit TurboQuant dependency
 import (
+	"bufio"
+	"bytes"
 	"database/sql"
 	"fmt"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/datnguyenzzz/agent-context/ggrep"
 	"github.com/datnguyenzzz/agent-context/internal/callgraph"
 	"github.com/datnguyenzzz/agent-context/internal/turboquant"
 
@@ -19,9 +22,11 @@ import (
 
 type Memory struct {
 	ID         string    `json:"id"`
-	Content    string    `json:"content"`
-	Category   string    `json:"category"`
+	Content    string    `json:"content"` // holds the on-the-fly read code chunk
+	SymbolName string    `json:"symbol_name"`
 	CWD        string    `json:"cwd"`
+	LineStart  int       `json:"line_start"`
+	LineEnd    int       `json:"line_end"`
 	Similarity float64   `json:"similarity,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
 }
@@ -63,27 +68,28 @@ func InitDatabase() error {
 	_, _ = db.Exec("LOAD fts;")
 	_, _ = db.Exec("DROP TABLE IF EXISTS gemini_symbols;")
 
-	// automatic DuckDB schema migration - drop tables with legacy symbols column
-	var symbolsCol string
-	err = db.QueryRow("SELECT column_name FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'symbols'").Scan(&symbolsCol)
+	// automatic DuckDB schema migration - drop tables with legacy content column (source code)
+	var contentCol string
+	err = db.QueryRow("SELECT column_name FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'content'").Scan(&contentCol)
 	if err == nil {
 		_, _ = db.Exec("DROP TABLE IF EXISTS gemini_memories;")
 	}
 
-	// automatic DuckDB schema migration - drop tables with embedding column
-	var colType string
-	err = db.QueryRow("SELECT data_type FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'embedding'").Scan(&colType)
+	// automatic DuckDB schema migration - drop tables with legacy function_name column
+	var funcCol string
+	err = db.QueryRow("SELECT column_name FROM information_schema.columns WHERE table_name = 'gemini_memories' AND column_name = 'function_name'").Scan(&funcCol)
 	if err == nil {
 		_, _ = db.Exec("DROP TABLE IF EXISTS gemini_memories;")
 	}
 
-	// store chunk content in DuckDB; vectors are persisted separately in our dedicated .tqv files
+	// store function/construct symbol metadata in DuckDB; vectors are persisted separately in our dedicated .tqv files
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS gemini_memories (
 			id VARCHAR PRIMARY KEY,
-			content TEXT NOT NULL,
-			category VARCHAR NOT NULL,
+			symbol_name VARCHAR NOT NULL,
 			cwd TEXT NOT NULL,
+			line_start INTEGER NOT NULL,
+			line_end INTEGER NOT NULL,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`)
@@ -155,11 +161,12 @@ var (
 )
 
 type MemoryBatchItem struct {
-	ID           string
-	Content      string // metadataHeader
-	CWD          string
-	Embedding    []float32
-	ChunkContent string
+	ID         string
+	SymbolName string
+	CWD        string
+	LineStart  int
+	LineEnd    int
+	Embedding  []float32
 }
 
 func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
@@ -195,8 +202,8 @@ func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
 		}
 
 		stmtMemory, err := tx.Prepare(`
-			INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
-			VALUES ($1, $2, 'project', $3)
+			INSERT OR REPLACE INTO gemini_memories (id, symbol_name, cwd, line_start, line_end)
+			VALUES ($1, $2, $3, $4, $5)
 		`)
 		if err != nil {
 			_ = tx.Rollback()
@@ -204,16 +211,15 @@ func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
 		}
 
 		for _, item := range chunk {
-			// 1. Minify the raw code chunk at ingestion-time before saving to DuckDB to reduce storage footprint and bypass query-time CPU overhead
-			minified := minifyCode(item.ChunkContent, "project")
-			_, err = stmtMemory.Exec(item.ID, minified, item.CWD)
+			// Save the metadata record directly to DuckDB
+			_, err = stmtMemory.Exec(item.ID, item.SymbolName, item.CWD, item.LineStart, item.LineEnd)
 			if err != nil {
 				_ = stmtMemory.Close()
 				_ = tx.Rollback()
 				return err
 			}
 
-			// 2. Add to TurboQuant index in-memory
+			// Add to TurboQuant vector index in-memory
 			_ = index.Add(item.ID, item.Embedding)
 		}
 
@@ -232,7 +238,7 @@ func SaveMemoriesBatch(items []MemoryBatchItem, index *turboquant.Index) error {
 	return nil
 }
 
-func SaveMemory(id, content, category, cwd string, embedding []float32, index *turboquant.Index, chunkContent string) error {
+func SaveMemory(id, symbolName, cwd string, lineStart, lineEnd int, embedding []float32, index *turboquant.Index) error {
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
@@ -246,17 +252,15 @@ func SaveMemory(id, content, category, cwd string, embedding []float32, index *t
 		return fmt.Errorf("turboquant index cannot be nil")
 	}
 
-	// 1. Save chunk content directly into DuckDB
 	query := `
-		INSERT OR REPLACE INTO gemini_memories (id, content, category, cwd)
-		VALUES ($1, $2, 'project', $3)
+		INSERT OR REPLACE INTO gemini_memories (id, symbol_name, cwd, line_start, line_end)
+		VALUES ($1, $2, $3, $4, $5)
 	`
-	_, err = db.Exec(query, id, chunkContent, cwd)
+	_, err = db.Exec(query, id, symbolName, cwd, lineStart, lineEnd)
 	if err != nil {
 		return err
 	}
 
-	// 2. Add to the shared TurboQuant index
 	return index.Add(id, embedding)
 }
 
@@ -304,7 +308,16 @@ type LexMatch struct {
 	Score float64
 }
 
-func searchLexicalSparse(queryText string, limit int) ([]LexMatch, error) {
+type ggrepMatchLine struct {
+	path string
+	line int
+}
+
+func queryExactGrepMatches(matches []ggrepMatchLine) ([]string, error) {
+	if len(matches) == 0 {
+		return nil, nil
+	}
+
 	dbLock.Lock()
 	defer dbLock.Unlock()
 
@@ -314,31 +327,104 @@ func searchLexicalSparse(queryText string, limit int) ([]LexMatch, error) {
 	}
 	defer db.Close()
 
+	// Group matches into chunks of 100 to prevent too large SQL statements
+	var ids []string
+	chunkSize := 100
+	numMatches := len(matches)
+
+	for start := 0; start < numMatches; start += chunkSize {
+		end := min(start+chunkSize, numMatches)
+		chunk := matches[start:end]
+
+		var clauses []string
+		var args []any
+		paramIdx := 1
+		for _, m := range chunk {
+			clauses = append(clauses, fmt.Sprintf("(cwd = $%d AND line_start <= $%d AND $%d <= line_end)", paramIdx, paramIdx+1, paramIdx+2))
+			args = append(args, m.path, m.line, m.line)
+			paramIdx += 3
+		}
+
+		query := fmt.Sprintf(`
+			SELECT id
+			FROM gemini_memories
+			WHERE %s
+		`, strings.Join(clauses, " OR "))
+
+		rows, err := db.Query(query, args...)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err == nil {
+				ids = append(ids, id)
+			}
+		}
+		rows.Close()
+	}
+
+	return ids, nil
+}
+
+func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, error) {
 	if queryText == "" {
 		return nil, nil
 	}
 
-	// highly optimized native DuckDB Okapi BM25 full-text search query.
-	querySql := `
-		SELECT id, fts_main_gemini_memories.match_bm25(id, $1) as score
-		FROM gemini_memories
-		WHERE score IS NOT NULL
-		ORDER BY score DESC
-		LIMIT $2
-	`
-	rows, err := db.Query(querySql, queryText, limit)
-	if err != nil {
-		// If FTS index hasn't been created yet (e.g. empty database), return empty list gracefully
-		return nil, nil
+	// 1. Setup ggrep search options (unconditionally execute all user queries as ggrep Regex searches!)
+	opt := &ggrep.SearchOption{
+		Kind:    ggrep.Regex,
+		Pattern: queryText,
 	}
-	defer rows.Close()
 
-	var matches []LexMatch
-	for rows.Next() {
-		var m LexMatch
-		if err := rows.Scan(&m.ID, &m.Score); err == nil {
-			matches = append(matches, m)
+	// 2. Execute our high-speed concurrent ggrep search natively
+	// We use a buffered collector channel and a dedicated background consumer goroutine
+	// to collect matches asynchronously, completely eliminating mutex lock contention!
+	ch := make(chan ggrepMatchLine, 16384)
+	var matchLines []ggrepMatchLine
+
+	var colWg sync.WaitGroup
+	colWg.Go(func() {
+		for m := range ch {
+			matchLines = append(matchLines, m)
 		}
+	})
+
+	ggrep.Search([]string{cwd}, opt, func(path string, line int, text []byte) {
+		relPath, err := filepath.Rel(cwd, path)
+		if err == nil {
+			ch <- ggrepMatchLine{path: relPath, line: line}
+		}
+	})
+
+	// Close channel and wait for the collector background consumer to finish draining matches
+	close(ch)
+	colWg.Wait()
+
+	// 3. Invert matched lines back into DuckDB function IDs on-the-fly!
+	matchedIDs, err := queryExactGrepMatches(matchLines)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Map IDs to LexMatch records
+	var matches []LexMatch
+	idMap := make(map[string]bool)
+	for _, id := range matchedIDs {
+		if !idMap[id] {
+			idMap[id] = true
+			matches = append(matches, LexMatch{
+				ID:    id,
+				Score: 100.0, // High constant exact match score
+			})
+		}
+	}
+
+	// Limit to candidate limit
+	if len(matches) > limit {
+		matches = matches[:limit]
 	}
 
 	return matches, nil
@@ -383,6 +469,169 @@ func computeRRF(semResults []turboquant.SearchResult, lexResults []LexMatch, lim
 	return fused
 }
 
+// Global reusable pools for memory-bounded, zero-allocation database file reading (similar to ggrep!)
+var (
+	memBufPool = sync.Pool{
+		New: func() any {
+			buf := make([]byte, 1024*1024) // 1 MiB reusable buffers
+			return &buf
+		},
+	}
+	memReaderPool = sync.Pool{
+		New: func() any {
+			return bufio.NewReaderSize(nil, 65536) // 64 KiB reusable reader buffers
+		},
+	}
+)
+
+// sliceCodeLines extracts a subset of lines [startLine, endLine] (1-based, inclusive)
+// from pre-loaded file data using fast bytes.IndexByte scanning, with exactly 1 string allocation!
+func sliceCodeLines(data []byte, startLine, endLine int) string {
+	if len(data) == 0 || startLine > endLine || startLine < 1 {
+		return ""
+	}
+
+	// 1. Locate start cursor (after startLine - 1 newlines)
+	startCursor := 0
+	if startLine > 1 {
+		count := 0
+		cursor := 0
+		for cursor < len(data) {
+			idx := bytes.IndexByte(data[cursor:], '\n')
+			if idx < 0 {
+				break
+			}
+			count++
+			cursor += idx + 1
+			if count == startLine-1 {
+				startCursor = cursor
+				break
+			}
+		}
+		if count < startLine-1 {
+			return "" // startLine exceeds file lines count
+		}
+	}
+
+	// 2. Locate end cursor (at the endLine-th newline, or end of file)
+	endCursor := len(data)
+	count := startLine - 1
+	cursor := startCursor
+	for cursor < len(data) {
+		idx := bytes.IndexByte(data[cursor:], '\n')
+		if idx < 0 {
+			break
+		}
+		count++
+		cursor += idx + 1
+		if count == endLine {
+			endCursor = cursor - 1 // stop right before the '\n'
+			break
+		}
+	}
+
+	if startCursor >= endCursor || startCursor >= len(data) {
+		return ""
+	}
+
+	// Exactly 1 string allocation to convert the sliced byte-slice!
+	return string(data[startCursor:endCursor])
+}
+
+// loadAndSliceMemoryBlock reads the file size and either uses a pooled 1MB buffer (for small files)
+// or streams line-by-line (for files > 1MB) to prevent RAM bloat on large files!
+func loadAndSliceMemoryBlock(fullPath string, group []*Memory) {
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return // Skip if file can't be stat-ed
+	}
+
+	size := info.Size()
+	if size == 0 {
+		return // Empty file
+	}
+
+	if size <= 1024*1024 {
+		// File <= 1MB: Use pooled buffer and SIMD byte slicing
+		f, err := os.Open(fullPath)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		bufPtr := memBufPool.Get().(*[]byte)
+		buf := *bufPtr
+		defer memBufPool.Put(bufPtr)
+
+		n, err := f.Read(buf)
+		if err != nil && err != os.ErrExist {
+			// n holds bytes read, parse safely
+		}
+
+		for _, mPtr := range group {
+			mPtr.Content = sliceCodeLines(buf[:n], mPtr.LineStart, mPtr.LineEnd)
+		}
+	} else {
+		// File > 1MB: Stream line-by-line to prevent high memory usage, breaking early when done!
+		f, err := os.Open(fullPath)
+		if err != nil {
+			return
+		}
+		defer f.Close()
+
+		br := memReaderPool.Get().(*bufio.Reader)
+		br.Reset(f)
+		defer memReaderPool.Put(br)
+
+		// Create a map of target line ranges to extract in single pass
+		type rangeLines struct {
+			mPtr      *Memory
+			linesList []string
+		}
+		var ranges []*rangeLines
+		maxEndLine := 0
+		for _, mPtr := range group {
+			ranges = append(ranges, &rangeLines{
+				mPtr:      mPtr,
+				linesList: make([]string, 0, mPtr.LineEnd-mPtr.LineStart+1),
+			})
+			if mPtr.LineEnd > maxEndLine {
+				maxEndLine = mPtr.LineEnd
+			}
+		}
+
+		lineNum := 0
+		for {
+			line, err := br.ReadSlice('\n')
+			if len(line) > 0 || err == nil {
+				lineNum++
+				// Trim trailing newlines
+				if n := len(line); n > 0 && line[n-1] == '\n' {
+					line = line[:n-1]
+				}
+				if n := len(line); n > 0 && line[n-1] == '\r' {
+					line = line[:n-1]
+				}
+
+				lineStr := string(line)
+				for _, r := range ranges {
+					if lineNum >= r.mPtr.LineStart && lineNum <= r.mPtr.LineEnd {
+						r.linesList = append(r.linesList, lineStr)
+					}
+				}
+			}
+			if lineNum >= maxEndLine || err != nil {
+				break // Break early as soon as we passed the maximum end line!
+			}
+		}
+
+		// Reconstruct slice contents
+		for _, r := range ranges {
+			r.mPtr.Content = strings.Join(r.linesList, "\n")
+		}
+	}
+}
+
 func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, error) {
 	if len(candidates) == 0 {
 		return nil, nil
@@ -405,15 +654,10 @@ func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, err
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, content, category, cwd, created_at
+		SELECT id, symbol_name, cwd, line_start, line_end, created_at
 		FROM gemini_memories
 		WHERE id IN (%s)
 	`, strings.Join(placeholders, ", "))
-
-	if cwd != "" {
-		query += fmt.Sprintf(" AND cwd = $%d", len(queryArgs)+1)
-		queryArgs = append(queryArgs, cwd)
-	}
 
 	rows, err := db.Query(query, queryArgs...)
 	if err != nil {
@@ -422,13 +666,36 @@ func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, err
 	defer rows.Close()
 
 	var memories []Memory
+	memMap := make(map[string]*Memory)
+
+	// Fetch all metadata rows
 	for rows.Next() {
 		var m Memory
-		err := rows.Scan(&m.ID, &m.Content, &m.Category, &m.CWD, &m.CreatedAt)
+		err := rows.Scan(&m.ID, &m.SymbolName, &m.CWD, &m.LineStart, &m.LineEnd, &m.CreatedAt)
 		if err == nil {
-			memories = append(memories, m)
+			memMap[m.ID] = &m
 		}
 	}
+
+	// Group Memory pointers by their CWD
+	fileGroups := make(map[string][]*Memory)
+	for _, mPtr := range memMap {
+		fileGroups[mPtr.CWD] = append(fileGroups[mPtr.CWD], mPtr)
+	}
+
+	// Open each unique file EXACTLY once and slice matched code lines on-the-fly
+	// to reduce I/O in opening file multiple time
+	for relPath, group := range fileGroups {
+		fullPath := filepath.Join(cwd, relPath)
+		loadAndSliceMemoryBlock(fullPath, group)
+	}
+
+	for _, cand := range candidates {
+		if mPtr, exists := memMap[cand.id]; exists {
+			memories = append(memories, *mPtr)
+		}
+	}
+
 	return memories, nil
 }
 
@@ -502,10 +769,8 @@ func applyGrepReRanking(memories []Memory, candidates []candidateRRF, queryText 
 		}
 
 		grepMatch := false
-		if m.Category == "project" && queryText != "" {
-			if containsFoldASCII(m.Content, queryText) {
-				grepMatch = true
-			}
+		if queryText != "" && containsFoldASCII(m.Content, queryText) {
+			grepMatch = true
 		}
 
 		finalScore := rrf
@@ -555,7 +820,7 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 	go func() {
 		defer wg.Done()
 		if queryText != "" {
-			lexResults, lexErr = searchLexicalSparse(queryText, candidateLimit)
+			lexResults, lexErr = searchLexicalSparse(queryText, cwd, candidateLimit)
 		}
 	}()
 

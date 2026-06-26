@@ -29,8 +29,9 @@ type SearchArgs struct {
 }
 
 type CallGraphArgs struct {
-	FunctionName string  `json:"function_name" jsonschema:"The name of the target Go function/method to explore (e.g. 'SaveMemory' or 'SearchMemories')."`
-	CWD          *string `json:"cwd" jsonschema:"Mandatory absolute directory path of the codebase where the target function and its files reside."`
+	SymbolName   string  `json:"symbol_name,omitempty" jsonschema:"The name of the target symbol (function, method, class, struct, resource) to explore (e.g. 'SaveMemory' or 'SearchMemories')."`
+	FunctionName string  `json:"function_name,omitempty" jsonschema:"Legacy alias for symbol_name. Supported for backward compatibility."`
+	CWD          *string `json:"cwd" jsonschema:"Mandatory absolute directory path of the codebase where the target symbol and its files reside."`
 	Direction    *string `json:"direction,omitempty" jsonschema:"Optional direction to traverse. Supported values: 'caller', 'callee', or 'both'. Defaults to 'both'."`
 	Depth        *int    `json:"depth,omitempty" jsonschema:"Optional maximum depth of call chain traversal. Defaults to 2."`
 }
@@ -283,12 +284,26 @@ func main() {
 			depth = *args.Depth
 		}
 
+		targetSymbol := args.SymbolName
+		if targetSymbol == "" {
+			targetSymbol = args.FunctionName
+		}
+
+		if targetSymbol == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Error: Mandatory 'symbol_name' parameter is missing."},
+				},
+				IsError: true,
+			}, nil, nil
+		}
+
 		// Fast database-only lookup (since on-the-fly fallback is removed)
-		targetNode, err := db.GetCallNode(args.FunctionName)
+		targetNode, err := db.GetCallNode(targetSymbol)
 		if err != nil || targetNode == nil {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: fmt.Sprintf("Error: Function %q not found in the indexed codebase. Please ensure the function name is spelled correctly and that the file containing it is indexed inside CWD %q.", args.FunctionName, cwd)},
+					&mcp.TextContent{Text: fmt.Sprintf("Error: Symbol %q not found in the indexed codebase. Please ensure the symbol name is spelled correctly and that the file containing it is indexed inside CWD %q.", targetSymbol, cwd)},
 				},
 				IsError: true,
 			}, nil, nil
