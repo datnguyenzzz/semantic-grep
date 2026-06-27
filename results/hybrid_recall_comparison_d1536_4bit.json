@@ -1,32 +1,25 @@
 {
-  "corpus_size": 100000,
-  "eval_queries": 33333,
-  "hybrid_search": {
-    "latency": 7191.171331713317,
-    "mrr": 0.9845078450784501,
-    "recall_1": 0.97,
+  "corpus_size": 10000,
+  "eval_queries": 3333,
+  "grep": {
+    "latency": 5655.706570657066,
+    "mrr": 0.8883366908119382,
+    "recall_1": 0.88,
+    "recall_3": 0.88,
+    "recall_5": 0.89
+  },
+  "semantic": {
+    "latency": 3759.7731773177316,
+    "mrr": 0.9711013958538715,
+    "recall_1": 0.95,
+    "recall_3": 0.98,
+    "recall_5": 0.98
+  },
+  "semantic_grep": {
+    "latency": 5654.608160816081,
+    "mrr": 0.9924206706384925,
+    "recall_1": 0.98,
     "recall_3": 0.99,
     "recall_5": 0.99
-  },
-  "pure_lexical": {
-    "latency": 7182.377133771338,
-    "mrr": 0.9818728187281865,
-    "recall_1": 0.97,
-    "recall_3": 0.98,
-    "recall_5": 0.99
-  },
-  "pure_semantic": {
-    "latency": 254.24237242372425,
-    "mrr": 0.9206897068970656,
-    "recall_1": 0.88,
-    "recall_3": 0.95,
-    "recall_5": 0.96
-  },
-  "standard_grep": {
-    "latency": 126.37386373863738,
-    "mrr": 0.9474925894171042,
-    "recall_1": 0.91,
-    "recall_3": 0.97,
-    "recall_5": 0.98
   }
 }

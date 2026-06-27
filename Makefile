@@ -97,6 +97,7 @@ test-effectiveness:
 	@echo "Running Hybrid Search effectiveness benchmarks..."
 	mkdir -p results
 	CGO_ENABLED=1 go test ./scripts -tags=integration -timeout=0 -run=^$$ -bench=Benchmark_HybridSearchEffectiveness -benchtime=1x -count=1 -cpuprofile=pprof/cpu.pprof -memprofile=pprof/mem.pprof -v
+	python3 scripts/plot_recall.py effectiveness
 
 bench-ggrep:
 	@echo "Running ggrep (Custom DFA Engine) benchmarks & generating profiles..."

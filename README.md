@@ -204,11 +204,16 @@ To evaluate the mathematical accuracy of our quantized TurboQuant local vector i
 
 ---
 
-## 📊 Search Effectiveness Benchmark (Semantic vs. Lexical vs. Hybrid)
+## 📊 Search Effectiveness Benchmark (Semantic vs. Grep vs. Semantic Grep)
 
-To evaluate real-world retrieval effectiveness under realistic search conditions, we measure how frequently each search pipeline captures the correct document under **deterministic query-vector perturbation** (15% noise factor, representing the discrepancy between a developer's concise query and the author's target document embedding). Running the benchmarks outputs a comprehensive comparative dashboard summarizing **Recall-1-@k** and **Mean Reciprocal Rank (MRR)**. 
+To evaluate real-world retrieval effectiveness under realistic search conditions, we measure how frequently each search pipeline captures the correct document under deterministic query-vector perturbation (**20% noise factor**). We evaluate 3 search strategies:
+1. **Semantic:** Concepts-only dense semantic search using our compressed 4-bit `turbovec` index.
+2. **Grep:** Precise literal/keyword matching via our `ggrep` lexical search path.
+3. **Semantic Grep:** Our optimized hybrid path fusing semantic conceptually-guided results with exact keyword matches using Reciprocal Rank Fusion (RRF).
 
-> We run the comparision with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/semantic-grep/blob/main/scripts/benchmark_effectiveness_test.go) 
+Running the benchmarks outputs a comparative dashboard summarizing **Recall-1-@k** and **Mean Reciprocal Rank (MRR)**.
+
+> We run the comparison with the [dbpedia-entities-openai3-text-embedding-3-large-1536-1M](https://huggingface.co/datasets/Qdrant/dbpedia-entities-openai3-text-embedding-3-large-1536-1M) dataset. See [script](https://github.com/datnguyenzzz/semantic-grep/blob/main/scripts/benchmark_effectiveness_test.go) 
 
 *   **1536 Dimensions (100,000 documents):**
 
@@ -218,4 +223,22 @@ To evaluate real-world retrieval effectiveness under realistic search conditions
 
 ![effectiveness_3072](results/hybrid_effectiveness_chart_d3072_4bit.png)
 
-This scientifically proves how our **Hybrid Search**—fusing the conceptual strength of semantic vector search with the precision of lexical inverted-symbol index queries (via RRF) and on-the-fly local grep boosting—achieves near-perfect retrieval recall and rank elevation.
+This scientifically proves how our **Semantic Grep**—fusing the conceptual power of semantic search with the absolute precision of lexical `ggrep`—achieves near-perfect retrieval recall and rank elevation.
+
+---
+
+## ⚡ ggrep Performance Benchmark
+
+To evaluate the scanning speed and scalability of our custom `ggrep` engine, we benchmarked it against industry-standard tools: **OS grep**, **git-grep**, **ripgrep (`rg`)**, our ggrep using the standard library `regexp` package (`ggrep-std`), and our optimized custom DFA-based regular expression engine. 
+
+The benchmarks evaluate scaling across 50 production-grade literal search queries and 50 POSIX-ERE compatible regular expression queries over large source code repositories.
+
+*   **Literal Scaling Performance Comparison:**
+
+![ggrep_bench_literal](results/ggrep_bench_literal_chart.png)
+
+*   **Regex Scaling Performance Comparison:**
+
+![ggrep_bench_regex](results/ggrep_bench_regex_chart.png)
+
+This demonstrates that our custom `ggrep` with the native DFA regex resolver matches or outperforms standard grep utilities, delivering sub-millisecond scanning latencies by using concurrent, lock-free, zero-allocation scheduling.

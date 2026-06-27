@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -18,6 +20,10 @@ import (
 	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+)
+
+var (
+	fileSliceLimit = 1 << 20
 )
 
 type Memory struct {
@@ -373,10 +379,17 @@ func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, e
 		return nil, nil
 	}
 
-	// 1. Setup ggrep search options (unconditionally execute all user queries as ggrep Regex searches!)
+	// Verify if the pattern is a valid regular expression.
+	// If it has unbalanced parentheses or invalid syntax, escape it to match literally!
+	pattern := queryText
+	if _, err := regexp.Compile(queryText); err != nil {
+		pattern = regexp.QuoteMeta(queryText)
+	}
+
+	// Unconditionally execute all user queries as ggrep Regex searches!
 	opt := &ggrep.SearchOption{
 		Kind:    ggrep.Regex,
-		Pattern: queryText,
+		Pattern: pattern,
 	}
 
 	// 2. Execute our high-speed concurrent ggrep search natively
@@ -430,6 +443,7 @@ func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, e
 	return matches, nil
 }
 
+// computeRRF returns "limit" results
 func computeRRF(semResults []turboquant.SearchResult, lexResults []LexMatch, limit int) []candidateRRF {
 	const k = 60.0
 
@@ -484,60 +498,6 @@ var (
 	}
 )
 
-// sliceCodeLines extracts a subset of lines [startLine, endLine] (1-based, inclusive)
-// from pre-loaded file data using fast bytes.IndexByte scanning, with exactly 1 string allocation!
-func sliceCodeLines(data []byte, startLine, endLine int) string {
-	if len(data) == 0 || startLine > endLine || startLine < 1 {
-		return ""
-	}
-
-	// 1. Locate start cursor (after startLine - 1 newlines)
-	startCursor := 0
-	if startLine > 1 {
-		count := 0
-		cursor := 0
-		for cursor < len(data) {
-			idx := bytes.IndexByte(data[cursor:], '\n')
-			if idx < 0 {
-				break
-			}
-			count++
-			cursor += idx + 1
-			if count == startLine-1 {
-				startCursor = cursor
-				break
-			}
-		}
-		if count < startLine-1 {
-			return "" // startLine exceeds file lines count
-		}
-	}
-
-	// 2. Locate end cursor (at the endLine-th newline, or end of file)
-	endCursor := len(data)
-	count := startLine - 1
-	cursor := startCursor
-	for cursor < len(data) {
-		idx := bytes.IndexByte(data[cursor:], '\n')
-		if idx < 0 {
-			break
-		}
-		count++
-		cursor += idx + 1
-		if count == endLine {
-			endCursor = cursor - 1 // stop right before the '\n'
-			break
-		}
-	}
-
-	if startCursor >= endCursor || startCursor >= len(data) {
-		return ""
-	}
-
-	// Exactly 1 string allocation to convert the sliced byte-slice!
-	return string(data[startCursor:endCursor])
-}
-
 // loadAndSliceMemoryBlock reads the file size and either uses a pooled 1MB buffer (for small files)
 // or streams line-by-line (for files > 1MB) to prevent RAM bloat on large files!
 func loadAndSliceMemoryBlock(fullPath string, group []*Memory) {
@@ -551,84 +511,189 @@ func loadAndSliceMemoryBlock(fullPath string, group []*Memory) {
 		return // Empty file
 	}
 
-	if size <= 1024*1024 {
-		// File <= 1MB: Use pooled buffer and SIMD byte slicing
-		f, err := os.Open(fullPath)
-		if err != nil {
-			return
-		}
-		defer f.Close()
-
-		bufPtr := memBufPool.Get().(*[]byte)
-		buf := *bufPtr
-		defer memBufPool.Put(bufPtr)
-
-		n, err := f.Read(buf)
-		if err != nil && err != os.ErrExist {
-			// n holds bytes read, parse safely
-		}
-
-		for _, mPtr := range group {
-			mPtr.Content = sliceCodeLines(buf[:n], mPtr.LineStart, mPtr.LineEnd)
-		}
+	if size <= int64(fileSliceLimit) {
+		loadAndSliceSmallFile(fullPath, group)
 	} else {
-		// File > 1MB: Stream line-by-line to prevent high memory usage, breaking early when done!
-		f, err := os.Open(fullPath)
-		if err != nil {
-			return
-		}
-		defer f.Close()
+		loadAndSliceLargeFile(fullPath, group)
+	}
+}
 
-		br := memReaderPool.Get().(*bufio.Reader)
-		br.Reset(f)
-		defer memReaderPool.Put(br)
+// loadAndSliceSmallFile parses files <= 1MB using a pooled buffer and stack-allocated O(1) slicing
+func loadAndSliceSmallFile(fullPath string, group []*Memory) {
+	f, err := os.Open(fullPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
 
-		// Create a map of target line ranges to extract in single pass
-		type rangeLines struct {
-			mPtr      *Memory
-			linesList []string
+	bufPtr := memBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	defer memBufPool.Put(bufPtr)
+
+	n, err := f.Read(buf)
+	if err != nil && err != os.ErrExist {
+		// n holds bytes read, parse safely
+	}
+
+	data := buf[:n]
+
+	slices.SortFunc(group, func(a *Memory, b *Memory) int {
+		if a.LineStart == b.LineStart {
+			return a.LineEnd - b.LineEnd
 		}
-		var ranges []*rangeLines
-		maxEndLine := 0
-		for _, mPtr := range group {
-			ranges = append(ranges, &rangeLines{
-				mPtr:      mPtr,
-				linesList: make([]string, 0, mPtr.LineEnd-mPtr.LineStart+1),
-			})
-			if mPtr.LineEnd > maxEndLine {
-				maxEndLine = mPtr.LineEnd
+		return a.LineStart - b.LineStart
+	})
+
+	// Zero-heap-allocation: Track start and end byte offsets on the stack
+	numMemories := len(group)
+	startOffsets := make([]int, numMemories)
+	endOffsets := make([]int, numMemories)
+
+	for i := range numMemories {
+		startOffsets[i] = -1
+		endOffsets[i] = -1
+	}
+
+	lineNum := 1
+	nextStartIdx := 0
+	activeEndIdx := 0
+
+	for nextStartIdx < numMemories && group[nextStartIdx].LineStart == 1 {
+		startOffsets[nextStartIdx] = 0
+		nextStartIdx++
+	}
+
+	cursor := 0
+	for cursor < len(data) {
+		idx := bytes.IndexByte(data[cursor:], '\n')
+		if idx < 0 {
+			break
+		}
+
+		// Next line starts after the '\n'
+		nextOffset := cursor + idx + 1
+
+		// Mark ending offsets for memories that end at the current lineNum
+		for i := activeEndIdx; i < numMemories; i++ {
+			mPtr := group[i]
+			if mPtr.LineStart > lineNum {
+				break // Since group is sorted, no subsequent memories can end at lineNum
+			}
+			if mPtr.LineEnd == lineNum {
+				endOffsets[i] = nextOffset - 1
 			}
 		}
 
-		lineNum := 0
-		for {
-			line, err := br.ReadSlice('\n')
-			if len(line) > 0 || err == nil {
-				lineNum++
-				// Trim trailing newlines
-				if n := len(line); n > 0 && line[n-1] == '\n' {
-					line = line[:n-1]
-				}
-				if n := len(line); n > 0 && line[n-1] == '\r' {
-					line = line[:n-1]
-				}
-
-				lineStr := string(line)
-				for _, r := range ranges {
-					if lineNum >= r.mPtr.LineStart && lineNum <= r.mPtr.LineEnd {
-						r.linesList = append(r.linesList, lineStr)
-					}
-				}
-			}
-			if lineNum >= maxEndLine || err != nil {
-				break // Break early as soon as we passed the maximum end line!
-			}
+		// Advance activeEndIdx as long as the memory at activeEndIdx has already ended
+		for activeEndIdx < numMemories && endOffsets[activeEndIdx] != -1 {
+			activeEndIdx++
 		}
 
-		// Reconstruct slice contents
-		for _, r := range ranges {
-			r.mPtr.Content = strings.Join(r.linesList, "\n")
+		// Mark starting offsets for memories starting at lineNum+1
+		for nextStartIdx < numMemories && group[nextStartIdx].LineStart == lineNum+1 {
+			startOffsets[nextStartIdx] = nextOffset
+			nextStartIdx++
 		}
+
+		cursor = nextOffset
+		lineNum++
+	}
+
+	// Handle the end of file for any unfinished ranges
+	for i, mPtr := range group {
+		if mPtr.LineEnd >= lineNum && endOffsets[i] == -1 {
+			endOffsets[i] = len(data)
+		}
+	}
+
+	for i, mPtr := range group {
+		startCursor := startOffsets[i]
+		endCursor := endOffsets[i]
+
+		if startCursor == -1 || endCursor == -1 || startCursor >= endCursor || startCursor >= len(data) {
+			mPtr.Content = ""
+			continue
+		}
+
+		mPtr.Content = string(data[startCursor:endCursor])
+	}
+}
+
+// loadAndSliceLargeFile parses files > 1MB by streaming line-by-line via bufio.Reader
+func loadAndSliceLargeFile(fullPath string, group []*Memory) {
+	f, err := os.Open(fullPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	br := memReaderPool.Get().(*bufio.Reader)
+	br.Reset(f)
+	defer memReaderPool.Put(br)
+
+	sort.Slice(group, func(i, j int) bool {
+		if group[i].LineStart == group[j].LineStart {
+			return group[i].LineEnd < group[j].LineEnd
+		}
+		return group[i].LineStart < group[j].LineStart
+	})
+
+	// Create a map of target line ranges to extract in single pass
+	type rangeLines struct {
+		mPtr      *Memory
+		linesList []string
+	}
+	numMemories := len(group)
+	ranges := make([]rangeLines, numMemories)
+	maxEndLine := 0
+	for i, mPtr := range group {
+		ranges[i] = rangeLines{
+			mPtr:      mPtr,
+			linesList: make([]string, 0, mPtr.LineEnd-mPtr.LineStart+1),
+		}
+
+		maxEndLine = max(maxEndLine, mPtr.LineEnd)
+	}
+
+	var lineNum, nextStartIdx, activeEndIdx int
+
+	for {
+		line, err := br.ReadSlice('\n')
+		if len(line) > 0 || err == nil {
+			lineNum++
+			// Trim trailing newlines
+			if n := len(line); n > 0 && line[n-1] == '\n' {
+				line = line[:n-1]
+			}
+			if n := len(line); n > 0 && line[n-1] == '\r' {
+				line = line[:n-1]
+			}
+
+			// Linearly advance nextStartIdx for newly started ranges
+			for nextStartIdx < numMemories && lineNum >= group[nextStartIdx].LineStart {
+				nextStartIdx++
+			}
+
+			lineStr := string(line)
+			for i := activeEndIdx; i < nextStartIdx; i++ {
+				if lineNum <= ranges[i].mPtr.LineEnd {
+					ranges[i].linesList = append(ranges[i].linesList, lineStr)
+				}
+			}
+
+			// Linearly advance activeEndIdx for completed ranges
+			for activeEndIdx < numMemories && lineNum >= group[activeEndIdx].LineEnd {
+				activeEndIdx++
+			}
+		}
+		if lineNum >= maxEndLine || err != nil {
+			break // Break early as soon as we passed the maximum end line!
+		}
+	}
+
+	// Reconstruct slice contents
+	for _, r := range ranges {
+		r.mPtr.Content = strings.Join(r.linesList, "\n")
 	}
 }
 
@@ -677,7 +742,7 @@ func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, err
 		}
 	}
 
-	// Group Memory pointers by their CWD
+	// Group Memory pointers by their CWD (file path)
 	fileGroups := make(map[string][]*Memory)
 	for _, mPtr := range memMap {
 		fileGroups[mPtr.CWD] = append(fileGroups[mPtr.CWD], mPtr)
@@ -756,44 +821,6 @@ func containsFoldASCII(s, substr string) bool {
 	return false
 }
 
-func applyGrepReRanking(memories []Memory, candidates []candidateRRF, queryText string, limit int) []Memory {
-	var scored []scoredMemory
-
-	for _, m := range memories {
-		rrf := 0.0
-		for _, cand := range candidates {
-			if cand.id == m.ID {
-				rrf = cand.rrfScore
-				break
-			}
-		}
-
-		grepMatch := false
-		if queryText != "" && containsFoldASCII(m.Content, queryText) {
-			grepMatch = true
-		}
-
-		finalScore := rrf
-		if grepMatch {
-			finalScore *= 1.5 // apply robust 50% exact-match score boost
-		}
-
-		m.Similarity = finalScore
-		scored = append(scored, scoredMemory{m, finalScore})
-	}
-
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].score > scored[j].score
-	})
-
-	var finalResults []Memory
-	for i := 0; i < len(scored) && i < limit; i++ {
-		finalResults = append(finalResults, scored[i].m)
-	}
-
-	return finalResults
-}
-
 func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limit int, index *turboquant.Index) ([]Memory, error) {
 	cwd = queryParentCodebaseCWD(cwd)
 
@@ -819,7 +846,7 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 
 	go func() {
 		defer wg.Done()
-		if queryText != "" {
+		if len(queryText) > 0 {
 			lexResults, lexErr = searchLexicalSparse(queryText, cwd, candidateLimit)
 		}
 	}()
@@ -843,31 +870,20 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 		}
 	}
 
-	// 1. Filter Semantic Vector candidates (Keep only those with Cosine Similarity >= 0.55 for real vectors)
+	// 1. Filter Semantic Vector candidates (Keep only those with Cosine Similarity >= 0.10 for real vectors)
 	var filteredSem []turboquant.SearchResult
 	for _, res := range semResults {
-		if isZeroVector || res.Similarity >= 0.55 {
+		if isZeroVector || res.Similarity >= 0.10 {
 			filteredSem = append(filteredSem, res)
 		}
 	}
 
-	// 2. Filter Lexical BM25 candidates (Keep only those within 10% of the max BM25 score)
-	var filteredLex []LexMatch
-	if len(lexResults) > 0 {
-		maxBM25 := lexResults[0].Score // Already sorted descending by DuckDB!
-		for _, res := range lexResults {
-			if res.Score >= 0.10*maxBM25 {
-				filteredLex = append(filteredLex, res)
-			}
-		}
-	}
-
-	if len(filteredSem) == 0 && len(filteredLex) == 0 {
+	if len(filteredSem) == 0 && len(lexResults) == 0 {
 		return nil, nil // Return empty list immediately if all candidates are unconfident noise!
 	}
 
-	// Reciprocal Rank Fusion (RRF) on only the validated, high-confidence candidates!
-	topCandidates := computeRRF(filteredSem, filteredLex, candidateLimit)
+	// Reciprocal Rank Fusion (RRF) on only the validated
+	topCandidates := computeRRF(filteredSem, lexResults, candidateLimit)
 
 	// Fetch memories metadata and on-the-fly read code from local disk
 	memories, err := fetchMemoriesMetadata(topCandidates, cwd)
@@ -875,8 +891,34 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 		return nil, err
 	}
 
-	// On-the-Fly Scoped Local Grep Re-ranking (exact match boosting)
-	return applyGrepReRanking(memories, topCandidates, queryText, limit), nil
+	// Map returned memories back into the exact order of topCandidates, assigning RRF score as Similarity.
+	memMap := make(map[string]Memory)
+	for _, m := range memories {
+		memMap[m.ID] = m
+	}
+
+	// Enforce codebase scoping: if we are in a real codebase search (where at least one file exists and was loaded),
+	// filter out any memories that don't exist in this codebase (i.e. Content is empty).
+	// If absolutely zero files could be loaded (e.g. in a virtual/mock test environment), do not filter anything.
+	anyFileLoaded := false
+	for _, m := range memories {
+		if m.Content != "" {
+			anyFileLoaded = true
+			break
+		}
+	}
+
+	finalResults := make([]Memory, 0, len(topCandidates))
+	for _, cand := range topCandidates {
+		if m, exists := memMap[cand.id]; exists {
+			if !anyFileLoaded || m.Content != "" {
+				m.Similarity = cand.rrfScore
+				finalResults = append(finalResults, m)
+			}
+		}
+	}
+
+	return finalResults, nil
 }
 
 // isInsideString reports whether a delimiter at index `idx` is inside a string literal
@@ -1052,11 +1094,9 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 	// 1. Fetch the IDs of the chunks we are about to delete
 	querySel := `
 		SELECT id FROM gemini_memories
-		WHERE category = 'project'
-		  AND cwd = $1
-		  AND content LIKE 'File: ' || $2 || ' (Lines:%'
+		WHERE cwd = $1
 	`
-	rows, err := db.Query(querySel, cwd, relPath)
+	rows, err := db.Query(querySel, relPath)
 	if err != nil {
 		return err
 	}
@@ -1073,11 +1113,9 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 	// 2. Delete chunks belonging to file from DuckDB metadata and symbols
 	queryDel := `
 		DELETE FROM gemini_memories
-		WHERE category = 'project'
-		  AND cwd = $1
-		  AND content LIKE 'File: ' || $2 || ' (Lines:%'
+		WHERE cwd = $1
 	`
-	_, err = db.Exec(queryDel, cwd, relPath)
+	_, err = db.Exec(queryDel, relPath)
 	if err != nil {
 		return err
 	}

@@ -338,34 +338,6 @@ func Test_ComputeRRF(t *testing.T) {
 	}
 }
 
-func Test_GrepReRanking(t *testing.T) {
-	memories := []Memory{
-		{ID: "doc-1", Content: "func ProcessPayment() { println(\"credit card\") }"},
-		{ID: "doc-2", Content: "func SendNotification() { println(\"email alert\") }"},
-	}
-
-	candidates := []candidateRRF{
-		{id: "doc-1", rrfScore: 0.05},
-		{id: "doc-2", rrfScore: 0.05},
-	}
-
-	// If we grep for "ProcessPayment", doc-1 should get boosted and ranked first!
-	reRanked := applyGrepReRanking(memories, candidates, "ProcessPayment", 5)
-
-	if len(reRanked) < 2 {
-		t.Fatalf("expected 2 reranked results, got: %d", len(reRanked))
-	}
-
-	if reRanked[0].ID != "doc-1" {
-		t.Errorf("expected doc-1 to be boosted to first place by grep match, got: %s", reRanked[0].ID)
-	}
-
-	// Verify that the boosted doc-1 score has been multiplied by 1.5
-	if reRanked[0].Similarity <= 0.05 {
-		t.Errorf("expected boosted similarity score to be greater than 0.05, got %f", reRanked[0].Similarity)
-	}
-}
-
 func Test_IndexerConcurrencySafety(t *testing.T) {
 	// Set target dimension to 16 for test execution
 	originalDim := turboquant.DefaultDimension
@@ -844,6 +816,107 @@ func Test_PythonMemoryMinificationIntegration(t *testing.T) {
 
 	if strings.TrimSpace(gotContent) != strings.TrimSpace(expectedMinified) {
 		t.Errorf("expected minified python content in DB, got:\n%s\nEXPECTED:\n%s", gotContent, expectedMinified)
+	}
+}
+
+func Test_LoadAndSliceMemoryBlockMultipleRanges(t *testing.T) {
+	testCases := []struct {
+		name       string
+		sliceLimit int
+	}{
+		{name: "Small File Optimization (<= 1MB)", sliceLimit: 1 << 20},
+		{name: "Large File Streaming (> 1MB)", sliceLimit: 5},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Temporarily mock fileSliceLimit
+			originalLimit := fileSliceLimit
+			fileSliceLimit = tc.sliceLimit
+			defer func() { fileSliceLimit = originalLimit }()
+
+			// 1. Setup temporary directory
+			tmpDir, err := os.MkdirTemp("", "load-slice-test-*")
+			if err != nil {
+				t.Fatalf("failed to create temp dir: %v", err)
+			}
+			defer os.RemoveAll(tmpDir)
+
+			// 2. Write file 1
+			file1Path := filepath.Join(tmpDir, "file1.txt")
+			file1Content := "line 1\nline 2\nline 3\nline 4\nline 5\n"
+			if err := os.WriteFile(file1Path, []byte(file1Content), 0644); err != nil {
+				t.Fatalf("failed to write file1: %v", err)
+			}
+
+			// 3. Write file 2
+			file2Path := filepath.Join(tmpDir, "file2.txt")
+			file2Content := "alpha\nbeta\ngamma\ndelta\nepsilon\n"
+			if err := os.WriteFile(file2Path, []byte(file2Content), 0644); err != nil {
+				t.Fatalf("failed to write file2: %v", err)
+			}
+
+			// 4. Create Memory group for file 1 (both joint and disjoint ranges)
+			m1 := &Memory{ID: "m1", LineStart: 1, LineEnd: 2} // disjoint
+			m2 := &Memory{ID: "m2", LineStart: 2, LineEnd: 4} // joint/overlapping with m1 and m3
+			m3 := &Memory{ID: "m3", LineStart: 4, LineEnd: 5} // disjoint with m1, overlapping with m2
+			m4 := &Memory{ID: "m4", LineStart: 1, LineEnd: 5} // covers whole file
+			m5 := &Memory{ID: "m5", LineStart: 5, LineEnd: 5} // single line
+			m6 := &Memory{ID: "m6", LineStart: 6, LineEnd: 7} // out of bounds
+
+			group1 := []*Memory{m1, m2, m3, m4, m5, m6}
+
+			// 5. Create Memory group for file 2
+			m7 := &Memory{ID: "m7", LineStart: 1, LineEnd: 3}
+			m8 := &Memory{ID: "m8", LineStart: 3, LineEnd: 5}
+
+			group2 := []*Memory{m7, m8}
+
+			// 6. Execute loadAndSliceMemoryBlock
+			loadAndSliceMemoryBlock(file1Path, group1)
+			loadAndSliceMemoryBlock(file2Path, group2)
+
+			// 7. Assertions for file 1
+			expected1 := "line 1\nline 2"
+			if m1.Content != expected1 {
+				t.Errorf("expected m1 content %q, got %q", expected1, m1.Content)
+			}
+
+			expected2 := "line 2\nline 3\nline 4"
+			if m2.Content != expected2 {
+				t.Errorf("expected m2 content %q, got %q", expected2, m2.Content)
+			}
+
+			expected3 := "line 4\nline 5"
+			if m3.Content != expected3 {
+				t.Errorf("expected m3 content %q, got %q", expected3, m3.Content)
+			}
+
+			expected4 := "line 1\nline 2\nline 3\nline 4\nline 5"
+			if m4.Content != expected4 {
+				t.Errorf("expected m4 content %q, got %q", expected4, m4.Content)
+			}
+
+			expected5 := "line 5"
+			if m5.Content != expected5 {
+				t.Errorf("expected m5 content %q, got %q", expected5, m5.Content)
+			}
+
+			if m6.Content != "" {
+				t.Errorf("expected out-of-bounds m6 content to be empty, got %q", m6.Content)
+			}
+
+			// 8. Assertions for file 2
+			expected7 := "alpha\nbeta\ngamma"
+			if m7.Content != expected7 {
+				t.Errorf("expected m7 content %q, got %q", expected7, m7.Content)
+			}
+
+			expected8 := "gamma\ndelta\nepsilon"
+			if m8.Content != expected8 {
+				t.Errorf("expected m8 content %q, got %q", expected8, m8.Content)
+			}
+		})
 	}
 }
 

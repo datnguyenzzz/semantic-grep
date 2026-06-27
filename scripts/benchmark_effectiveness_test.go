@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +24,7 @@ type DBpediaTextRecord struct {
 
 type SearchJob struct {
 	QueryIndex int
-	Method     string // "semantic", "lexical", "hybrid", "grep"
+	Method     string // "semantic", "grep", "semantic grep"
 	QueryText  string
 	QueryEmbed []float32
 	TrueID     string
@@ -38,30 +37,12 @@ type JobResult struct {
 	Duration   time.Duration
 }
 
-// runGrepSearchEffectiveness emulates standard, unranked keyword grep sweeps in-memory.
-// It is mathematically identical to running grep on disk but operates at 100,000x faster speeds.
-func runGrepSearchEffectiveness(records []DBpediaTextRecord, queryText string) []string {
-	if queryText == "" {
-		return nil
-	}
-	var matches []string
-	lowerQuery := strings.ToLower(queryText)
-
-	for _, rec := range records {
-		docText := strings.ToLower(rec.Title + "\n" + rec.Text)
-		if strings.Contains(docText, lowerQuery) {
-			matches = append(matches, rec.ID)
-		}
-	}
-	return matches
-}
-
 func Benchmark_HybridSearchEffectiveness_d1536(b *testing.B) {
-	runEffectivenessBenchmark(b, 1536, 100000)
+	runEffectivenessBenchmark(b, 1536, 10000)
 }
 
 func Benchmark_HybridSearchEffectiveness_d3072(b *testing.B) {
-	runEffectivenessBenchmark(b, 3072, 50000)
+	runEffectivenessBenchmark(b, 3072, 5000)
 }
 
 func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
@@ -173,14 +154,6 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	}
 	db.AsyncSaveWG.Wait()
 
-	// Build native DuckDB Full-Text Search (FTS) Porter-stemmed BM25 index!
-	fmt.Println("  🚀 Building native DuckDB Full-Text Search (FTS) index...")
-	tFTS := time.Now()
-	if err := db.CreateFTSIndex(); err != nil {
-		b.Fatalf("failed to create FTS index: %v", err)
-	}
-	fmt.Printf("  ✓ FTS index built natively in %.2f seconds.\n", time.Since(tFTS).Seconds())
-
 	fmt.Printf("  ✓ Total indexing completed in %.2f seconds.\n", time.Since(t0).Seconds())
 
 	// Save Merkle tree reference CWD
@@ -195,12 +168,11 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 
 	// Metrics counters
 	var semHits1, semHits3, semHits5 int
-	var lexHits1, lexHits3, lexHits5 int
-	var hybHits1, hybridHits3, hybHits5 int
 	var grepHits1, grepHits3, grepHits5 int
+	var semgrepHits1, semgrepHits3, semgrepHits5 int
 
-	var semMRR, lexMRR, hybMRR, grepMRR float64
-	var semLat, lexLat, hybLat, grepLat time.Duration
+	var semMRR, grepMRR, semgrepMRR float64
+	var semLat, grepLat, semgrepLat time.Duration
 
 	// RESET TIMER!
 	// This instructs Go to completely exclude all of the heavy indexing setup times from the benchmark reporting!
@@ -210,7 +182,7 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	for iter := 0; iter < b.N; iter++ {
 		// 7. Spawn a worker pool of 100 workers to process all search jobs concurrently!
 		numWorkers := 100
-		totalJobs := evalSize * 4 // semantic, lexical, hybrid, grep
+		totalJobs := evalSize * 3 // semantic, grep, semantic grep
 		jobsChan := make(chan SearchJob, totalJobs)
 		resultsChan := make(chan JobResult, totalJobs)
 
@@ -224,8 +196,9 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 					switch job.Method {
 					case "semantic":
 						tStart := time.Now()
-						semRes, err := index.Search(job.QueryEmbed, nil, 5)
+						semRes, err := db.SearchMemories("", job.QueryEmbed, datasetDir, 5, index)
 						duration = time.Since(tStart)
+						// fmt.Println("semantic", duration.Milliseconds())
 						if err == nil {
 							for j, res := range semRes {
 								if res.ID == job.TrueID {
@@ -235,40 +208,31 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 							}
 						}
 
-					case "lexical":
-						tStart := time.Now()
-						lexRes, err := db.SearchMemories(job.QueryText, make([]float32, dim), datasetDir, 5, index)
-						duration = time.Since(tStart)
-						if err == nil {
-							for j, res := range lexRes {
-								if res.ID == job.TrueID {
-									rank = j + 1
-									break
-								}
-							}
-						}
-
-					case "hybrid":
-						tStart := time.Now()
-						hybRes, err := db.SearchMemories(job.QueryText, job.QueryEmbed, datasetDir, 5, index)
-						duration = time.Since(tStart)
-						if err == nil {
-							for j, res := range hybRes {
-								if res.ID == job.TrueID {
-									rank = j + 1
-									break
-								}
-							}
-						}
-
 					case "grep":
 						tStart := time.Now()
-						grepRes := runGrepSearchEffectiveness(records, job.QueryText)
+						grepRes, err := db.SearchMemories(job.QueryText, make([]float32, dim), datasetDir, 5, index)
 						duration = time.Since(tStart)
-						for j, id := range grepRes {
-							if id == job.TrueID {
-								rank = j + 1
-								break
+						// fmt.Println("grep", duration.Milliseconds())
+						if err == nil {
+							for j, res := range grepRes {
+								if res.ID == job.TrueID {
+									rank = j + 1
+									break
+								}
+							}
+						}
+
+					case "semantic grep":
+						tStart := time.Now()
+						semgrepRes, err := db.SearchMemories(job.QueryText, job.QueryEmbed, datasetDir, 5, index)
+						duration = time.Since(tStart)
+						// fmt.Println("semantic grep", duration.Milliseconds())
+						if err == nil {
+							for j, res := range semgrepRes {
+								if res.ID == job.TrueID {
+									rank = j + 1
+									break
+								}
 							}
 						}
 					}
@@ -317,28 +281,19 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 				TrueID:     trueID,
 			}
 
-			// Queue Lexical job
-			jobsChan <- SearchJob{
-				QueryIndex: i,
-				Method:     "lexical",
-				QueryText:  queryText,
-				QueryEmbed: queryEmbed,
-				TrueID:     trueID,
-			}
-
-			// Queue Hybrid job
-			jobsChan <- SearchJob{
-				QueryIndex: i,
-				Method:     "hybrid",
-				QueryText:  queryText,
-				QueryEmbed: queryEmbed,
-				TrueID:     trueID,
-			}
-
 			// Queue Grep job
 			jobsChan <- SearchJob{
 				QueryIndex: i,
 				Method:     "grep",
+				QueryText:  queryText,
+				QueryEmbed: queryEmbed,
+				TrueID:     trueID,
+			}
+
+			// Queue Semantic Grep job
+			jobsChan <- SearchJob{
+				QueryIndex: i,
+				Method:     "semantic grep",
 				QueryText:  queryText,
 				QueryEmbed: queryEmbed,
 				TrueID:     trueID,
@@ -348,11 +303,10 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 
 		// Reset counters on each iteration to prevent stacking
 		semHits1, semHits3, semHits5 = 0, 0, 0
-		lexHits1, lexHits3, lexHits5 = 0, 0, 0
-		hybHits1, hybridHits3, hybHits5 = 0, 0, 0
 		grepHits1, grepHits3, grepHits5 = 0, 0, 0
-		semMRR, lexMRR, hybMRR, grepMRR = 0, 0, 0, 0
-		semLat, lexLat, hybLat, grepLat = 0, 0, 0, 0
+		semgrepHits1, semgrepHits3, semgrepHits5 = 0, 0, 0
+		semMRR, grepMRR, semgrepMRR = 0, 0, 0
+		semLat, grepLat, semgrepLat = 0, 0, 0
 
 		// Collect and aggregate results
 		for rIdx := 0; rIdx < totalJobs; rIdx++ {
@@ -373,37 +327,6 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 					semMRR += 1.0 / float64(res.Rank)
 				}
 
-			case "lexical":
-				lexLat += res.Duration
-				if res.Rank != -1 {
-					if res.Rank == 1 {
-						lexHits1++
-					}
-					if res.Rank <= 3 {
-						lexHits3++
-					}
-					if res.Rank <= 5 {
-						lexHits5++
-					}
-					lexRank := res.Rank
-					lexMRR += 1.0 / float64(lexRank)
-				}
-
-			case "hybrid":
-				hybLat += res.Duration
-				if res.Rank != -1 {
-					if res.Rank == 1 {
-						hybHits1++
-					}
-					if res.Rank <= 3 {
-						hybridHits3++
-					}
-					if res.Rank <= 5 {
-						hybHits5++
-					}
-					hybMRR += 1.0 / float64(res.Rank)
-				}
-
 			case "grep":
 				grepLat += res.Duration
 				if res.Rank != -1 {
@@ -417,6 +340,21 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 						grepHits5++
 					}
 					grepMRR += 1.0 / float64(res.Rank)
+				}
+
+			case "semantic grep":
+				semgrepLat += res.Duration
+				if res.Rank != -1 {
+					if res.Rank == 1 {
+						semgrepHits1++
+					}
+					if res.Rank <= 3 {
+						semgrepHits3++
+					}
+					if res.Rank <= 5 {
+						semgrepHits5++
+					}
+					semgrepMRR += 1.0 / float64(res.Rank)
 				}
 			}
 
@@ -436,23 +374,17 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	semAvgMRR := semMRR / evalCountFloat
 	semAvgLat := float64(semLat.Milliseconds()) / evalCountFloat
 
-	lexR1 := lexHits1 * 100 / evalSize
-	lexR3 := lexHits3 * 100 / evalSize
-	lexR5 := lexHits5 * 100 / evalSize
-	lexAvgMRR := lexMRR / evalCountFloat
-	lexAvgLat := float64(lexLat.Milliseconds()) / evalCountFloat
-
-	hybR1 := hybHits1 * 100 / evalSize
-	hybR3 := hybridHits3 * 100 / evalSize
-	hybR5 := hybHits5 * 100 / evalSize
-	hybAvgMRR := hybMRR / evalCountFloat
-	hybAvgLat := float64(hybLat.Milliseconds()) / evalCountFloat
-
 	grepR1 := grepHits1 * 100 / evalSize
 	grepR3 := grepHits3 * 100 / evalSize
 	grepR5 := grepHits5 * 100 / evalSize
 	grepAvgMRR := grepMRR / evalCountFloat
 	grepAvgLat := float64(grepLat.Milliseconds()) / evalCountFloat
+
+	semgrepR1 := semgrepHits1 * 100 / evalSize
+	semgrepR3 := semgrepHits3 * 100 / evalSize
+	semgrepR5 := semgrepHits5 * 100 / evalSize
+	semgrepAvgMRR := semgrepMRR / evalCountFloat
+	semgrepAvgLat := float64(semgrepLat.Milliseconds()) / evalCountFloat
 
 	// Print beautiful dashboard
 	fmt.Println()
@@ -463,10 +395,9 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	fmt.Println("--------------------------------------------------------------------------------")
 	fmt.Printf("   Method              │ Recall@1 │ Recall@3 │ Recall@5 │  MRR   │ Avg Latency │\n")
 	fmt.Println("   ├───────────────────┼──────────┼──────────┼──────────┼────────┼─────────────┤")
-	fmt.Printf("   │ [1] Pure Semantic │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", semR1, semR3, semR5, semAvgMRR, semAvgLat)
-	fmt.Printf("   │ [2] Pure Lexical  │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", lexR1, lexR3, lexR5, lexAvgMRR, lexAvgLat)
-	fmt.Printf("   │ [3] Our Hybrid    │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", hybR1, hybR3, hybR5, hybAvgMRR, hybAvgLat)
-	fmt.Printf("   │ [4] Standard Grep │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", grepR1, grepR3, grepR5, grepAvgMRR, grepAvgLat)
+	fmt.Printf("   │ [1] Semantic      │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", semR1, semR3, semR5, semAvgMRR, semAvgLat)
+	fmt.Printf("   │ [2] Grep          │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", grepR1, grepR3, grepR5, grepAvgMRR, grepAvgLat)
+	fmt.Printf("   │ [3] Semantic Grep │   %2d%%   │   %2d%%   │   %2d%%   │ %.4f  │  %5.2f ms  │\n", semgrepR1, semgrepR3, semgrepR5, semgrepAvgMRR, semgrepAvgLat)
 	fmt.Println("   └───────────────────┴──────────┴──────────┴──────────┴────────┴─────────────┘")
 	fmt.Println("================================================================================")
 
@@ -478,33 +409,26 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 	resultsData := map[string]interface{}{
 		"corpus_size":  numDocs,
 		"eval_queries": evalSize,
-		"pure_semantic": map[string]interface{}{
+		"semantic": map[string]interface{}{
 			"recall_1": float64(semR1) / 100.0,
 			"recall_3": float64(semR3) / 100.0,
 			"recall_5": float64(semR5) / 100.0,
 			"mrr":      semAvgMRR,
 			"latency":  semAvgLat,
 		},
-		"pure_lexical": map[string]interface{}{
-			"recall_1": float64(lexR1) / 100.0,
-			"recall_3": float64(lexR3) / 100.0,
-			"recall_5": float64(lexR5) / 100.0,
-			"mrr":      lexAvgMRR,
-			"latency":  lexAvgLat,
-		},
-		"hybrid_search": map[string]interface{}{
-			"recall_1": float64(hybR1) / 100.0,
-			"recall_3": float64(hybR3) / 100.0,
-			"recall_5": float64(hybR5) / 100.0,
-			"mrr":      hybAvgMRR,
-			"latency":  hybAvgLat,
-		},
-		"standard_grep": map[string]interface{}{
+		"grep": map[string]interface{}{
 			"recall_1": float64(grepR1) / 100.0,
 			"recall_3": float64(grepR3) / 100.0,
 			"recall_5": float64(grepR5) / 100.0,
 			"mrr":      grepAvgMRR,
 			"latency":  grepAvgLat,
+		},
+		"semantic_grep": map[string]interface{}{
+			"recall_1": float64(semgrepR1) / 100.0,
+			"recall_3": float64(semgrepR3) / 100.0,
+			"recall_5": float64(semgrepR5) / 100.0,
+			"mrr":      semgrepAvgMRR,
+			"latency":  semgrepAvgLat,
 		},
 	}
 

@@ -64,18 +64,16 @@ def plot_effectiveness_for_dim(dim):
         data = json.load(f)
 
     # Extract metrics
-    methods = ["pure_semantic", "pure_lexical", "hybrid_search", "standard_grep"]
+    methods = ["semantic", "grep", "semantic_grep"]
     method_labels = {
-        "pure_semantic": "Pure Semantic (TQ)",
-        "pure_lexical": "Pure Lexical (DB)",
-        "hybrid_search": "Our Hybrid Search",
-        "standard_grep": "Standard Grep"
+        "semantic": "Semantic",
+        "grep": "Grep",
+        "semantic_grep": "Semantic Grep"
     }
     colors = {
-        "pure_semantic": "crimson",
-        "pure_lexical": "darkgray",
-        "hybrid_search": "royalblue",
-        "standard_grep": "forestgreen"
+        "semantic": "crimson",
+        "grep": "darkgray",
+        "semantic_grep": "royalblue"
     }
 
     metrics = ["Recall@1", "Recall@3", "Recall@5", "MRR"]
@@ -98,8 +96,8 @@ def plot_effectiveness_for_dim(dim):
 
     plt.figure(figsize=(11, 6))
 
-    # Symmetrical offsets for 4 grouped bars
-    offsets = [-1.5 * width, -0.5 * width, 0.5 * width, 1.5 * width]
+    # Symmetrical offsets for 3 grouped bars
+    offsets = [-width, 0, width]
 
     # Plot bars dynamically
     for i, m in enumerate(methods):
@@ -120,7 +118,7 @@ def plot_effectiveness_for_dim(dim):
             plt.text(j + offset, val + 0.01, f"{val:.2f}", ha="center", va="bottom", fontsize=8, fontweight="bold")
 
     # Place legend cleanly above the chart to prevent clashing with the vertical bars
-    plt.legend(fontsize=11, loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=4, frameon=False)
+    plt.legend(fontsize=11, loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=3, frameon=False)
     plt.tight_layout()
 
     png_path = os.path.join(RESULTS_DIR, f"hybrid_effectiveness_chart_d{dim}_4bit.png")

@@ -230,6 +230,9 @@ func scanBody(path string, data []byte, opt *SearchOption, totalMatches *int64, 
 }
 
 func scanRegex(path string, data []byte, opt *SearchOption, totalMatches *int64, onMatch func(path string, line int, text []byte)) {
+	if opt.Regex == nil {
+		return
+	}
 	lineNum := 1
 	cursor := 0
 
@@ -373,6 +376,9 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 
 // scanFileStream handles files exceeding 1MB by streaming them line-by-line via bufio.Reader
 func scanFileStream(path string, f *os.File, opt *SearchOption, totalMatches *int64, onMatch func(path string, line int, text []byte)) {
+	if opt.Kind == Regex && opt.Regex == nil {
+		return
+	}
 	br := readerPool.Get().(*bufio.Reader)
 	defer readerPool.Put(br)
 	br.Reset(f)

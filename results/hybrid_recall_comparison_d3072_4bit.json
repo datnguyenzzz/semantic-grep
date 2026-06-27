@@ -1,32 +1,25 @@
 {
-  "corpus_size": 50000,
-  "eval_queries": 16666,
-  "hybrid_search": {
-    "latency": 6102.463578543142,
-    "mrr": 0.9894495779831196,
-    "recall_1": 0.98,
-    "recall_3": 0.99,
-    "recall_5": 0.99
+  "corpus_size": 5000,
+  "eval_queries": 1666,
+  "grep": {
+    "latency": 5861.442977190876,
+    "mrr": 0.8922880690737833,
+    "recall_1": 0.89,
+    "recall_3": 0.89,
+    "recall_5": 0.89
   },
-  "pure_lexical": {
-    "latency": 6093.64382575303,
-    "mrr": 0.9864224568982763,
-    "recall_1": 0.98,
-    "recall_3": 0.99,
-    "recall_5": 0.99
+  "semantic": {
+    "latency": 3456.6794717887155,
+    "mrr": 0.7545018007202882,
+    "recall_1": 0.75,
+    "recall_3": 0.75,
+    "recall_5": 0.75
   },
-  "pure_semantic": {
-    "latency": 260.6496459858394,
-    "mrr": 0.9523610944437811,
-    "recall_1": 0.93,
+  "semantic_grep": {
+    "latency": 5803.617046818727,
+    "mrr": 0.9706382553021208,
+    "recall_1": 0.96,
     "recall_3": 0.97,
-    "recall_5": 0.98
-  },
-  "standard_grep": {
-    "latency": 62.70988839553582,
-    "mrr": 0.9627891723641347,
-    "recall_1": 0.94,
-    "recall_3": 0.98,
-    "recall_5": 0.98
+    "recall_5": 0.97
   }
 }

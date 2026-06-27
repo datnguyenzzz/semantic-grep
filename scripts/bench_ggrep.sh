@@ -36,4 +36,4 @@ if ! command -v rg &> /dev/null && [ ! -f "dist/rg" ]; then
 fi
 
 # Execute the Go-based Orchestrator!
-CGO_ENABLED=1 go run "$WORKSPACE_DIR/scripts/bench_orchestrator.go"
+CGO_ENABLED=1 go run "$WORKSPACE_DIR/scripts/bench_orchestrator/main.go"

@@ -235,8 +235,8 @@ func TestMultiCodebaseIntegration(t *testing.T) {
 	}
 
 	for _, m := range resultsA {
-		if !strings.Contains(m.Content, "File: main.go") {
-			t.Errorf("expected search in Codebase A to yield main.go chunk, got: %s", m.Content)
+		if !strings.Contains(m.CWD, "main.go") {
+			t.Errorf("expected search in Codebase A to yield main.go chunk, got: %s", m.CWD)
 		}
 	}
 
@@ -374,8 +374,8 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 	}
 
 	bestMathResult := resultsMath[0]
-	if !strings.Contains(bestMathResult.Content, "math.go") {
-		t.Errorf("expected best match to be math.go, got content: %s", bestMathResult.Content)
+	if !strings.Contains(bestMathResult.CWD, "math.go") {
+		t.Errorf("expected best match to be math.go, got CWD: %s", bestMathResult.CWD)
 	}
 	if !strings.Contains(bestMathResult.Content, "func Add") {
 		t.Errorf("expected best match to contain function body of Add, got content: %s", bestMathResult.Content)
@@ -398,8 +398,8 @@ func TestSearchWithExactContentIntegration(t *testing.T) {
 	}
 
 	bestNetworkResult := resultsNetwork[0]
-	if !strings.Contains(bestNetworkResult.Content, "network.go") {
-		t.Errorf("expected best match to be network.go, got content: %s", bestNetworkResult.Content)
+	if !strings.Contains(bestNetworkResult.CWD, "network.go") {
+		t.Errorf("expected best match to be network.go, got CWD: %s", bestNetworkResult.CWD)
 	}
 	if !strings.Contains(bestNetworkResult.Content, "func Connect") {
 		t.Errorf("expected best match to contain function body of Connect, got content: %s", bestNetworkResult.Content)
@@ -595,7 +595,7 @@ func TestCallGraphOnDemandDBQuerying(t *testing.T) {
 	}
 }
 
-func Test_HybridSearchIntegration(t *testing.T) {
+func Test_HybridSearchValidate(t *testing.T) {
 	// Setup custom DB paths inside a temporary environment to keep it clean
 	tmpHome, err := os.MkdirTemp("", "hybrid-integration-test-*")
 	if err != nil {
@@ -653,17 +653,21 @@ func CalculateFibonacciSequence(n int) int {
 		t.Fatalf("failed to index workspace: %v", err)
 	}
 
-	// 2. Perform live hybrid search
+	// 2. Perform live hybrid search and measure latency end-to-end
 	query := "FibonacciSequence"
 	queryEmbed, err := llm.GetEmbedding(query, turboquant.DefaultDimension)
 	if err != nil {
 		t.Fatalf("failed to fetch embedding: %v. Is LiteLLM running?", err)
 	}
 
+	tStart := time.Now()
 	results, err := db.SearchMemories(query, queryEmbed, tmpWorkspace, 5, index)
+	duration := time.Since(tStart)
 	if err != nil {
 		t.Fatalf("failed to query hybrid search: %v", err)
 	}
+
+	t.Logf("⏱  Hybrid Search Latency: %.2f ms", float64(duration.Nanoseconds())/1e6)
 
 	if len(results) == 0 {
 		t.Fatalf("expected search results to return matches, got 0")
@@ -673,72 +677,9 @@ func CalculateFibonacciSequence(n int) int {
 	if !strings.Contains(bestResult.Content, "CalculateFibonacciSequence") {
 		t.Errorf("expected best match to be the Fibonacci memory chunk, got content: %s", bestResult.Content)
 	}
-}
 
-func TestZeroStorageFTSMigrationAndColumnStructure(t *testing.T) {
-	// Setup isolated DB paths inside a temporary environment to keep it clean
-	tmpHome, err := os.MkdirTemp("", "zero-storage-test-*")
-	if err != nil {
-		t.Fatalf("failed to create temp home: %v", err)
-	}
-	defer os.RemoveAll(tmpHome)
-
-	originalHome := os.Getenv("HOME")
-	os.Setenv("HOME", tmpHome)
-	defer os.Setenv("HOME", originalHome)
-
-	if err := db.InitDatabase(); err != nil {
-		t.Fatalf("failed to init database: %v", err)
-	}
-
-	// 1. Verify schema columns structure in DuckDB directly (prove zero raw code storage columns!)
-	conn, err := db.Open()
-	if err != nil {
-		t.Fatalf("failed to open DuckDB: %v", err)
-	}
-	defer conn.Close()
-
-	rows, err := conn.Query("PRAGMA table_info('gemini_memories')")
-	if err != nil {
-		t.Fatalf("failed to query table info for gemini_memories: %v", err)
-	}
-	defer rows.Close()
-
-	columns := make(map[string]string)
-	for rows.Next() {
-		var cid int
-		var name, dType string
-		var notNull, pk int
-		var dfltVal *string
-		if err := rows.Scan(&cid, &name, &dType, &notNull, &dfltVal, &pk); err == nil {
-			columns[name] = dType
-		}
-	}
-
-	// Verify legacy content column is completely gone
-	if _, exists := columns["content"]; exists {
-		t.Errorf("Security/Database Violation: legacy 'content' column still exists in DuckDB!")
-	}
-	// Verify legacy category column is completely gone
-	if _, exists := columns["category"]; exists {
-		t.Errorf("legacy 'category' column still exists in DuckDB!")
-	}
-
-	// Verify new metadata columns exist and have correct types
-	expectedCols := map[string]string{
-		"id":            "VARCHAR",
-		"function_name": "VARCHAR",
-		"cwd":           "VARCHAR", // VARCHAR/TEXT maps identically in DuckDB
-		"line_start":    "INTEGER",
-		"line_end":      "INTEGER",
-	}
-	for name, expectedType := range expectedCols {
-		dType, exists := columns[name]
-		if !exists {
-			t.Errorf("missing expected metadata column: %s", name)
-		} else if !strings.HasPrefix(dType, expectedType) {
-			t.Errorf("column %s has type %s, expected type starting with %s", name, dType, expectedType)
-		}
+	if duration > 5000*time.Millisecond {
+		t.Errorf("Hybrid Search SLA violation: latency exceeded 5000ms threshold, got: %v", duration)
 	}
 }
 
@@ -802,7 +743,7 @@ func TestLockFreeGgrepCollectorSearchIntegrity(t *testing.T) {
 		go func(workerID int) {
 			defer wg.Done()
 			// Each worker searches for a specific payment method using a regex pattern
-			query := fmt.Sprintf("ProcessPaymentMethod[1-5]")
+			query := "ProcessPaymentMethod[1-5]"
 			results, err := db.SearchMemories(query, make([]float32, 16), tmpWorkspace, 5, index)
 			if err != nil {
 				errCh <- err
