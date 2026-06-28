@@ -1,9 +1,3 @@
-## semantic-grep
-
-A model-agnostic, local-first MCP server and indexer in **Go** that helps AI coding assistants search and navigate your codebase without wasting context tokens. By employing a **zero-storage, privacy-first design**, it never duplicates or replicates your source code inside a database. Instead, it indexes only lightweight symbol metadata, executing blazingly fast semantic and regex searches to stream exact, matching code functions **on-the-fly directly from your local disk**. This completely resolves the token-bloat and data privacy issues of raw file ingestion, delivering precise retrieval without requiring a heavy RAG system
-
----
-
 ## 💡 Motivation: Semantic Grep
 
 In modern agentic harness workflows, `grep` is powerful and often [is all you need](https://arxiv.org/pdf/2605.15184). However, raw `grep` alone is highly token-inefficient because it returns unscoped matching lines and massive boilerplate noise, forcing the agent to ingest everything into its context window, driving up API costs. With an attempt to resolve this, we are introducing `Semantic Grep`. By running the grep command on your codebase and filtering the results on-the-fly using semantic meaning, we locate, extract, and load only the exact, containing AST functions. This delivers 100% precise retrieval with ~0 token waste
