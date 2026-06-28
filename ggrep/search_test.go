@@ -285,7 +285,10 @@ match: yes`,
 
 	for relPath, content := range files {
 		fullPath := filepath.Join(tmpDir, relPath)
-		_ = os.WriteFile(fullPath, []byte(content), 0644)
+		err := os.WriteFile(fullPath, []byte(content), 0644)
+		if err != nil {
+			t.Fatalf("failed to write %s: %v", relPath, err)
+		}
 	}
 
 	// 3. Search for "match" without allowed extensions (expecting 4 matches: .go, .txt, .yaml, .log)
@@ -298,7 +301,13 @@ match: yes`,
 		matchedFiles = append(matchedFiles, filepath.Base(path))
 	})
 	if len(matchedFiles) != 4 {
-		t.Errorf("expected 4 matched files initially, got: %v", matchedFiles)
+		// List all files in tmpDir to debug
+		entries, _ := os.ReadDir(tmpDir)
+		var filesOnDisk []string
+		for _, e := range entries {
+			filesOnDisk = append(filesOnDisk, e.Name())
+		}
+		t.Errorf("expected 4 matched files initially, got: %v. Files on disk: %v", matchedFiles, filesOnDisk)
 	}
 
 	// 4. Search for "match" allowing only ".go" and "yaml" (using our cleaned dot-prefixed fallback check!)

@@ -80,8 +80,6 @@ test-integration:
 	@echo "Running end-to-end integration tests..."
 	CGO_ENABLED=1 go test -tags=integration -v
 
-test-all: test test-integration self-check
-
 self-check:
 	@echo "Running local database self-check..."
 	CGO_ENABLED=1 go run self-check.go
