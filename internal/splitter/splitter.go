@@ -10,11 +10,11 @@ import (
 )
 
 type Chunk struct {
-	FilePath     string `json:"file_path"`
-	Content      string `json:"content"`
-	StartLine    int    `json:"start_line"`
-	EndLine      int    `json:"end_line"`
-	SymbolName   string `json:"symbol_name"`
+	FilePath   string `json:"file_path"`
+	Content    string `json:"content"`
+	StartLine  int    `json:"start_line"`
+	EndLine    int    `json:"end_line"`
+	SymbolName string `json:"symbol_name"`
 }
 
 // Default chunking sizes with environment overrides
@@ -86,8 +86,7 @@ func SplitFile(filePath string) ([]Chunk, error) {
 		}
 	}
 
-	// Add overlap for multiple chunks of the same file
-	finalChunks = addOverlap(finalChunks, ChunkOverlap)
+	// TODO: Do we need to adding overlap between 2 consecutive chunk
 
 	return finalChunks, nil
 }
@@ -131,41 +130,4 @@ func splitLargeChunk(content string, startLine int, maxSize int) []Chunk {
 	}
 
 	return subChunks
-}
-
-func addOverlap(chunks []Chunk, overlapSize int) []Chunk {
-	if len(chunks) <= 1 || overlapSize <= 0 {
-		return chunks
-	}
-
-	overlappedChunks := make([]Chunk, len(chunks))
-	overlappedChunks[0] = chunks[0]
-
-	for i := 1; i < len(chunks); i++ {
-		content := chunks[i].Content
-		startLine := chunks[i].StartLine
-
-		prevChunk := chunks[i-1]
-		prevRunes := []rune(prevChunk.Content)
-		if len(prevRunes) > overlapSize {
-			overlapText := string(prevRunes[len(prevRunes)-overlapSize:])
-			content = overlapText + "\n" + content
-
-			overlapLines := strings.Count(overlapText, "\n") + 1
-			if startLine-overlapLines > 1 {
-				startLine -= overlapLines
-			} else {
-				startLine = 1
-			}
-		}
-
-		overlappedChunks[i] = Chunk{
-			FilePath:  chunks[i].FilePath,
-			Content:   content,
-			StartLine: startLine,
-			EndLine:   chunks[i].EndLine,
-		}
-	}
-
-	return overlappedChunks
 }

@@ -284,14 +284,14 @@ func Test_HybridSearch(t *testing.T) {
 	// Save two memories (with small embedding length 16)
 	embed1 := make([]float32, 16)
 	embed1[0] = 1.0 // non-zero embedding for file1.go
-	err = SaveMemory("id-payment", "ProcessPayment", "file1.go", 1, 5, embed1, index)
+	err = SaveMemory("id-payment", "ProcessPayment", filepath.Join(workspaceDir, "file1.go"), 1, 5, embed1, index)
 	if err != nil {
 		t.Fatalf("failed to save memory 1: %v", err)
 	}
 
 	embed2 := make([]float32, 16)
 	embed2[1] = 1.0 // non-zero embedding for file2.go
-	err = SaveMemory("id-notification", "SendNotification", "file2.go", 1, 5, embed2, index)
+	err = SaveMemory("id-notification", "SendNotification", filepath.Join(workspaceDir, "file2.go"), 1, 5, embed2, index)
 	if err != nil {
 		t.Fatalf("failed to save memory 2: %v", err)
 	}
@@ -465,15 +465,15 @@ func Test_FTSRealDuckDBIntegration(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("Go programming language systems concurrency"), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "doc-3.txt"), []byte("web router HTTP handler middleware Gin"), 0644)
 
-	err = SaveMemory("doc-1", "Albert", "doc-1.txt", 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-1", "Albert", filepath.Join(tmpDir, "doc-1.txt"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-2", "Go", "doc-2.txt", 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-2", "Go", filepath.Join(tmpDir, "doc-2.txt"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-3", "web", "doc-3.txt", 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-3", "web", filepath.Join(tmpDir, "doc-3.txt"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -538,18 +538,18 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.txt"), []byte("func ProcessPayment() { println(\"credit card\") };"), 0644)
 	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("func SendNotification() { println(\"email alert\") };"), 0644)
 
-	err = SaveMemory("doc-1", "ProcessPayment", "doc-1.txt", 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-1", "ProcessPayment", filepath.Join(tmpDir, "doc-1.txt"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-2", "SendNotification", "doc-2.txt", 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-2", "SendNotification", filepath.Join(tmpDir, "doc-2.txt"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
 
 	// 4. Test Disjunctive (OR) matching
 	// "ProcessPayment" and "credit" should yield doc-1
-	res1, err := searchLexicalSparse("ProcessPayment", tmpDir, 5)
+	res1, err := searchLexicalSparse("ProcessPayment", tmpDir)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -565,7 +565,7 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 	}
 
 	// "ProcessPayment|SendNotification" should match both doc-1 and doc-2 (due to OR logic!)
-	res2, err := searchLexicalSparse("ProcessPayment|SendNotification", tmpDir, 5)
+	res2, err := searchLexicalSparse("ProcessPayment|SendNotification", tmpDir)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -581,7 +581,7 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 
 	// 5. Test Punctuation/Syntax Ignoring
 	// Searching with syntax brackets should still match the clean symbol!
-	res3, err := searchLexicalSparse("ProcessPayment", tmpDir, 5)
+	res3, err := searchLexicalSparse("ProcessPayment", tmpDir)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -787,7 +787,7 @@ func Test_PythonMemoryMinificationIntegration(t *testing.T) {
 		{
 			ID:         "doc-py",
 			SymbolName: "App",
-			CWD:        "app.py",
+			CWD:        filepath.Join(tmpDir, "app.py"),
 			LineStart:  1,
 			LineEnd:    3,
 			Embedding:  make([]float32, 16),

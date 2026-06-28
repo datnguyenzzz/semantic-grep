@@ -18,6 +18,7 @@ require (
 
 require (
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/duckdb/duckdb-go-bindings v0.10504.0 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.10504.0 // indirect

@@ -16,7 +16,8 @@ import (
 
 // Test_QuerySearch use for manually searching from the indexed codebase with the given query
 func Test_QuerySearch(t *testing.T) {
-	query := "how many percentage of non-interesting traces the otelcol-tail-sampling sampler export ?"
+	query := "split traces request by traceid"
+	cwd := "/Users/thanh.nguyen/Documents/dhse/otelcol-tail-sampling"
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -36,10 +37,10 @@ func Test_QuerySearch(t *testing.T) {
 
 	// Ensure target database/index files exist before querying
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		t.Fatalf("database file not found at: %s", dbPath)
+		t.Skipf("database file not found at: %s, skipping manual search test", dbPath)
 	}
 	if _, err := os.Stat(tqvPath); os.IsNotExist(err) {
-		t.Fatalf("TurboQuant vector file not found at: %s", tqvPath)
+		t.Skipf("TurboQuant vector file not found at: %s, skipping manual search test", tqvPath)
 	}
 
 	t.Logf("Querying index using DB: %s, Vectors: %s", dbPath, tqvPath)
@@ -63,7 +64,7 @@ func Test_QuerySearch(t *testing.T) {
 	}
 
 	// 5. Query matching memories
-	results, err := db.SearchMemories(query, embedding, "", 5, index)
+	results, err := db.SearchMemories(query, embedding, cwd, 5, index)
 	if err != nil {
 		t.Fatalf("failed to search memories: %v", err)
 	}

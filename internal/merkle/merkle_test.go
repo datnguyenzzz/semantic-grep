@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -48,7 +49,7 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 	}
 
 	// 1. Build Merkle Tree for the initial state
-	tree1, err := BuildMerkleTree(tmpDir, "")
+	tree1, err := BuildMerkleTree(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to build tree1: %v", err)
 	}
@@ -67,10 +68,10 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 	hasMain := false
 	hasHelper := false
 	for _, f := range files {
-		if f == "main.go" {
+		if strings.HasSuffix(f, "main.go") {
 			hasMain = true
 		}
-		if f == "src/helper.go" {
+		if strings.HasSuffix(f, "src/helper.go") {
 			hasHelper = true
 		}
 	}
@@ -90,13 +91,13 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 		t.Fatalf("failed to update helper.go: %v", err)
 	}
 
-	tree2, err := BuildMerkleTree(tmpDir, "")
+	tree2, err := BuildMerkleTree(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to build tree2: %v", err)
 	}
 
 	added, modified, deleted = DiffTrees(tree1, tree2)
-	if len(added) != 0 || len(modified) != 1 || len(deleted) != 0 || modified[0] != "src/helper.go" {
+	if len(added) != 0 || len(modified) != 1 || len(deleted) != 0 || !strings.HasSuffix(modified[0], "src/helper.go") {
 		t.Errorf("expected src/helper.go to be modified, got: added=%v, modified=%v, deleted=%v", added, modified, deleted)
 	}
 
@@ -107,13 +108,13 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 		t.Fatalf("failed to write config.tf: %v", err)
 	}
 
-	tree3, err := BuildMerkleTree(tmpDir, "")
+	tree3, err := BuildMerkleTree(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to build tree3: %v", err)
 	}
 
 	added, modified, deleted = DiffTrees(tree2, tree3)
-	if len(added) != 1 || len(modified) != 0 || len(deleted) != 0 || added[0] != "src/config.tf" {
+	if len(added) != 1 || len(modified) != 0 || len(deleted) != 0 || !strings.HasSuffix(added[0], "src/config.tf") {
 		t.Errorf("expected src/config.tf to be added, got: added=%v, modified=%v, deleted=%v", added, modified, deleted)
 	}
 
@@ -123,13 +124,13 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 		t.Fatalf("failed to delete main.go: %v", err)
 	}
 
-	tree4, err := BuildMerkleTree(tmpDir, "")
+	tree4, err := BuildMerkleTree(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to build tree4: %v", err)
 	}
 
 	added, modified, deleted = DiffTrees(tree3, tree4)
-	if len(added) != 0 || len(modified) != 0 || len(deleted) != 1 || deleted[0] != "main.go" {
+	if len(added) != 0 || len(modified) != 0 || len(deleted) != 1 || !strings.HasSuffix(deleted[0], "main.go") {
 		t.Errorf("expected main.go to be deleted, got: added=%v, modified=%v, deleted=%v", added, modified, deleted)
 	}
 
@@ -140,13 +141,13 @@ func TestMerkleHashingAndDiffing(t *testing.T) {
 		t.Fatalf("failed to write config.yaml: %v", err)
 	}
 
-	tree5, err := BuildMerkleTree(tmpDir, "")
+	tree5, err := BuildMerkleTree(tmpDir)
 	if err != nil {
 		t.Fatalf("failed to build tree5: %v", err)
 	}
 
 	added, modified, deleted = DiffTrees(tree4, tree5)
-	if len(added) != 1 || len(modified) != 0 || len(deleted) != 0 || added[0] != "config.yaml" {
+	if len(added) != 1 || len(modified) != 0 || len(deleted) != 0 || !strings.HasSuffix(added[0], "config.yaml") {
 		t.Errorf("expected config.yaml to be added, got: added=%v, modified=%v, deleted=%v", added, modified, deleted)
 	}
 }

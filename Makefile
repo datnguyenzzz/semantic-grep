@@ -13,6 +13,8 @@ build: clean
 	CGO_ENABLED=1 go build -o dist/server cmd/server/main.go
 	@echo "Compiling codebase indexer..."
 	CGO_ENABLED=1 go build -o dist/indexer cmd/indexer/main.go
+	@echo "Compiling semgrep (Semantic Grep CLI)..."
+	CGO_ENABLED=1 go build -o dist/semgrep cmd/semgrep/main.go
 	@echo "Compiling ggrep (Custom DFA Engine)"
 	CGO_ENABLED=1 go build -o dist/ggrep ggrep/cmd/ggrep/main.go
 	@echo "Compiling ggrep-std (Go Standard Library Engine)"

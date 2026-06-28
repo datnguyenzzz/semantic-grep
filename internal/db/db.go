@@ -275,11 +275,6 @@ type candidateRRF struct {
 	rrfScore float64
 }
 
-type scoredMemory struct {
-	m     Memory
-	score float64
-}
-
 func queryParentCodebaseCWD(cwd string) string {
 	if cwd == "" {
 		return ""
@@ -374,22 +369,60 @@ func queryExactGrepMatches(matches []ggrepMatchLine) ([]string, error) {
 	return ids, nil
 }
 
-func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, error) {
+func prepareGrepSearchOpt(queryText string) *ggrep.SearchOption {
+	var opt *ggrep.SearchOption
+
+	trimmedQuery := strings.TrimSpace(queryText)
+	if trimmedQuery == "" {
+		return nil
+	}
+
+	// If the query explicitly contains standard regular expression operators (like |),
+	// run it directly as a regular expression search!
+	if strings.ContainsAny(trimmedQuery, "|()*+?[]^$") {
+		if _, err := regexp.Compile(trimmedQuery); err == nil {
+			opt = &ggrep.SearchOption{
+				Kind:    ggrep.Regex,
+				Pattern: trimmedQuery,
+			}
+
+			return opt
+		}
+	}
+
+	words := strings.Fields(trimmedQuery)
+	if len(words) > 1 {
+		// 1. Multi-word query: convert to safe regular expression disjunction matching (A|B|C...)
+		var escapedWords []string
+		for _, w := range words {
+			escapedWords = append(escapedWords, regexp.QuoteMeta(w))
+		}
+		disjunctionPattern := strings.Join(escapedWords, "|")
+
+		opt = &ggrep.SearchOption{
+			Kind:    ggrep.Regex,
+			Pattern: disjunctionPattern,
+		}
+	} else {
+		// 2. Single word query: use ultra-fast native SIMD literal matching!
+		opt = &ggrep.SearchOption{
+			Kind:    ggrep.Literal,
+			Pattern: trimmedQuery,
+			Literal: []byte(trimmedQuery),
+		}
+	}
+
+	return opt
+}
+
+func searchLexicalSparse(queryText string, cwd string) ([]LexMatch, error) {
 	if queryText == "" {
 		return nil, nil
 	}
 
-	// Verify if the pattern is a valid regular expression.
-	// If it has unbalanced parentheses or invalid syntax, escape it to match literally!
-	pattern := queryText
-	if _, err := regexp.Compile(queryText); err != nil {
-		pattern = regexp.QuoteMeta(queryText)
-	}
-
-	// Unconditionally execute all user queries as ggrep Regex searches!
-	opt := &ggrep.SearchOption{
-		Kind:    ggrep.Regex,
-		Pattern: pattern,
+	opt := prepareGrepSearchOpt(queryText)
+	if opt == nil {
+		return nil, nil
 	}
 
 	// 2. Execute our high-speed concurrent ggrep search natively
@@ -406,10 +439,7 @@ func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, e
 	})
 
 	ggrep.Search([]string{cwd}, opt, func(path string, line int, text []byte) {
-		relPath, err := filepath.Rel(cwd, path)
-		if err == nil {
-			ch <- ggrepMatchLine{path: relPath, line: line}
-		}
+		ch <- ggrepMatchLine{path: path, line: line}
 	})
 
 	// Close channel and wait for the collector background consumer to finish draining matches
@@ -433,11 +463,6 @@ func searchLexicalSparse(queryText string, cwd string, limit int) ([]LexMatch, e
 				Score: 100.0, // High constant exact match score
 			})
 		}
-	}
-
-	// Limit to candidate limit
-	if len(matches) > limit {
-		matches = matches[:limit]
 	}
 
 	return matches, nil
@@ -750,9 +775,11 @@ func fetchMemoriesMetadata(candidates []candidateRRF, cwd string) ([]Memory, err
 
 	// Open each unique file EXACTLY once and slice matched code lines on-the-fly
 	// to reduce I/O in opening file multiple time
-	for relPath, group := range fileGroups {
-		fullPath := filepath.Join(cwd, relPath)
-		loadAndSliceMemoryBlock(fullPath, group)
+	for fileAbsPath, group := range fileGroups {
+		if cwd != "" && !strings.HasPrefix(fileAbsPath, cwd) {
+			continue // Skip files belonging to other codebases to prevent unnecessary disk I/O!
+		}
+		loadAndSliceMemoryBlock(fileAbsPath, group)
 	}
 
 	for _, cand := range candidates {
@@ -846,8 +873,8 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 
 	go func() {
 		defer wg.Done()
-		if len(queryText) > 0 {
-			lexResults, lexErr = searchLexicalSparse(queryText, cwd, candidateLimit)
+		if len(queryText) > 0 && len(cwd) > 0 {
+			lexResults, lexErr = searchLexicalSparse(queryText, cwd)
 		}
 	}()
 
@@ -883,7 +910,7 @@ func SearchMemories(queryText string, queryEmbedding []float32, cwd string, limi
 	}
 
 	// Reciprocal Rank Fusion (RRF) on only the validated
-	topCandidates := computeRRF(filteredSem, lexResults, candidateLimit)
+	topCandidates := computeRRF(filteredSem, lexResults, limit)
 
 	// Fetch memories metadata and on-the-fly read code from local disk
 	memories, err := fetchMemoriesMetadata(topCandidates, cwd)
@@ -1091,12 +1118,14 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 	}
 	defer db.Close()
 
+	fileAbsPath := filepath.Join(cwd, relPath)
+
 	// 1. Fetch the IDs of the chunks we are about to delete
 	querySel := `
 		SELECT id FROM gemini_memories
 		WHERE cwd = $1
 	`
-	rows, err := db.Query(querySel, relPath)
+	rows, err := db.Query(querySel, fileAbsPath)
 	if err != nil {
 		return err
 	}
@@ -1115,7 +1144,7 @@ func DeleteFileMemories(cwd, relPath string, index *turboquant.Index) error {
 		DELETE FROM gemini_memories
 		WHERE cwd = $1
 	`
-	_, err = db.Exec(queryDel, relPath)
+	_, err = db.Exec(queryDel, fileAbsPath)
 	if err != nil {
 		return err
 	}

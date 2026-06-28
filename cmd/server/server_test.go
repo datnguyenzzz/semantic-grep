@@ -101,7 +101,7 @@ func Test_PeriodicIndexUpdate(t *testing.T) {
 
 	foundMain := false
 	for _, m := range memories {
-		if m.ID != "" && m.CWD == "main.go" {
+		if m.ID != "" && m.CWD == filepath.Join(tmpWorkspace, "main.go") {
 			foundMain = true
 			break
 		}

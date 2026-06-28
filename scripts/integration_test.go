@@ -618,17 +618,33 @@ func Test_HybridSearchValidate(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpWorkspace)
 
-	file1Path := filepath.Join(tmpWorkspace, "fibonacci.go")
-	fibonacciCode := `package math
+	// Write complex file with 3 functions
+	file1Path := filepath.Join(tmpWorkspace, "math_utils.go")
+	mathCode := `package mathutils
 
-// CalculateFibonacciSequence recursively computes the fibonacci value of n.
-func CalculateFibonacciSequence(n int) int {
-	if n <= 1 {
-		return n
-	}
-	return CalculateFibonacciSequence(n-1) + CalculateFibonacciSequence(n-2)
+func AddComputesSum(a, b int) int {
+	return a + b
+}
+
+func SubtractComputesDiff(a, b int) int {
+	return a - b
+}
+
+func MultiplyComputesProduct(a, b int) int {
+	return a * b
 }`
-	_ = os.WriteFile(file1Path, []byte(fibonacciCode), 0644)
+	_ = os.WriteFile(file1Path, []byte(mathCode), 0644)
+
+	// Define expected whole function bodies exactly
+	expectedAdd := `func AddComputesSum(a, b int) int {
+	return a + b
+}`
+	expectedSub := `func SubtractComputesDiff(a, b int) int {
+	return a - b
+}`
+	expectedMul := `func MultiplyComputesProduct(a, b int) int {
+	return a * b
+}`
 
 	// Initialize real TurboQuant and test index
 	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
@@ -653,33 +669,54 @@ func CalculateFibonacciSequence(n int) int {
 		t.Fatalf("failed to index workspace: %v", err)
 	}
 
-	// 2. Perform live hybrid search and measure latency end-to-end
-	query := "FibonacciSequence"
-	queryEmbed, err := llm.GetEmbedding(query, turboquant.DefaultDimension)
-	if err != nil {
-		t.Fatalf("failed to fetch embedding: %v. Is LiteLLM running?", err)
+	// 2. Perform live hybrid search matrix and verify exact content matching of whole function
+	testQueries := []struct {
+		name          string
+		query         string
+		expectedWhole string
+	}{
+		{name: "Add exact", query: "AddComputesSum", expectedWhole: expectedAdd},
+		{name: "Add conceptual", query: "sum of two integers", expectedWhole: expectedAdd},
+
+		{name: "Subtract exact", query: "SubtractComputesDiff", expectedWhole: expectedSub},
+		{name: "Subtract conceptual", query: "difference between two integers", expectedWhole: expectedSub},
+
+		{name: "Multiply exact", query: "MultiplyComputesProduct", expectedWhole: expectedMul},
+		{name: "Multiply conceptual", query: "product of two integers", expectedWhole: expectedMul},
 	}
 
-	tStart := time.Now()
-	results, err := db.SearchMemories(query, queryEmbed, tmpWorkspace, 5, index)
-	duration := time.Since(tStart)
-	if err != nil {
-		t.Fatalf("failed to query hybrid search: %v", err)
-	}
+	for _, tq := range testQueries {
+		t.Run(tq.name, func(t *testing.T) {
+			queryEmbed, err := llm.GetEmbedding(tq.query, turboquant.DefaultDimension)
+			if err != nil {
+				t.Fatalf("failed to fetch embedding: %v. Is LiteLLM running?", err)
+			}
 
-	t.Logf("⏱  Hybrid Search Latency: %.2f ms", float64(duration.Nanoseconds())/1e6)
+			tStart := time.Now()
+			results, err := db.SearchMemories(tq.query, queryEmbed, tmpWorkspace, 5, index)
+			duration := time.Since(tStart)
+			if err != nil {
+				t.Fatalf("failed to query hybrid search: %v", err)
+			}
 
-	if len(results) == 0 {
-		t.Fatalf("expected search results to return matches, got 0")
-	}
+			t.Logf("⏱  Hybrid Search Latency (%s): %.2f ms", tq.name, float64(duration.Nanoseconds())/1e6)
 
-	bestResult := results[0]
-	if !strings.Contains(bestResult.Content, "CalculateFibonacciSequence") {
-		t.Errorf("expected best match to be the Fibonacci memory chunk, got content: %s", bestResult.Content)
-	}
+			if len(results) == 0 {
+				t.Fatalf("expected search results to return matches, got 0")
+			}
 
-	if duration > 5000*time.Millisecond {
-		t.Errorf("Hybrid Search SLA violation: latency exceeded 5000ms threshold, got: %v", duration)
+			bestResult := results[0]
+			gotContent := strings.TrimSpace(bestResult.Content)
+			expectedWhole := strings.TrimSpace(tq.expectedWhole)
+
+			if gotContent != expectedWhole {
+				t.Errorf("E2E Content Mismatch!\nEXPECTED WHOLE FUNCTION:\n%s\nGOT CONTENT:\n%s", expectedWhole, gotContent)
+			}
+
+			if duration > 50*time.Millisecond {
+				t.Errorf("Hybrid Search SLA violation: latency exceeded 50ms threshold, got: %v", duration)
+			}
+		})
 	}
 }
 
@@ -773,5 +810,108 @@ func TestLockFreeGgrepCollectorSearchIntegrity(t *testing.T) {
 	// Check if any goroutine reported an error
 	for err := range errCh {
 		t.Errorf("Concurrency error: %v", err)
+	}
+}
+
+func Test_IndexerBoundaryConditionsIntegration(t *testing.T) {
+	// ponytail: skip test gracefully if the real LiteLLM server is not running in the current test environment
+	conn, err := net.DialTimeout("tcp", "localhost:36253", 100*time.Millisecond)
+	if err != nil {
+		t.Skip("Skipping live integration test: local LiteLLM server on localhost:36253 is unreachable")
+	}
+	conn.Close()
+
+	// 1. Setup custom DB paths inside a temporary environment to keep it clean
+	tmpHome, err := os.MkdirTemp("", "boundary-integration-test-home-*")
+	if err != nil {
+		t.Fatalf("failed to create temp home: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed to init database: %v", err)
+	}
+
+	// 2. Setup a mock local codebase folder
+	tmpWorkspace, err := os.MkdirTemp("", "boundary-integration-test-workspace-*")
+	if err != nil {
+		t.Fatalf("failed to create temp workspace: %v", err)
+	}
+	defer os.RemoveAll(tmpWorkspace)
+
+	// Write empty file
+	emptyPath := filepath.Join(tmpWorkspace, "empty.go")
+	_ = os.WriteFile(emptyPath, []byte(""), 0644)
+
+	// Write binary file (should be ignored by scanners)
+	binaryPath := filepath.Join(tmpWorkspace, "binary.png")
+	binaryData := []byte{0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x00, 0x00, 0x49, 0x48, 0x44, 0x52}
+	_ = os.WriteFile(binaryPath, binaryData, 0644)
+
+	// Write valid Go file
+	validPath := filepath.Join(tmpWorkspace, "valid.go")
+	validCode := `package main
+
+// HelloPrintsMessage prints a hello message.
+func HelloPrintsMessage() {
+	println("Hello World")
+}`
+	_ = os.WriteFile(validPath, []byte(validCode), 0644)
+
+	// 3. Initialize real TurboQuant and test index
+	tq, err := turboquant.NewTurboQuant(turboquant.DefaultDimension, turboquant.DefaultBitWidth, turboquant.DefaultSeed)
+	if err != nil {
+		t.Fatalf("failed to init TurboQuant: %v", err)
+	}
+
+	tqvPath, err := db.GetTQPath()
+	if err != nil {
+		t.Fatalf("failed to get tqv path: %v", err)
+	}
+	index, err := turboquant.NewIndex(tqvPath, tq)
+	if err != nil {
+		t.Fatalf("failed to init Index: %v", err)
+	}
+
+	// Save codebase CWD in database
+	if err := db.SaveMerkleTree(tmpWorkspace, "initial_hash", "{}"); err != nil {
+		t.Fatalf("failed to save codebase: %v", err)
+	}
+
+	// 4. Run the Indexer
+	added, modified, deleted, err := merkle.UpdateIndex(tmpWorkspace, index)
+	if err != nil {
+		t.Fatalf("UpdateIndex failed on boundary conditions: %v", err)
+	}
+
+	// We expect exactly 2 added files (empty.go and valid.go).
+	// binary.png must be completely skipped.
+	if added != 2 || modified != 0 || deleted != 0 {
+		t.Errorf("expected 2 added files, got: added=%d, modified=%d, deleted=%d", added, modified, deleted)
+	}
+
+	// 5. Query and verify search
+	query := "HelloPrintsMessage"
+	queryEmbed, err := llm.GetEmbedding(query, turboquant.DefaultDimension)
+	if err != nil {
+		t.Fatalf("failed to fetch embedding: %v", err)
+	}
+
+	results, err := db.SearchMemories(query, queryEmbed, tmpWorkspace, 5, index)
+	if err != nil {
+		t.Fatalf("failed to query hybrid search: %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Fatalf("expected exactly 1 search result matching valid.go, got %d", len(results))
+	}
+
+	bestResult := results[0]
+	if !strings.Contains(bestResult.Content, "HelloPrintsMessage") {
+		t.Errorf("expected best match to be the HelloPrintsMessage chunk, got: %s", bestResult.Content)
 	}
 }

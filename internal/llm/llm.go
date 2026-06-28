@@ -10,6 +10,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/cenkalti/backoff/v4"
 )
 
 type EmbedRequest struct {
@@ -55,30 +58,50 @@ func doRequest(method, endpoint string, reqBody any, respDest any) error {
 		return err
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return err
-	}
+	client := &http.Client{Timeout: 10 * time.Second}
 
-	req.Header.Set("Content-Type", "application/json")
-	apiKey := getAPIKey()
-	if apiKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	}
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = 50 * time.Millisecond
+	expBackoff.MaxInterval = 2 * time.Second
+	expBackoff.MaxElapsedTime = 5 * time.Second
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	bo := backoff.WithMaxRetries(expBackoff, 3)
 
-	if resp.StatusCode != http.StatusOK {
+	operation := func() error {
+		req, err := http.NewRequest(method, url, bytes.NewBuffer(jsonBytes))
+		if err != nil {
+			return backoff.Permanent(err) // Non-retriable request setup error
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		apiKey := getAPIKey()
+		if apiKey != "" {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return json.NewDecoder(resp.Body).Decode(respDest)
+		}
+
+		// Read error response body
 		respBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("LiteLLM returned status %d: %s", resp.StatusCode, string(respBytes))
+		errResp := fmt.Errorf("LiteLLM returned status %d: %s", resp.StatusCode, string(respBytes))
+
+		// Only retry on retriable status codes: 429 (Rate Limit) or 5xx (Server Errors)
+		if resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode >= 500 && resp.StatusCode <= 599) {
+			return errResp
+		}
+
+		return backoff.Permanent(errResp)
 	}
 
-	return json.NewDecoder(resp.Body).Decode(respDest)
+	return backoff.Retry(operation, bo)
 }
 
 // DefaultClient is the default global ILLM instance (implementing LiteLLM)

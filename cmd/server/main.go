@@ -25,7 +25,7 @@ import (
 
 type SearchArgs struct {
 	Query string  `json:"query" jsonschema:"The semantic search query, detailed question, or coding concept to locate. Always pass the complete user question or detailed context instead of single keywords to ensure high-fidelity semantic matching."`
-	CWD   *string `json:"cwd,omitempty" jsonschema:"Optional directory to restrict search results to. If not provided, the search is global across all indexed codebases."`
+	CWD   *string `json:"cwd,omitempty" jsonschema:"Optional absolute directory path to restrict search results to. If not provided, the search defaults to the current working directory where the server is running."`
 }
 
 type CallGraphArgs struct {
@@ -198,8 +198,12 @@ func main() {
 		}
 
 		cwd := ""
-		if args.CWD != nil {
+		if args.CWD != nil && *args.CWD != "" {
 			cwd = *args.CWD
+		} else {
+			if dir, err := os.Getwd(); err == nil {
+				cwd = dir
+			}
 		}
 
 		limit := min(intEnv("SEARCH_DEFAULT_LIMIT", 10), 50)

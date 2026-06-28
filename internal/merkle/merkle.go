@@ -31,8 +31,9 @@ const (
 )
 
 type MerkleNode struct {
-	Type     NodeType               `json:"type"`
-	Name     string                 `json:"name"`
+	Type NodeType `json:"type"`
+	Name string   `json:"name"`
+	// Path is absolute path
 	Path     string                 `json:"path"`
 	Hash     string                 `json:"hash"`
 	Children map[string]*MerkleNode `json:"children,omitempty"`
@@ -50,9 +51,8 @@ func isIndexable(filename string) bool {
 }
 
 // BuildMerkleTree scans the filesystem recursively and constructs the Merkle Tree of indexable files
-func BuildMerkleTree(absPath, relPath string) (*MerkleNode, error) {
-	fullPath := filepath.Join(absPath, relPath)
-	fi, err := os.Stat(fullPath)
+func BuildMerkleTree(absPath string) (*MerkleNode, error) {
+	fi, err := os.Stat(absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +61,9 @@ func BuildMerkleTree(absPath, relPath string) (*MerkleNode, error) {
 		if !isIndexable(fi.Name()) {
 			return nil, nil
 		}
-		// Cap at 200KB for files to parse (consistent with main indexer)
-		if fi.Size() > 200*1024 {
-			return nil, nil
-		}
 
 		// Split file into AST-based chunks to determine the chunk structure & hashes
-		chunks, err := splitter.SplitFile(fullPath)
+		chunks, err := splitter.SplitFile(absPath)
 		if err != nil {
 			return nil, err
 		}
@@ -89,13 +85,13 @@ func BuildMerkleTree(absPath, relPath string) (*MerkleNode, error) {
 		return &MerkleNode{
 			Type: NodeFile,
 			Name: fi.Name(),
-			Path: relPath,
+			Path: absPath,
 			Hash: fileHash,
 		}, nil
 	}
 
 	// It's a directory, read its children
-	entries, err := os.ReadDir(fullPath)
+	entries, err := os.ReadDir(absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -110,12 +106,8 @@ func BuildMerkleTree(absPath, relPath string) (*MerkleNode, error) {
 			}
 		}
 
-		childRelPath := name
-		if relPath != "" {
-			childRelPath = filepath.Join(relPath, name)
-		}
-
-		childNode, err := BuildMerkleTree(absPath, childRelPath)
+		childAbsPath := filepath.Join(absPath, name)
+		childNode, err := BuildMerkleTree(childAbsPath)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +138,7 @@ func BuildMerkleTree(absPath, relPath string) (*MerkleNode, error) {
 	return &MerkleNode{
 		Type:     NodeDirectory,
 		Name:     fi.Name(),
-		Path:     relPath,
+		Path:     absPath,
 		Hash:     dirHash,
 		Children: children,
 	}, nil
@@ -266,10 +258,14 @@ func loadPreviousTree(absPath string) (*MerkleNode, error) {
 	return prevTree, nil
 }
 
-func purgeStaleMemories(absPath string, relPaths []string, index *turboquant.Index, action string) {
-	for _, relPath := range relPaths {
+func purgeStaleMemories(absPath string, files []string, index *turboquant.Index, action string) {
+	for _, filePath := range files {
+		relPath := filePath
+		if filepath.IsAbs(relPath) {
+			relPath, _ = filepath.Rel(absPath, filePath)
+		}
 		fmt.Printf("✗ %s stale memories for %s file: %s\n", action, strings.ToLower(action), relPath)
-		if err := db.DeleteFileMemories(absPath, relPath, index); err != nil {
+		if err := db.DeleteFileMemories(absPath, filePath, index); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to clear memories for %s file %s: %v\n", strings.ToLower(action), relPath, err)
 		}
 		_ = db.DeleteCallGraph(relPath)
@@ -282,8 +278,17 @@ func formatContent(path string, lineStart, lineEnd int, content string) string {
 
 func prepareIndexerJobs(absPath string, files []string) []IndexJob {
 	var jobs []IndexJob
-	for _, relPath := range files {
-		fullPath := filepath.Join(absPath, relPath)
+	for _, filePath := range files {
+		fullPath := filePath
+		if !filepath.IsAbs(fullPath) {
+			fullPath = filepath.Join(absPath, filePath)
+		}
+
+		relPath := filePath
+		if filepath.IsAbs(relPath) {
+			relPath, _ = filepath.Rel(absPath, filePath)
+		}
+
 		chunks, err := splitter.SplitFile(fullPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: Failed to split %s: %v\n", relPath, err)
@@ -355,7 +360,7 @@ func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboq
 		batchItems = append(batchItems, db.MemoryBatchItem{
 			ID:         id,
 			SymbolName: res.symbolName,
-			CWD:        res.relPath,
+			CWD:        filepath.Join(absPath, res.relPath),
 			LineStart:  res.startLine,
 			LineEnd:    res.endLine,
 			Embedding:  res.embedding,
@@ -377,8 +382,17 @@ func batchSaveMemoriesAsync(absPath string, results []IndexResult, index *turboq
 
 func syncASTCallGraphs(absPath string, files []string) {
 	fmt.Printf("⚙ Indexing Call Graph nodes and dependencies...\n")
-	for _, relPath := range files {
-		fullPath := filepath.Join(absPath, relPath)
+	for _, filePath := range files {
+		fullPath := filePath
+		if !filepath.IsAbs(fullPath) {
+			fullPath = filepath.Join(absPath, filePath)
+		}
+
+		relPath := filePath
+		if filepath.IsAbs(relPath) {
+			relPath, _ = filepath.Rel(absPath, filePath)
+		}
+
 		nodes, edges, err := callgraph.ParseFile(fullPath, relPath)
 		if err == nil {
 			_ = db.SaveCallGraph(relPath, nodes, edges)
@@ -394,7 +408,7 @@ func UpdateIndex(absPath string, index *turboquant.Index) (int, int, int, error)
 	}
 
 	// 1. Build the new Merkle tree from local codebase state
-	newTree, err := BuildMerkleTree(absPath, "")
+	newTree, err := BuildMerkleTree(absPath)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to build local Merkle tree: %w", err)
 	}

@@ -116,45 +116,6 @@ func main() {
 	}
 }
 
-func TestAddOverlapUTF8Safe(t *testing.T) {
-	chunks := []Chunk{
-		{
-			FilePath:  "test.go",
-			Content:   "This is chunk number one containing standard text 🚀🌟",
-			StartLine: 1,
-			EndLine:   5,
-		},
-		{
-			FilePath:  "test.go",
-			Content:   "This is chunk number two.",
-			StartLine: 6,
-			EndLine:   10,
-		},
-	}
-
-	// Running overlap with size of 2 (2 runes: "🚀🌟")
-	overlapped := addOverlap(chunks, 2)
-
-	if len(overlapped) != 2 {
-		t.Fatalf("expected 2 chunks, got %d", len(overlapped))
-	}
-
-	// Chunk 1 should remain unchanged
-	if overlapped[0].Content != chunks[0].Content {
-		t.Errorf("chunk 1 changed: %s", overlapped[0].Content)
-	}
-
-	// Chunk 2 should have "🚀🌟" prepended
-	expectedPrefix := "🚀🌟\n"
-	if !hasPrefix(overlapped[1].Content, expectedPrefix) {
-		t.Errorf("expected chunk 2 to start with %q, got: %q", expectedPrefix, overlapped[1].Content)
-	}
-}
-
-func hasPrefix(s, prefix string) bool {
-	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
-}
-
 func TestSplitYamlFile(t *testing.T) {
 	// Create a temp directory
 	tmpDir, err := os.MkdirTemp("", "splitter-test-*")

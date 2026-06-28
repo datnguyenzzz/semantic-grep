@@ -136,7 +136,7 @@ func runEffectivenessBenchmark(b *testing.B, dim int, limit int) {
 		batchItems[i] = db.MemoryBatchItem{
 			ID:         rec.ID,
 			SymbolName: rec.Title,
-			CWD:        docRelPath,
+			CWD:        docPath,
 			LineStart:  1,
 			LineEnd:    10,
 			Embedding:  vec,
