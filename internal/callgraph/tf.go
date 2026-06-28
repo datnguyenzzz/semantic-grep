@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func parseTerraformFile(path, relPath string, nodes map[string]*Node, edges *[]Edge) error {
+func parseTerraformFile(path string, nodes map[string]*Node, edges *[]Edge) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func parseTerraformFile(path, relPath string, nodes map[string]*Node, edges *[]E
 				fullName := fmt.Sprintf("%s.%s", blockType, blockName)
 				activeNode = &Node{
 					Name:      fullName,
-					FilePath:  relPath,
+					FilePath:  path,
 					StartLine: lineNum,
 				}
 				nodes[fullName] = activeNode

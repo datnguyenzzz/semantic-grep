@@ -8,10 +8,12 @@ import (
 )
 
 type Node struct {
-	Name      string `json:"name"`
+	Name string `json:"name"`
+	// FilePath is absolute path
 	FilePath  string `json:"file_path"`
 	StartLine int    `json:"start_line"`
 	EndLine   int    `json:"end_line"`
+	Content   string `json:"content,omitempty"`
 }
 
 type Edge struct {
@@ -33,13 +35,13 @@ func ParseFile(path, relPath string) ([]*Node, []Edge, error) {
 	var err error
 	switch ext {
 	case ".go":
-		err = parseGoFile(path, relPath, fset, nodes, &edges)
+		err = parseGoFile(path, fset, nodes, &edges)
 	case ".tf":
-		err = parseTerraformFile(path, relPath, nodes, &edges)
+		err = parseTerraformFile(path, nodes, &edges)
 	case ".yaml", ".yml":
-		err = parseYamlFile(path, relPath, nodes, &edges)
+		err = parseYamlFile(path, nodes, &edges)
 	case ".py":
-		err = parsePythonFile(path, relPath, nodes, &edges)
+		err = parsePythonFile(path, nodes, &edges)
 	}
 
 	if err != nil {
@@ -59,6 +61,7 @@ type CallNode struct {
 	FilePath  string      `json:"file_path"`
 	StartLine int         `json:"start_line"`
 	EndLine   int         `json:"end_line"`
+	Content   string      `json:"content,omitempty"`
 	Children  []*CallNode `json:"children,omitempty"`
 }
 

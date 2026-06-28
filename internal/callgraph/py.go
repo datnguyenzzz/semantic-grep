@@ -8,7 +8,7 @@ import (
 )
 
 // parsePythonFile parses a Python file using Tree-sitter to build nodes and call edges.
-func parsePythonFile(path, relPath string, nodes map[string]*Node, edges *[]Edge) error {
+func parsePythonFile(path string, nodes map[string]*Node, edges *[]Edge) error {
 	contentBytes, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func parsePythonFile(path, relPath string, nodes map[string]*Node, edges *[]Edge
 
 				nodes[className] = &Node{
 					Name:      className,
-					FilePath:  relPath,
+					FilePath:  path,
 					StartLine: startLine,
 					EndLine:   endLine,
 				}
@@ -72,7 +72,7 @@ func parsePythonFile(path, relPath string, nodes map[string]*Node, edges *[]Edge
 
 				nodes[nodeName] = &Node{
 					Name:      nodeName,
-					FilePath:  relPath,
+					FilePath:  path,
 					StartLine: startLine,
 					EndLine:   endLine,
 				}

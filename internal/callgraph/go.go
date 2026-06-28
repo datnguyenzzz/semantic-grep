@@ -7,7 +7,7 @@ import (
 	"go/token"
 )
 
-func parseGoFile(path, relPath string, fset *token.FileSet, nodes map[string]*Node, edges *[]Edge) error {
+func parseGoFile(path string, fset *token.FileSet, nodes map[string]*Node, edges *[]Edge) error {
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func parseGoFile(path, relPath string, fset *token.FileSet, nodes map[string]*No
 
 		nodes[funcName] = &Node{
 			Name:      funcName,
-			FilePath:  relPath,
+			FilePath:  path,
 			StartLine: start,
 			EndLine:   end,
 		}

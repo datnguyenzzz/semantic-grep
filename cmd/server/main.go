@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -29,11 +30,10 @@ type SearchArgs struct {
 }
 
 type CallGraphArgs struct {
-	SymbolName   string  `json:"symbol_name,omitempty" jsonschema:"The name of the target symbol (function, method, class, struct, resource) to explore (e.g. 'SaveMemory' or 'SearchMemories')."`
-	FunctionName string  `json:"function_name,omitempty" jsonschema:"Legacy alias for symbol_name. Supported for backward compatibility."`
-	CWD          *string `json:"cwd" jsonschema:"Mandatory absolute directory path of the codebase where the target symbol and its files reside."`
-	Direction    *string `json:"direction,omitempty" jsonschema:"Optional direction to traverse. Supported values: 'caller', 'callee', or 'both'. Defaults to 'both'."`
-	Depth        *int    `json:"depth,omitempty" jsonschema:"Optional maximum depth of call chain traversal. Defaults to 2."`
+	SymbolName string  `json:"symbol_name" jsonschema:"The name of the target symbol (function, method, class, struct, resource) to explore (e.g. 'SaveMemory' or 'SearchMemories')."`
+	CWD        *string `json:"cwd" jsonschema:"Mandatory absolute directory path of the codebase where the target symbol and its files reside."`
+	Direction  *string `json:"direction,omitempty" jsonschema:"Optional direction to traverse. Supported values: 'caller', 'callee', or 'both'. Defaults to 'both'."`
+	Depth      *int    `json:"depth,omitempty" jsonschema:"Optional maximum depth of call chain traversal. Defaults to 2."`
 }
 
 type MemoryResult struct {
@@ -66,9 +66,9 @@ type CallGraphMCPResponse struct {
 
 var CallGraphSchemaDescription = map[string]string{
 	"schema_description": "Explanatory key-value definitions for all properties inside this response structure.",
-	"target_node":        "The metadata of the block/function that was explored (Name, FilePath, StartLine, EndLine).",
-	"callers":            "A tree representation of functions/blocks that call or depend on the target node.",
-	"callees":            "A tree representation of functions/blocks called or referenced by the target node.",
+	"target_node":        "The metadata and sliced whole function content of the block/function that was explored (Name, FilePath, StartLine, EndLine, Content).",
+	"callers":            "A tree representation of functions/blocks that call or depend on the target node, containing their sliced whole function content.",
+	"callees":            "A tree representation of functions/blocks called or referenced by the target node, containing their sliced whole function content.",
 	"children":           "Nested dependencies (e.g. callers of a caller, or callees of a callee) tracing the execution tree recursively.",
 }
 
@@ -290,10 +290,6 @@ func main() {
 
 		targetSymbol := args.SymbolName
 		if targetSymbol == "" {
-			targetSymbol = args.FunctionName
-		}
-
-		if targetSymbol == "" {
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Error: Mandatory 'symbol_name' parameter is missing."},
@@ -323,6 +319,9 @@ func main() {
 			}, nil, nil
 		}
 
+		// Populate whole function contents for all nodes on-the-fly!
+		populateCallGraphContent(report, cwd)
+
 		mcpReport := CallGraphMCPResponse{
 			SchemaDescription: CallGraphSchemaDescription,
 			TargetNode:        report.TargetNode,
@@ -348,6 +347,91 @@ func main() {
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatalf("MCP Server failed to run: %v", err)
 	}
+}
+
+type mcpNodeRef struct {
+	node      *callgraph.Node
+	callNode  *callgraph.CallNode
+	startLine int
+	endLine   int
+}
+
+func populateCallGraphContent(report *callgraph.CallGraphResponse, cwd string) {
+	if report == nil {
+		return
+	}
+
+	fileGroups := make(map[string][]mcpNodeRef)
+	var collect func(node *callgraph.CallNode)
+	collect = func(node *callgraph.CallNode) {
+		if node == nil {
+			return
+		}
+		if node.FilePath != "" {
+			fileGroups[node.FilePath] = append(fileGroups[node.FilePath], mcpNodeRef{
+				callNode:  node,
+				startLine: node.StartLine,
+				endLine:   node.EndLine,
+			})
+		}
+		for _, child := range node.Children {
+			collect(child)
+		}
+	}
+
+	if report.TargetNode != nil && report.TargetNode.FilePath != "" {
+		fileGroups[report.TargetNode.FilePath] = append(fileGroups[report.TargetNode.FilePath], mcpNodeRef{
+			node:      report.TargetNode,
+			startLine: report.TargetNode.StartLine,
+			endLine:   report.TargetNode.EndLine,
+		})
+	}
+
+	for _, caller := range report.Callers {
+		collect(caller)
+	}
+	for _, callee := range report.Callees {
+		collect(callee)
+	}
+
+	// 2. Open and slice files on-the-fly directly using db.LoadAndSliceMemoryBlock concurrently
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 10)
+
+	for relPath, refs := range fileGroups {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(rPath string, nodeRefs []mcpNodeRef) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			fullPath := rPath
+			if !filepath.IsAbs(fullPath) {
+				fullPath = filepath.Join(cwd, rPath)
+			}
+			memories := make([]*db.Memory, len(nodeRefs))
+			for i, r := range nodeRefs {
+				memories[i] = &db.Memory{
+					LineStart: r.startLine,
+					LineEnd:   r.endLine,
+				}
+			}
+
+			db.LoadAndSliceMemoryBlock(fullPath, memories)
+
+			// 3. Copy slice content back to the node objects
+			for i, r := range nodeRefs {
+				content := memories[i].Content
+				if r.node != nil {
+					r.node.Content = content
+				}
+				if r.callNode != nil {
+					r.callNode.Content = content
+				}
+			}
+		}(relPath, refs)
+	}
+	wg.Wait()
 }
 
 func intEnv(key string, fallback int) int {

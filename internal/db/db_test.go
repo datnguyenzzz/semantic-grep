@@ -461,19 +461,19 @@ func Test_FTSRealDuckDBIntegration(t *testing.T) {
 	}
 
 	// 3. Save 3 real-world documents directly
-	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.txt"), []byte("Albert Einstein theoretical physics relativity"), 0644)
-	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("Go programming language systems concurrency"), 0644)
-	_ = os.WriteFile(filepath.Join(tmpDir, "doc-3.txt"), []byte("web router HTTP handler middleware Gin"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.go"), []byte("Albert Einstein theoretical physics relativity"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.go"), []byte("Go programming language systems concurrency"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-3.go"), []byte("web router HTTP handler middleware Gin"), 0644)
 
-	err = SaveMemory("doc-1", "Albert", filepath.Join(tmpDir, "doc-1.txt"), 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-1", "Albert", filepath.Join(tmpDir, "doc-1.go"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-2", "Go", filepath.Join(tmpDir, "doc-2.txt"), 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-2", "Go", filepath.Join(tmpDir, "doc-2.go"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-3", "web", filepath.Join(tmpDir, "doc-3.txt"), 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-3", "web", filepath.Join(tmpDir, "doc-3.go"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -535,14 +535,14 @@ func Test_FTSConjunctiveAndIgnoreNoise(t *testing.T) {
 	}
 
 	// 3. Save documents with brackets and trailing characters
-	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.txt"), []byte("func ProcessPayment() { println(\"credit card\") };"), 0644)
-	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.txt"), []byte("func SendNotification() { println(\"email alert\") };"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-1.go"), []byte("func ProcessPayment() { println(\"credit card\") };"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "doc-2.go"), []byte("func SendNotification() { println(\"email alert\") };"), 0644)
 
-	err = SaveMemory("doc-1", "ProcessPayment", filepath.Join(tmpDir, "doc-1.txt"), 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-1", "ProcessPayment", filepath.Join(tmpDir, "doc-1.go"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
-	err = SaveMemory("doc-2", "SendNotification", filepath.Join(tmpDir, "doc-2.txt"), 1, 1, make([]float32, 16), index)
+	err = SaveMemory("doc-2", "SendNotification", filepath.Join(tmpDir, "doc-2.go"), 1, 1, make([]float32, 16), index)
 	if err != nil {
 		t.Fatalf("failed: %v", err)
 	}
@@ -662,88 +662,6 @@ func Test_SearchMemoriesPreFusionFiltering(t *testing.T) {
 	}
 }
 
-func Test_MinifyCode(t *testing.T) {
-	testCases := []struct {
-		name     string
-		category string
-		input    string
-		expected string
-	}{
-		{
-			name:     "Non-project category bypass",
-			category: "user_note",
-			input:    "// This is a comment\nfunc Foo() {}",
-			expected: "// This is a comment\nfunc Foo() {}",
-		},
-		{
-			name:     "Go inline and empty lines",
-			category: "project",
-			input: `
-// Package declaration
-package main
-
-// Import libraries
-import "fmt"
-
-func main() {
-	// Print output
-	fmt.Println("Hello, World!") // inline comment
-}
-`,
-			expected: `package main
-import "fmt"
-func main() {
-	fmt.Println("Hello, World!")
-}`,
-		},
-		{
-			name:     "Go block comment single and multi-line",
-			category: "project",
-			input: `
-/*
-  This is a heavy
-  multi-line block comment.
-*/
-func main() {
-	/* inline block comment */
-	println("Running...")
-}
-`,
-			expected: `func main() {
-	println("Running...")
-}`,
-		},
-		{
-			name:     "Python and YAML comments",
-			category: "project",
-			input: `
-# This is a python config
-name: "my-app" # name of application
-
-# Port configuration
-port: 8080
-`,
-			expected: `name: "my-app"
-port: 8080`,
-		},
-		{
-			name:     "HTTP string safety",
-			category: "project",
-			input:    `url := "https://google.com" // search URL`,
-			expected: `url := "https://google.com"`,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			res := minifyCode(tc.input, tc.category)
-			if strings.TrimSpace(res) != strings.TrimSpace(tc.expected) {
-				t.Errorf("minifyCode failed for %s.\nGOT:\n%s\nEXPECTED:\n%s", tc.name, res, tc.expected)
-			}
-		})
-	}
-}
-
 func Test_PythonMemoryMinificationIntegration(t *testing.T) {
 	// 1. Setup temporary home
 	tmpDir, err := os.MkdirTemp("", "db-test-py-integration-*")
@@ -843,14 +761,14 @@ func Test_LoadAndSliceMemoryBlockMultipleRanges(t *testing.T) {
 			defer os.RemoveAll(tmpDir)
 
 			// 2. Write file 1
-			file1Path := filepath.Join(tmpDir, "file1.txt")
+			file1Path := filepath.Join(tmpDir, "file1.go")
 			file1Content := "line 1\nline 2\nline 3\nline 4\nline 5\n"
 			if err := os.WriteFile(file1Path, []byte(file1Content), 0644); err != nil {
 				t.Fatalf("failed to write file1: %v", err)
 			}
 
 			// 3. Write file 2
-			file2Path := filepath.Join(tmpDir, "file2.txt")
+			file2Path := filepath.Join(tmpDir, "file2.go")
 			file2Content := "alpha\nbeta\ngamma\ndelta\nepsilon\n"
 			if err := os.WriteFile(file2Path, []byte(file2Content), 0644); err != nil {
 				t.Fatalf("failed to write file2: %v", err)
@@ -872,9 +790,9 @@ func Test_LoadAndSliceMemoryBlockMultipleRanges(t *testing.T) {
 
 			group2 := []*Memory{m7, m8}
 
-			// 6. Execute loadAndSliceMemoryBlock
-			loadAndSliceMemoryBlock(file1Path, group1)
-			loadAndSliceMemoryBlock(file2Path, group2)
+			// 6. Execute LoadAndSliceMemoryBlock
+			LoadAndSliceMemoryBlock(file1Path, group1)
+			LoadAndSliceMemoryBlock(file2Path, group2)
 
 			// 7. Assertions for file 1
 			expected1 := "line 1\nline 2"

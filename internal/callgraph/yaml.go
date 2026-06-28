@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func parseYamlFile(path, relPath string, nodes map[string]*Node, edges *[]Edge) error {
+func parseYamlFile(path string, nodes map[string]*Node, edges *[]Edge) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func parseYamlFile(path, relPath string, nodes map[string]*Node, edges *[]Edge) 
 					fullName := fmt.Sprintf("step.%s", val)
 					activeNode = &Node{
 						Name:      fullName,
-						FilePath:  relPath,
+						FilePath:  path,
 						StartLine: lineNum,
 					}
 					nodes[fullName] = activeNode
