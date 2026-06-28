@@ -54,7 +54,8 @@ func isIndexable(filename string) bool {
 func BuildMerkleTree(absPath string) (*MerkleNode, error) {
 	fi, err := os.Stat(absPath)
 	if err != nil {
-		return nil, err
+		fmt.Printf("[BuildMerkleTree] os.Stat failed. Path: %s, Err: %v\n", absPath, err)
+		return nil, nil
 	}
 
 	if !fi.IsDir() {

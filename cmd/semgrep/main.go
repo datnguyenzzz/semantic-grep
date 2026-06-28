@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -10,6 +11,18 @@ import (
 	"github.com/datnguyenzzz/semantic-grep/internal/llm"
 	"github.com/datnguyenzzz/semantic-grep/internal/turboquant"
 )
+
+type SemgrepResult struct {
+	AbsolutePath string `json:"absolute_path"`
+	SymbolName   string `json:"symbol_name"`
+	StartLine    int    `json:"start_line"`
+	EndLine      int    `json:"end_line"`
+	Content      string `json:"content"`
+}
+
+type SemgrepResponse struct {
+	Results []SemgrepResult `json:"results"`
+}
 
 func main() {
 	// 1. Define command-line flags
@@ -62,16 +75,25 @@ func main() {
 	}
 
 	// 7. Print beautiful results to stdout
-	if len(results) == 0 {
-		fmt.Println("No matches found.")
-		return
+	var finalResults []SemgrepResult
+	for _, m := range results {
+		finalResults = append(finalResults, SemgrepResult{
+			AbsolutePath: m.CWD,
+			SymbolName:   m.SymbolName,
+			StartLine:    m.LineStart,
+			EndLine:      m.LineEnd,
+			Content:      m.Content,
+		})
 	}
 
-	for i, m := range results {
-		fmt.Printf("🔍 [%d] File: %s (Lines: %d-%d) | Similarity: %.2f%%\n", i+1, m.CWD, m.LineStart, m.LineEnd, m.Similarity*100)
-		if m.SymbolName != "" {
-			fmt.Printf("📦 Symbol: %s\n", m.SymbolName)
-		}
-		fmt.Println(m.Content)
+	resp := SemgrepResponse{
+		Results: finalResults,
 	}
+
+	jsonBytes, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		log.Fatalf("❌ Error: Failed to format search results: %v", err)
+	}
+
+	fmt.Println(string(jsonBytes))
 }

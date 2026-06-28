@@ -37,10 +37,11 @@ type CallGraphArgs struct {
 }
 
 type MemoryResult struct {
-	Codebase   string  `json:"codebase"`
-	Path       string  `json:"path"`
-	Similarity float64 `json:"similarity_percentage"`
-	Content    string  `json:"content"`
+	AbsolutePath string `json:"absolute_path"`
+	SymbolName   string `json:"symbol_name"`
+	StartLine    int    `json:"start_line"`
+	EndLine      int    `json:"end_line"`
+	Content      string `json:"content"`
 }
 
 type MemoryResponse struct {
@@ -49,12 +50,13 @@ type MemoryResponse struct {
 }
 
 var MemorySchemaDescription = map[string]string{
-	"schema_description":    "Explanatory key-value definitions for all properties inside this search_memory response structure.",
-	"results":               "A list of semantically matched codebase code chunks, sorted descending by similarity.",
-	"codebase":              "The base directory name of the local workspace codebase.",
-	"path":                  "The absolute or relative path of the file containing the matched segment.",
-	"similarity_percentage": "The similarity score percentage between the search query and the segment (higher means closer match).",
-	"content":               "The actual matching code segment lines read on demand from disk.",
+	"schema_description": "Explanatory key-value definitions for all properties inside this search_memory response structure.",
+	"results":            "A list of semantically matched codebase code chunks, sorted descending by similarity.",
+	"absolute_path":      "The absolute path of the file containing the matched segment.",
+	"symbol_name":        "The name of the symbol/function declared in this block.",
+	"start_line":         "The 1-based start line of this block/function.",
+	"end_line":           "The 1-based end line of this block/function.",
+	"content":            "The actual matching code segment lines read on demand from disk.",
 }
 
 type CallGraphMCPResponse struct {
@@ -214,12 +216,12 @@ func main() {
 
 		var mcpResults []MemoryResult
 		for _, row := range results {
-			codebaseName := filepath.Base(row.CWD)
 			mcpResults = append(mcpResults, MemoryResult{
-				Codebase:   codebaseName,
-				Path:       row.CWD,
-				Similarity: row.Similarity * 100,
-				Content:    row.Content,
+				AbsolutePath: row.CWD,
+				SymbolName:   row.SymbolName,
+				StartLine:    row.LineStart,
+				EndLine:      row.LineEnd,
+				Content:      row.Content,
 			})
 		}
 
