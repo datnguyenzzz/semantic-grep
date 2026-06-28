@@ -5,6 +5,7 @@ go 1.26.3
 replace github.com/datnguyenzzz/semantic-grep/ggrep => ./ggrep
 
 require (
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/datnguyenzzz/semantic-grep/ggrep v0.0.0
 	github.com/duckdb/duckdb-go/v2 v2.10504.0
 	github.com/google/uuid v1.6.0
@@ -18,7 +19,6 @@ require (
 
 require (
 	github.com/apache/arrow-go/v18 v18.5.1 // indirect
-	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/duckdb/duckdb-go-bindings v0.10504.0 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/darwin-amd64 v0.10504.0 // indirect
