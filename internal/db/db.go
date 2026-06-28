@@ -372,6 +372,8 @@ func queryExactGrepMatches(matches []ggrepMatchLine) ([]string, error) {
 func prepareGrepSearchOpt(queryText string) *ggrep.SearchOption {
 	var opt *ggrep.SearchOption
 
+	supportedExts := []string{".go", ".py", ".tf", ".yml", ".yaml"}
+
 	trimmedQuery := strings.TrimSpace(queryText)
 	if trimmedQuery == "" {
 		return nil
@@ -382,8 +384,9 @@ func prepareGrepSearchOpt(queryText string) *ggrep.SearchOption {
 	if strings.ContainsAny(trimmedQuery, "|()*+?[]^$") {
 		if _, err := regexp.Compile(trimmedQuery); err == nil {
 			opt = &ggrep.SearchOption{
-				Kind:    ggrep.Regex,
-				Pattern: trimmedQuery,
+				Kind:              ggrep.Regex,
+				Pattern:           trimmedQuery,
+				AllowedExtensions: supportedExts,
 			}
 
 			return opt
@@ -392,7 +395,7 @@ func prepareGrepSearchOpt(queryText string) *ggrep.SearchOption {
 
 	words := strings.Fields(trimmedQuery)
 	if len(words) > 1 {
-		// 1. Multi-word query: convert to safe regular expression disjunction matching (A|B|C...)
+		// Multi-word query: convert to safe regular expression disjunction matching (A|B|C...)
 		var escapedWords []string
 		for _, w := range words {
 			escapedWords = append(escapedWords, regexp.QuoteMeta(w))
@@ -400,15 +403,17 @@ func prepareGrepSearchOpt(queryText string) *ggrep.SearchOption {
 		disjunctionPattern := strings.Join(escapedWords, "|")
 
 		opt = &ggrep.SearchOption{
-			Kind:    ggrep.Regex,
-			Pattern: disjunctionPattern,
+			Kind:              ggrep.Regex,
+			Pattern:           disjunctionPattern,
+			AllowedExtensions: supportedExts,
 		}
 	} else {
-		// 2. Single word query: use ultra-fast native SIMD literal matching!
+		// Single word query: use ultra-fast native SIMD literal matching!
 		opt = &ggrep.SearchOption{
-			Kind:    ggrep.Literal,
-			Pattern: trimmedQuery,
-			Literal: []byte(trimmedQuery),
+			Kind:              ggrep.Literal,
+			Pattern:           trimmedQuery,
+			Literal:           []byte(trimmedQuery),
+			AllowedExtensions: supportedExts,
 		}
 	}
 

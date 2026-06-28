@@ -16,8 +16,8 @@ import (
 
 // Test_QuerySearch use for manually searching from the indexed codebase with the given query
 func Test_QuerySearch(t *testing.T) {
-	query := "split traces request by traceid"
-	cwd := "/Users/thanh.nguyen/Documents/dhse/otelcol-tail-sampling"
+	query := "memorylimiterprocessor read memory utilisation"
+	cwd := "/Users/thanh.nguyen/Documents/dhse/opentelemetry/opentelemetry-collector"
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -64,7 +64,7 @@ func Test_QuerySearch(t *testing.T) {
 	}
 
 	// 5. Query matching memories
-	results, err := db.SearchMemories(query, embedding, cwd, 5, index)
+	results, err := db.SearchMemories(query, embedding, cwd, 10, index)
 	if err != nil {
 		t.Fatalf("failed to search memories: %v", err)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/datnguyenzzz/semantic-grep/ggrep"
 )
@@ -34,8 +35,9 @@ func writeMatch(path string, lineNum int, text []byte) {
 func main() {
 	// Define CLI flags
 	useRegex := flag.Bool("r", false, "Use regular expressions instead of literal string matching")
+	allowedExtsFlag := flag.String("ext", "", "Comma-separated list of allowed file extensions to ONLY scan (e.g. '.go,.tf')")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: ggrep [-r] <pattern> <path1> [path2 ...]\n")
+		fmt.Fprintf(os.Stderr, "Usage: ggrep [-r] [-ext '.go,.tf'] <pattern> <path1> [path2 ...]\n")
 		flag.PrintDefaults()
 	}
 
@@ -53,6 +55,16 @@ func main() {
 	// Initialize search options
 	opt := &ggrep.SearchOption{
 		Pattern: pattern,
+	}
+
+	if *allowedExtsFlag != "" {
+		parts := strings.SplitSeq(*allowedExtsFlag, ",")
+		for p := range parts {
+			trimmed := strings.TrimSpace(p)
+			if trimmed != "" {
+				opt.AllowedExtensions = append(opt.AllowedExtensions, trimmed)
+			}
+		}
 	}
 
 	if *useRegex {

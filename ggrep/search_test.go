@@ -262,3 +262,69 @@ func Test_GgrepVsOSGrep(t *testing.T) {
 		}
 	})
 }
+
+func Test_GgrepAllowedExtensions(t *testing.T) {
+	// 1. Setup a temporary directory
+	tmpDir, err := os.MkdirTemp("", "ggrep-ext-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// 2. Create mock files with different extensions
+	files := map[string]string{
+		"main.go": `package main
+func main() {
+	println("Hello match")
+}`,
+		"notes.txt": `This is notes containing match`,
+		"config.yaml": `env: production
+match: yes`,
+		"log.log": `[INFO] match occurred`,
+	}
+
+	for relPath, content := range files {
+		fullPath := filepath.Join(tmpDir, relPath)
+		_ = os.WriteFile(fullPath, []byte(content), 0644)
+	}
+
+	// 3. Search for "match" without allowed extensions (expecting 4 matches: .go, .txt, .yaml, .log)
+	optNone := &SearchOption{
+		Kind:    Literal,
+		Literal: []byte("match"),
+	}
+	var matchedFiles []string
+	Search([]string{tmpDir}, optNone, func(path string, line int, text []byte) {
+		matchedFiles = append(matchedFiles, filepath.Base(path))
+	})
+	if len(matchedFiles) != 4 {
+		t.Errorf("expected 4 matched files initially, got: %v", matchedFiles)
+	}
+
+	// 4. Search for "match" allowing only ".go" and "yaml" (using our cleaned dot-prefixed fallback check!)
+	optAllowed := &SearchOption{
+		Kind:              Literal,
+		Literal:           []byte("match"),
+		AllowedExtensions: []string{".go", "yaml"}, // test with and without leading dot
+	}
+	var matchedFilesAllowed []string
+	Search([]string{tmpDir}, optAllowed, func(path string, line int, text []byte) {
+		matchedFilesAllowed = append(matchedFilesAllowed, filepath.Base(path))
+	})
+
+	// We expect main.go and config.yaml to match. notes.txt and log.log must be ignored!
+	hasGo := false
+	hasYaml := false
+	for _, f := range matchedFilesAllowed {
+		if f == "main.go" {
+			hasGo = true
+		}
+		if f == "config.yaml" {
+			hasYaml = true
+		}
+	}
+
+	if len(matchedFilesAllowed) != 2 || !hasGo || !hasYaml {
+		t.Errorf("expected exactly 2 matched files (main.go, config.yaml), got: %v", matchedFilesAllowed)
+	}
+}

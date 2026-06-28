@@ -48,10 +48,11 @@ const (
 )
 
 type SearchOption struct {
-	Kind    SearchKind
-	Regex   *Regexp
-	Literal []byte
-	Pattern string
+	Kind              SearchKind
+	Regex             *Regexp
+	Literal           []byte
+	Pattern           string
+	AllowedExtensions []string
 }
 
 func trimCR(line []byte) []byte {
@@ -165,7 +166,7 @@ func Search(pwds []string, opt *SearchOption, onMatch func(path string, line int
 	// Traversal Producer pushes file paths asynchronously
 	go func() {
 		for _, pwd := range pwds {
-			traverseWithGitIgnore(pwd, jobCh)
+			traverseWithGitIgnore(pwd, jobCh, opt)
 		}
 		close(jobCh)
 	}()
@@ -318,12 +319,30 @@ func isIgnored(path string, ignores []string) bool {
 	return false
 }
 
-func traverseWithGitIgnore(pwd string, jobCh chan string) {
+func traverseWithGitIgnore(pwd string, jobCh chan string, opt *SearchOption) {
 	info, err := os.Stat(pwd)
 	if err != nil {
 		return
 	}
 	if !info.IsDir() {
+		// If allowed extensions are specified, check if the file matches
+		if len(opt.AllowedExtensions) > 0 {
+			ext := strings.ToLower(filepath.Ext(pwd))
+			allowed := false
+			for _, aext := range opt.AllowedExtensions {
+				cleanAext := strings.ToLower(aext)
+				if !strings.HasPrefix(cleanAext, ".") {
+					cleanAext = "." + cleanAext
+				}
+				if ext == cleanAext {
+					allowed = true
+					break
+				}
+			}
+			if !allowed {
+				return // Skip file if it's not in the whitelist!
+			}
+		}
 		jobCh <- pwd
 		return
 	}
@@ -353,9 +372,9 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 						}
 						// Spin off to guarantee zero deadlock on channel block
 						walkWg.Add(1)
-						go func() {
-							dirCh <- path
-						}()
+						go func(p string) {
+							dirCh <- p
+						}(path)
 
 						continue
 					}
@@ -363,6 +382,26 @@ func traverseWithGitIgnore(pwd string, jobCh chan string) {
 					if isIgnored(path, ignores) {
 						continue
 					}
+
+					// Verify against AllowedExtensions whitelist (if specified)
+					if len(opt.AllowedExtensions) > 0 {
+						ext := strings.ToLower(filepath.Ext(path))
+						allowed := false
+						for _, aext := range opt.AllowedExtensions {
+							cleanAext := strings.ToLower(aext)
+							if !strings.HasPrefix(cleanAext, ".") {
+								cleanAext = "." + cleanAext
+							}
+							if ext == cleanAext {
+								allowed = true
+								break
+							}
+						}
+						if !allowed {
+							continue // Skip file!
+						}
+					}
+
 					jobCh <- path
 				}
 				walkWg.Done()
