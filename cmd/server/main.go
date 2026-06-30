@@ -243,7 +243,9 @@ func main() {
 			return nil, nil, err
 		}
 
-		var mcpResults []MemoryResult
+		// Initialize as an empty (non-nil) slice so an empty result marshals to [] and satisfies
+		// the declared OutputSchema (a nil slice marshals to null and fails array validation).
+		mcpResults := []MemoryResult{}
 		for _, row := range results {
 			mcpResults = append(mcpResults, MemoryResult{
 				AbsolutePath: row.CWD,
@@ -263,11 +265,14 @@ func main() {
 			return nil, nil, err
 		}
 
+		// Return mcpResponse as the structured output: the SDK validates it against OutputSchema
+		// and sets StructuredContent. Returning nil here omits structuredContent, which
+		// schema-aware MCP clients reject ("did not return structured content").
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: string(jsonBytes)},
 			},
-		}, nil, nil
+		}, mcpResponse, nil
 	})
 
 	// 2. Register search_call_graph tool
@@ -427,11 +432,13 @@ func main() {
 			return nil, nil, err
 		}
 
+		// Return mcpReport as structured output so the SDK populates StructuredContent (validated
+		// against OutputSchema); a nil here would omit it and schema-aware clients reject the call.
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{Text: string(jsonBytes)},
 			},
-		}, nil, nil
+		}, mcpReport, nil
 	})
 
 	// Start periodic background updates

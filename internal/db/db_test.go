@@ -838,4 +838,111 @@ func Test_LoadAndSliceMemoryBlockMultipleRanges(t *testing.T) {
 	}
 }
 
+func Test_MultiRepoSearchIsolation(t *testing.T) {
+	// Two independent codebases indexed into the SAME DuckDB + TurboQuant index must not leak
+	// into each other: a search scoped to repo A returns only A's memories, never B's.
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() { turboquant.DefaultDimension = originalDim }()
+
+	tmpHome, err := os.MkdirTemp("", "db-multirepo-home-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpHome)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := InitDatabase(); err != nil {
+		t.Fatalf("failed to init db: %v", err)
+	}
+
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	index, err := turboquant.NewIndex(filepath.Join(tmpHome, "multirepo.tqv"), tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	// Two separate repos on disk, each with an identically-named symbol + a shared search term
+	// ("ProcessOrder") so that, without scoping, a query would match both.
+	repoA, err := os.MkdirTemp("", "repo-a-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(repoA)
+	repoA, _ = filepath.EvalSymlinks(repoA)
+
+	repoB, err := os.MkdirTemp("", "repo-b-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(repoB)
+	repoB, _ = filepath.EvalSymlinks(repoB)
+
+	fileA := filepath.Join(repoA, "app.go")
+	_ = os.WriteFile(fileA, []byte("package main\n\nfunc ProcessOrder() {\n\tprintln(\"repo A order pipeline\")\n}\n"), 0644)
+	fileB := filepath.Join(repoB, "app.go")
+	_ = os.WriteFile(fileB, []byte("package main\n\nfunc ProcessOrder() {\n\tprintln(\"repo B order pipeline\")\n}\n"), 0644)
+
+	// Register both as codebases
+	if err := SaveMerkleTree(repoA, "hashA", "{}"); err != nil {
+		t.Fatalf("failed to register repo A: %v", err)
+	}
+	if err := SaveMerkleTree(repoB, "hashB", "{}"); err != nil {
+		t.Fatalf("failed to register repo B: %v", err)
+	}
+
+	embedA := make([]float32, 16)
+	embedA[0] = 1.0
+	if err := SaveMemory("a-order", "ProcessOrder", fileA, 1, 5, embedA, index); err != nil {
+		t.Fatalf("failed to save repo A memory: %v", err)
+	}
+	embedB := make([]float32, 16)
+	embedB[1] = 1.0
+	if err := SaveMemory("b-order", "ProcessOrder", fileB, 1, 5, embedB, index); err != nil {
+		t.Fatalf("failed to save repo B memory: %v", err)
+	}
+	AsyncSaveWG.Wait()
+
+	// ListCodebases should report both registered repos
+	codebases, err := ListCodebases()
+	if err != nil {
+		t.Fatalf("failed to list codebases: %v", err)
+	}
+	if len(codebases) != 2 {
+		t.Fatalf("expected exactly 2 registered codebases, got %d: %+v", len(codebases), codebases)
+	}
+
+	assertScoped := func(searchCWD, wantID, wantPrefix, forbidID, forbidPrefix string) {
+		t.Helper()
+		res, err := SearchMemories("ProcessOrder", make([]float32, 16), searchCWD, 10, index)
+		if err != nil {
+			t.Fatalf("search in %s failed: %v", searchCWD, err)
+		}
+		if len(res) == 0 {
+			t.Fatalf("expected results scoped to %s, got 0", searchCWD)
+		}
+		foundWanted := false
+		for _, m := range res {
+			if m.ID == forbidID || strings.HasPrefix(m.CWD, forbidPrefix) {
+				t.Errorf("search scoped to %s leaked a result from the other repo: %+v", searchCWD, m)
+			}
+			if m.ID == wantID && strings.HasPrefix(m.CWD, wantPrefix) {
+				foundWanted = true
+			}
+		}
+		if !foundWanted {
+			t.Errorf("expected search scoped to %s to return %s, got: %+v", searchCWD, wantID, res)
+		}
+	}
+
+	// Scope to A -> only A; scope to B -> only B
+	assertScoped(repoA, "a-order", repoA, "b-order", repoB)
+	assertScoped(repoB, "b-order", repoB, "a-order", repoA)
+}
+
 type dummy struct{} // prevent package import issue

@@ -238,3 +238,106 @@ func Test_UpdateIndexConcurrency(t *testing.T) {
 		t.Errorf("expected at least %d memory results, got %d", workers, len(results))
 	}
 }
+
+func Test_UpdateIndexMultiRepoIsolation(t *testing.T) {
+	// Index two separate repos through the real merkle pipeline and verify they stay isolated:
+	// each repo's symbols are only found when scoped to it, and an incremental update to one repo
+	// reports only that repo's delta and leaves the other untouched.
+	originalDim := turboquant.DefaultDimension
+	turboquant.DefaultDimension = 16
+	defer func() { turboquant.DefaultDimension = originalDim }()
+
+	tmpDir, err := os.MkdirTemp("", "merkle-multirepo-*")
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	tmpDir, _ = filepath.EvalSymlinks(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	if err := db.InitDatabase(); err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	tq, err := turboquant.NewTurboQuant(16, 4, 42)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+	index, err := turboquant.NewIndex(filepath.Join(tmpDir, "multirepo.tqv"), tq)
+	if err != nil {
+		t.Fatalf("failed: %v", err)
+	}
+
+	mockLLM := mockllm.NewMockILLM(t)
+	mockLLM.On("GetEmbedding", mock.Anything, mock.Anything).Return(func(text string, dim int) []float32 {
+		v := make([]float32, dim)
+		v[0] = 1.0
+		return v
+	}, nil)
+	llm.DefaultClient = mockLLM
+	defer func() { llm.DefaultClient = &llm.LiteLLM{} }()
+
+	repoA := filepath.Join(tmpDir, "repoA")
+	repoB := filepath.Join(tmpDir, "repoB")
+	_ = os.MkdirAll(repoA, 0755)
+	_ = os.MkdirAll(repoB, 0755)
+	_ = os.WriteFile(filepath.Join(repoA, "alpha.go"),
+		[]byte("package main\n\nfunc AlphaService() {\n\tprintln(\"alpha repo handler\")\n}\n"), 0644)
+	_ = os.WriteFile(filepath.Join(repoB, "bravo.go"),
+		[]byte("package main\n\nfunc BravoService() {\n\tprintln(\"bravo repo handler\")\n}\n"), 0644)
+
+	_ = db.SaveMerkleTree(repoA, "initA", "{}")
+	_ = db.SaveMerkleTree(repoB, "initB", "{}")
+
+	if added, _, _, err := UpdateIndex(repoA, index); err != nil || added < 1 {
+		t.Fatalf("indexing repo A: added=%d err=%v", added, err)
+	}
+	if added, _, _, err := UpdateIndex(repoB, index); err != nil || added < 1 {
+		t.Fatalf("indexing repo B: added=%d err=%v", added, err)
+	}
+	db.AsyncSaveWG.Wait()
+
+	// Every result of a scoped search must live inside that repo — nothing from the sibling leaks.
+	// (A zero query embedding makes the semantic path return all in-scope docs, so we assert on the
+	// returned file paths rather than on a per-query count.)
+	scopedFilesStayIn := func(scope, query string) {
+		t.Helper()
+		res, err := db.SearchMemories(query, make([]float32, 16), scope, 10, index)
+		if err != nil {
+			t.Fatalf("search %q in %s failed: %v", query, scope, err)
+		}
+		if len(res) == 0 {
+			t.Fatalf("expected at least one result scoped to %s", scope)
+		}
+		for _, m := range res {
+			if !strings.HasPrefix(m.CWD, scope) {
+				t.Errorf("search scoped to %s leaked a result from outside it: %s", scope, m.CWD)
+			}
+		}
+	}
+
+	scopedFilesStayIn(repoA, "AlphaService")
+	scopedFilesStayIn(repoB, "BravoService")
+
+	// Incremental update: add a file to repo A only. Its delta must be 1, and a re-sweep of repo B
+	// (unchanged) must report no changes — proving updates don't bleed across repos.
+	_ = os.WriteFile(filepath.Join(repoA, "extra.go"),
+		[]byte("package main\n\nfunc AlphaExtra() {\n\tprintln(\"alpha extra\")\n}\n"), 0644)
+	added, modified, deleted, err := UpdateIndex(repoA, index)
+	if err != nil {
+		t.Fatalf("incremental repo A update failed: %v", err)
+	}
+	if added != 1 || modified != 0 || deleted != 0 {
+		t.Errorf("expected repo A delta (added=1, modified=0, deleted=0), got (%d, %d, %d)", added, modified, deleted)
+	}
+	if a, m, d, err := UpdateIndex(repoB, index); err != nil || a != 0 || m != 0 || d != 0 {
+		t.Errorf("expected repo B to be unchanged by repo A's update, got (%d, %d, %d) err=%v", a, m, d, err)
+	}
+	db.AsyncSaveWG.Wait()
+
+	// repo B still intact and isolated after repo A's incremental update
+	scopedFilesStayIn(repoB, "BravoService")
+}
